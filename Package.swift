@@ -4,19 +4,21 @@
 import PackageDescription
 
 let package = Package(
-    name: "${NAME}",
+    name: "VDPresent",
     platforms: [
-        .iOS(.v13),
+        .iOS(.v13)
     ],
     products: [
-        .library(name: "${NAME}", targets: ["${NAME}"]),
+        .library(name: "VDPresent", targets: ["VDPresent"]),
     ],
     dependencies: [
+        .package(url: "https://github.com/dankinsoid/VDTransition.git", from: "1.12.0")
     ],
     targets: [
         .target(
-            name: "${NAME}",
+            name: "VDPresent",
             dependencies: [
+                "VDTransition"
             ]
         )
     ]

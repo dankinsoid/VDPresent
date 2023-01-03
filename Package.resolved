@@ -1,0 +1,14 @@
+{
+  "pins" : [
+    {
+      "identity" : "vdtransition",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/dankinsoid/VDTransition.git",
+      "state" : {
+        "revision" : "9ee5d010f841717a030e638ab1475b689643e412",
+        "version" : "1.12.0"
+      }
+    }
+  ],
+  "version" : 2
+}
