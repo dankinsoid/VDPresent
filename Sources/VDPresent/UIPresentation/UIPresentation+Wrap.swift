@@ -1,21 +1,12 @@
 import UIKit
 
-public extension UIPresentation.Transition {
-    
-    func wrap(_ wrapper: @escaping (UIViewController) -> UIViewController) -> UIPresentation.Transition {
-        UIPresentation.Transition { context, state in
-            
-        }
-    }
-}
-
 public extension UIPresentation {
     
     func wrap(_ wrapper: @escaping (UIViewController) -> UIViewController) -> UIPresentation {
-        UIPresentation(
-            transition: transition.wrap(wrapper),
-            interactivity: interactivity,
-            animation: animation
-        )
+        var result = self
+        result.modifier = { [modifier] in
+            wrapper(modifier($0))
+        }
+        return result
     }
 }

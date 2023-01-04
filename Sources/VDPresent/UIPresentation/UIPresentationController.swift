@@ -4,6 +4,7 @@ import VDTransition
 open class UIPresentationController: UIViewController {
   
     public private(set) var viewControllers: [UIViewController] = []
+    public var presentation: UIPresentation?
     
     override open func viewDidLoad() {
         super.viewDidLoad()
@@ -34,6 +35,27 @@ open class UIPresentationController: UIViewController {
         } else {
             viewControllers.append(vc)
         }
+    }
+}
+
+public extension UIPresentationController {
+    
+    static var root: UIPresentationController? {
+        UIWindow.key?.rootViewController?
+            .selfAndAllPresented.compactMap({ $0 as? UIPresentationController }).first
+    }
+    
+    static var top: UIPresentationController? {
+        root?.topOrSelf
+    }
+    
+    var top: UIPresentationController? {
+        let lastPresentation = viewControllers.last?.selfAndAllChildren.compactMap { $0 as? UIPresentationController }.last
+        return lastPresentation?.top ?? lastPresentation
+    }
+    
+    var topOrSelf: UIPresentationController {
+        top ?? self
     }
 }
 

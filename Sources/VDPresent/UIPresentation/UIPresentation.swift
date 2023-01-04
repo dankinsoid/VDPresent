@@ -8,16 +8,21 @@ public struct UIPresentation {
     public var transition: Transition
     public var interactivity: Interactivity?
     public var animation: UIKitAnimation
+    public var modifier: (UIViewController) -> UIViewController
     
     public init(
         transition: Transition,
         interactivity: Interactivity? = nil,
-        animation: UIKitAnimation = .default
+        animation: UIKitAnimation = .default,
+				modifier: @escaping (UIViewController) -> UIViewController = { $0 }
     ) {
         self.transition = transition
         self.interactivity = interactivity
         self.animation = animation
+        self.modifier = modifier
     }
+    
+    public static var `default` = UIPresentation.sheet
 }
 
 public extension UIPresentation {
