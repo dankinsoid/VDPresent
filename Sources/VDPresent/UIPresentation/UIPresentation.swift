@@ -26,13 +26,27 @@ public extension UIPresentation {
         
         public var direction: TransitionDirection
         public var container: UIView
+        public var fromController: UIViewController?
+        public var toController: UIViewController?
         
         public init(
             direction: TransitionDirection,
-            container: UIView
+            container: UIView,
+            fromController: UIViewController?,
+            toController: UIViewController?
         ) {
             self.direction = direction
             self.container = container
+            self.fromController = fromController
+            self.toController = toController
+        }
+        
+        public func viewController(_ key: UITransitionContextViewControllerKey) -> UIViewController? {
+            switch key {
+            case .from: return fromController
+            case .to: return toController
+            default: return nil
+            }
         }
     }
     
@@ -54,7 +68,7 @@ public extension UIPresentation {
         private var updater: (Context, State) -> Void
         
         public init(
-            updater: @escaping (Context, State) -> Void
+        	updater: @escaping (Context, State) -> Void
         ) {
             self.updater = updater
         }
@@ -77,6 +91,7 @@ public extension UIPresentation.Transition {
     init(
         content: UITransition<UIView>,
         background: UITransition<UIView>,
+        applyTransitionOnBothControllers: Bool = false,
         prepare: ((UIPresentation.Context) -> Void)? = nil,
         completion: ((UIPresentation.Context, Bool) -> Void)? = nil
     ) {

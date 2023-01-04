@@ -1,37 +1,49 @@
 import UIKit
 
-extension UILayoutGuide {
+protocol Constraintable {
     
-    func pinEdges(to guid: UILayoutGuide, padding: CGFloat = 0) {
-        owningView?.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-        	leadingAnchor.constraint(equalTo: guid.leadingAnchor, constant: padding),
-          trailingAnchor.constraint(equalTo: guid.trailingAnchor, constant: -padding),
-          topAnchor.constraint(equalTo: guid.topAnchor, constant: padding),
-          bottomAnchor.constraint(equalTo: guid.bottomAnchor, constant: -padding),
-        ])
-    }
+    var asUIView: UIView? { get }
+    var leadingAnchor: NSLayoutXAxisAnchor { get }
+    var trailingAnchor: NSLayoutXAxisAnchor { get }
+    var topAnchor: NSLayoutYAxisAnchor { get }
+    var bottomAnchor: NSLayoutYAxisAnchor { get }
 }
 
-extension UIView {
+extension UIView: Constraintable {
     
-    func pinEdges(to view: UIView, padding: CGFloat = 0) {
-        translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: padding),
-            trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -padding),
-            topAnchor.constraint(equalTo: view.topAnchor, constant: padding),
-            bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -padding),
-        ])
-    }
+    var asUIView: UIView? { self }
+}
+
+extension UILayoutGuide: Constraintable {
     
-    func pinEdges(to guid: UILayoutGuide, padding: CGFloat = 0) {
-        translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            leadingAnchor.constraint(equalTo: guid.leadingAnchor, constant: padding),
-            trailingAnchor.constraint(equalTo: guid.trailingAnchor, constant: -padding),
-            topAnchor.constraint(equalTo: guid.topAnchor, constant: padding),
-            bottomAnchor.constraint(equalTo: guid.bottomAnchor, constant: -padding),
-        ])
+    var asUIView: UIView? { owningView }
+}
+
+extension Constraintable {
+    
+    func pinEdges(
+        _ edges: NSDirectionalRectEdge = .all,
+        to view: Constraintable,
+        padding: CGFloat = 0,
+        priority: UILayoutPriority = .required
+    ) {
+        asUIView?.translatesAutoresizingMaskIntoConstraints = false
+        var array: [NSLayoutConstraint] = []
+        if edges.contains(.leading) {
+            array.append(leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: padding))
+        }
+        if edges.contains(.trailing) {
+            array.append(trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -padding))
+        }
+        if edges.contains(.top) {
+            array.append(topAnchor.constraint(equalTo: view.topAnchor, constant: padding))
+        }
+        if edges.contains(.bottom) {
+            array.append(bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -padding))
+        }
+        array.forEach {
+            $0.priority = priority
+        }
+        NSLayoutConstraint.activate(array)
     }
 }
