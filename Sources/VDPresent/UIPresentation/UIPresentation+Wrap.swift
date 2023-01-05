@@ -4,9 +4,17 @@ public extension UIPresentation {
     
     func wrap(_ wrapper: @escaping (UIViewController) -> UIViewController) -> UIPresentation {
         var result = self
-        result.modifier = { [modifier] in
-            wrapper(modifier($0))
-        }
+        result.transition = transition.wrap(wrapper)
         return result
+    }
+}
+
+public extension UIPresentation.Transition {
+    
+    func wrap(_ wrapper: @escaping (UIViewController) -> UIViewController) -> UIPresentation.Transition {
+        UIPresentation.Transition { context, state in
+            update(context: &context, progress: state)
+            context
+        }
     }
 }

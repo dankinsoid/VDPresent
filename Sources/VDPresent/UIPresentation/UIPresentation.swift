@@ -8,18 +8,15 @@ public struct UIPresentation {
     public var transition: Transition
     public var interactivity: Interactivity?
     public var animation: UIKitAnimation
-    public var modifier: (UIViewController) -> UIViewController
     
     public init(
         transition: Transition,
         interactivity: Interactivity? = nil,
-        animation: UIKitAnimation = .default,
-				modifier: @escaping (UIViewController) -> UIViewController = { $0 }
+        animation: UIKitAnimation = .default
     ) {
         self.transition = transition
         self.interactivity = interactivity
         self.animation = animation
-        self.modifier = modifier
     }
     
     public static var `default` = UIPresentation.sheet
@@ -33,17 +30,20 @@ public extension UIPresentation {
         public var container: UIView
         public var fromController: UIViewController?
         public var toController: UIViewController?
+        public var isInteractive: Bool
         
         public init(
             direction: TransitionDirection,
             container: UIView,
             fromController: UIViewController?,
-            toController: UIViewController?
+            toController: UIViewController?,
+            isInteractive: Bool
         ) {
             self.direction = direction
             self.container = container
             self.fromController = fromController
             self.toController = toController
+            self.isInteractive = isInteractive
         }
         
         public func viewController(_ key: UITransitionContextViewControllerKey) -> UIViewController? {
@@ -57,29 +57,29 @@ public extension UIPresentation {
     
     struct Interactivity {
         
-        private let installer: (Context, @escaping (State) -> Void) -> Void
+        private let installer: (inout Context, @escaping (State) -> Void) -> Void
         
-        public init(installer: @escaping (Context, @escaping (State) -> Void) -> Void) {
+        public init(installer: @escaping (inout Context, @escaping (State) -> Void) -> Void) {
             self.installer = installer
         }
         
-        public func install(context: Context, observer: @escaping (State) -> Void) {
-            installer(context, observer)
+        public func install(context: inout Context, observer: @escaping (State) -> Void) {
+            installer(&context, observer)
         }
     }
     
     struct Transition {
         
-        private var updater: (Context, State) -> Void
+        private var updater: (inout Context, State) -> Void
         
         public init(
-        	updater: @escaping (Context, State) -> Void
+        	updater: @escaping (inout Context, State) -> Void
         ) {
             self.updater = updater
         }
         
-        public func update(context: Context, progress: State) {
-            updater(context, progress)
+        public func update(context: inout Context, progress: State) {
+            updater(&context, progress)
         }
     }
     
@@ -100,20 +100,33 @@ public extension UIPresentation.Transition {
         prepare: ((UIPresentation.Context) -> Void)? = nil,
         completion: ((UIPresentation.Context, Bool) -> Void)? = nil
     ) {
-        var contentTransition = content
-        var backgroundTransition = background
+        var transitions: [KeyPath<UIPresentation.Context, UIView?>: UITransition<UIView>] = [
+            \.container.optional: background
+        ]
         self.init { context, state in
             switch state {
             case .begin:
-                contentTransition.beforeTransition(view: <#T##UIView#>)
+                transitions.forEach {
+                    if let view = context[keyPath: $0.key] {
+                        transitions[$0.key]?.beforeTransition(view: view)
+                    }
+                }
                 prepare?(context)
                 
             case let .change(progress):
-                contentTransition.update(progress: progress, view: <#T##UIView#>)
+                transitions.forEach {
+                    if let view = context[keyPath: $0.key] {
+                        $0.value.update(progress: progress, view: view)
+                    }
+                }
                 break
                 
             case let .end(completed):
-                contentTransition.setInitialState(view: <#T##UIView#>)
+                transitions.forEach {
+                    if let view = context[keyPath: $0.key] {
+                        $0.value.setInitialState(view: view)
+                    }
+                }
                 completion?(context, completed)
             }
         }
