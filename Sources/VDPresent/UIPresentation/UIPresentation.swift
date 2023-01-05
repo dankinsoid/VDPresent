@@ -78,8 +78,8 @@ public extension UIPresentation {
             self.updater = updater
         }
         
-        public func update(context: inout Context, progress: State) {
-            updater(&context, progress)
+        public func update(context: inout Context, state: State) {
+            updater(&context, state)
         }
     }
     

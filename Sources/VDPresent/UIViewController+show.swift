@@ -37,20 +37,25 @@ public extension UIViewController {
     
     @discardableResult
     func show(
-        _ presentation: UIPresentation? = nil,
+        as presentation: UIPresentation? = nil,
         animated: Bool = true,
         completion: (() -> Void)? = nil
     ) -> UIPresentationController {
         let result: UIPresentationController
-        if let presentationController {
+        if
+            let presentationController,
+            presentationController.presentedViewController == nil
+        {
             result = presentationController
-        } else if let presentationController = UIPresentationController.top {
+        } else if
+            let presentationController = UIPresentationController.root,
+            presentationController.presentedViewController == nil
+        {
             result = presentationController
         } else if let window = UIWindow.root, window.rootViewController == nil {
             result = UIPresentationController()
             window.rootViewController = result
             window.makeKeyAndVisible()
-            
         } else {
             result = UIPresentationController()
             result.present(animated: false) {
@@ -63,7 +68,7 @@ public extension UIViewController {
     }
     
     func hide(
-        _ presentation: UIPresentation? = nil,
+        as presentation: UIPresentation? = nil,
         animated: Bool = true,
         completion: (() -> Void)? = nil
     ) {
