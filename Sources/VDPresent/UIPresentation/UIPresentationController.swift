@@ -29,16 +29,32 @@ open class UIPresentationController: UIViewController {
         completion: (() -> Void)? = nil
     ) {
         let present = presentation ?? presentations[vc] ?? vc.defaultPresentation ?? self.presentation ?? .default
-        presentations[vc] = presentation
-        
-        if viewControllers.contains(vc) {
+        if let i = viewControllers.firstIndex(of: vc) {
             guard viewControllers.last !== vc else {
                 completion?()
                 return
             }
-            
+            makeTransition(
+                to: vc,
+                presentation: present,
+                direction: .removal,
+                animated: animated
+            ) { [weak self] in
+                guard let self else { return }
+                self.removeControllers(at: (i + 1)..<self.viewControllers.count)
+                completion?()
+            }
         } else {
-            viewControllers.append(vc)
+            makeTransition(
+                to: vc,
+                presentation: present,
+                direction: .insertion,
+                animated: animated
+            ) { [weak self] in
+                guard let self else { return }
+                self.append(controller: vc, presentation: presentation)
+                completion?()
+            }
         }
     }
 }
@@ -72,6 +88,7 @@ public extension UIPresentationController {
 private extension UIPresentationController {
     
     func makeTransition(
+        to toViewController: UIViewController,
         presentation: UIPresentation,
         direction: TransitionDirection,
         animated: Bool,
@@ -81,11 +98,12 @@ private extension UIPresentationController {
             direction: direction,
             container: view,
             fromController: viewControllers.last,
-            toController: nil,
+            toController: toViewController,
             isInteractive: false
         )
         
         presentation.transition.update(context: &context, state: .begin)
+        
         if animated {
             UIView.animate(with: presentation.animation) {
                 presentation.transition.update(context: &context, state: .change(direction.at(1)))
@@ -132,5 +150,17 @@ private extension UIPresentationController {
             }
             presentation.transition.update(context: &context, state: state)
         }
+    }
+    
+    func removeControllers(at indexes: Range<Int>) {
+        viewControllers[indexes].forEach {
+            presentations[$0] = nil
+        }
+        viewControllers.replaceSubrange(indexes, with: [])
+    }
+    
+    func append(controller: UIViewController, presentation: UIPresentation?) {
+        presentations[controller] = presentation
+        viewControllers.append(controller)
     }
 }

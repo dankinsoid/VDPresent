@@ -97,21 +97,25 @@ public extension UIPresentation.Transition {
         content: UITransition<UIView>,
         background: UITransition<UIView>,
         applyTransitionOnBothControllers: Bool = false,
-        prepare: ((UIPresentation.Context) -> Void)? = nil,
+        prepare: ((inout UIPresentation.Context) -> Void)? = nil,
         completion: ((UIPresentation.Context, Bool) -> Void)? = nil
     ) {
         var transitions: [KeyPath<UIPresentation.Context, UIView?>: UITransition<UIView>] = [
-            \.container.optional: background
+            \.container.optional: background,
+            \.toController?.view: content
         ]
+        var background: UIView?
+        let backgroundID = "BackgroundView"
         self.init { context, state in
             switch state {
             case .begin:
+                prepare?(&context)
+                
                 transitions.forEach {
                     if let view = context[keyPath: $0.key] {
                         transitions[$0.key]?.beforeTransition(view: view)
                     }
                 }
-                prepare?(context)
                 
             case let .change(progress):
                 transitions.forEach {
@@ -119,7 +123,6 @@ public extension UIPresentation.Transition {
                         $0.value.update(progress: progress, view: view)
                     }
                 }
-                break
                 
             case let .end(completed):
                 transitions.forEach {

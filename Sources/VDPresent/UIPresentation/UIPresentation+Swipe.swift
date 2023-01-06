@@ -22,9 +22,8 @@ public extension UIPresentation.Interactivity {
                 swipeView.pinEdges(to: context.container)
             }
             swipeView[key].delegate = SwipeViewObserver(observer: observer)
-            swipeView.visibleContent
+            swipeView.visibleContent = context.toController?.view
             swipeView.setNeedsLayout()
-            context.container = swipeView.visibleContainer
         }
     }
 }

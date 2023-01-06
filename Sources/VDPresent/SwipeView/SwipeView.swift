@@ -8,8 +8,9 @@ final class SwipeView: UIScrollView, UIScrollViewDelegate {
 
     weak var visibleContent: UIView? {
         didSet {
-            if let content = visibleContent {
+            if let content = visibleContent, content !== oldValue {
                 visibleContainer.addSubview(content)
+                content.pinEdges(to: visibleContainer)
             }
         }
     }
@@ -55,10 +56,14 @@ final class SwipeView: UIScrollView, UIScrollViewDelegate {
         showsVerticalScrollIndicator = false
 
         addSubview(content)
+        content.translatesAutoresizingMaskIntoConstraints = false
         content.addSubview(visibleContainer)
+        visibleContainer.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             widthAnchor.constraint(equalTo: visibleContainer.widthAnchor),
-            heightAnchor.constraint(equalTo: visibleContainer.heightAnchor)
+            heightAnchor.constraint(equalTo: visibleContainer.heightAnchor),
+            visibleContainer.leftAnchor.constraint(equalTo: content.leftAnchor),
+            visibleContainer.topAnchor.constraint(equalTo: content.topAnchor)
         ])
         content.frame.size = CGSize(width: frame.width * 2, height: frame.height)
         content.pinEdges(to: contentLayoutGuide)

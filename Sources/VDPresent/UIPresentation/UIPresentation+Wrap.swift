@@ -13,8 +13,10 @@ public extension UIPresentation.Transition {
     
     func wrap(_ wrapper: @escaping (UIViewController) -> UIViewController) -> UIPresentation.Transition {
         UIPresentation.Transition { context, state in
-            update(context: &context, progress: state)
-            context
+            if state == .begin {
+                context.toController = context.toController.flatMap(wrapper)
+            }
+            update(context: &context, state: state)
         }
     }
 }
