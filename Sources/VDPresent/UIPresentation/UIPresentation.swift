@@ -24,33 +24,39 @@ public struct UIPresentation {
 
 public extension UIPresentation {
     
-    struct Context: Hashable {
+    struct Context {
         
         public var direction: TransitionDirection
         public var container: UIView
-        public var fromController: UIViewController?
-        public var toController: UIViewController?
+        public var fromViewControllers: [UIViewController]
+        public var toViewControllers: [UIViewController]
+        public var animated: Bool
         public var isInteractive: Bool
+        public var cache: Cache
         
         public init(
             direction: TransitionDirection,
             container: UIView,
-            fromController: UIViewController?,
-            toController: UIViewController?,
-            isInteractive: Bool
+            fromViewControllers: [UIViewController],
+            toViewControllers: [UIViewController],
+            animated: Bool,
+            isInteractive: Bool,
+            cache: Cache
         ) {
             self.direction = direction
             self.container = container
-            self.fromController = fromController
-            self.toController = toController
+            self.fromViewControllers = fromViewControllers
+            self.toViewControllers = toViewControllers
+            self.animated = animated
             self.isInteractive = isInteractive
+            self.cache = cache
         }
         
-        public func viewController(_ key: UITransitionContextViewControllerKey) -> UIViewController? {
+        public func viewController(_ key: UITransitionContextViewControllerKey) -> [UIViewController] {
             switch key {
-            case .from: return fromController
-            case .to: return toController
-            default: return nil
+            case .from: return fromViewControllers
+            case .to: return toViewControllers
+            default: return []
             }
         }
     }
@@ -91,47 +97,18 @@ public extension UIPresentation {
     }
 }
 
-public extension UIPresentation.Transition {
+public extension UIPresentation.Context {
     
-    init(
-        content: UITransition<UIView>,
-        background: UITransition<UIView>,
-        applyTransitionOnBothControllers: Bool = false,
-        prepare: ((inout UIPresentation.Context) -> Void)? = nil,
-        completion: ((UIPresentation.Context, Bool) -> Void)? = nil
-    ) {
-        var transitions: [KeyPath<UIPresentation.Context, UIView?>: UITransition<UIView>] = [
-            \.container.optional: background,
-            \.toController?.view: content
-        ]
-        var background: UIView?
-        let backgroundID = "BackgroundView"
-        self.init { context, state in
-            switch state {
-            case .begin:
-                prepare?(&context)
-                
-                transitions.forEach {
-                    if let view = context[keyPath: $0.key] {
-                        transitions[$0.key]?.beforeTransition(view: view)
-                    }
-                }
-                
-            case let .change(progress):
-                transitions.forEach {
-                    if let view = context[keyPath: $0.key] {
-                        $0.value.update(progress: progress, view: view)
-                    }
-                }
-                
-            case let .end(completed):
-                transitions.forEach {
-                    if let view = context[keyPath: $0.key] {
-                        $0.value.setInitialState(view: view)
-                    }
-                }
-                completion?(context, completed)
-            }
+    struct Cache {
+        
+        private var values: [PartialKeyPath<UIPresentation.Context>: Any] = [:]
+        
+        public subscript<T>(_ keyPath: KeyPath<UIPresentation.Context, T>) -> T? {
+            get { values[keyPath] as? T }
+            set { values[keyPath] = newValue }
+        }
+        
+        public init() {
         }
     }
 }

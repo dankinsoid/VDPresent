@@ -15,6 +15,7 @@ public extension UIPresentation.Interactivity {
             let key = SwipeView.Key(edge: edge, startFromEdges: startFromEdge)
             if let existedScroll = context.container.subviews.compactMap({ $0 as? SwipeView }).first {
                 swipeView = existedScroll
+                context.container.bringSubviewToFront(existedScroll)
             } else {
                 swipeView = SwipeView()
                 context.container.addSubview(swipeView)
@@ -22,7 +23,7 @@ public extension UIPresentation.Interactivity {
                 swipeView.pinEdges(to: context.container)
             }
             swipeView[key].delegate = SwipeViewObserver(observer: observer)
-            swipeView.visibleContent = context.toController?.view
+            swipeView.visibleContent = context.toViewControllers.last?.view
             swipeView.setNeedsLayout()
         }
     }
@@ -44,7 +45,7 @@ private final class SwipeViewObserver: SwipeViewDelegate {
     }
     
     func shouldBegin() -> Bool {
-        true
+        !wasBegun
     }
     
     func update(_ percent: CGFloat) {
@@ -52,10 +53,12 @@ private final class SwipeViewObserver: SwipeViewDelegate {
     }
     
     func cancel() {
+        wasBegun = false
         observer(.end(completed: false))
     }
     
     func finish() {
+        wasBegun = false
         observer(.end(completed: true))
     }
 }

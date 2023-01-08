@@ -6,7 +6,7 @@ open class UIPresentationController: UIViewController {
     public private(set) var viewControllers: [UIViewController] = []
     public var presentation: UIPresentation?
     
-    private var presentations: [UIViewController: UIPresentation] = [:]
+    private var cache = UIPresentation.Context.Cache()
     
     override open func viewDidLoad() {
         super.viewDidLoad()
@@ -22,39 +22,52 @@ open class UIPresentationController: UIViewController {
         super.targetViewController(forAction: action, sender: sender)
     }
     
-    open func show(
-        _ vc: UIViewController,
+    open func set(
+        viewControllers newViewControllers: [UIViewController],
         presentation: UIPresentation? = nil,
         animated: Bool = true,
         completion: (() -> Void)? = nil
     ) {
-        let present = presentation ?? presentations[vc] ?? vc.defaultPresentation ?? self.presentation ?? .default
-        if let i = viewControllers.firstIndex(of: vc) {
-            guard viewControllers.last !== vc else {
-                completion?()
-                return
-            }
-            makeTransition(
-                to: vc,
-                presentation: present,
-                direction: .removal,
-                animated: animated
-            ) { [weak self] in
-                guard let self else { return }
-                self.removeControllers(at: (i + 1)..<self.viewControllers.count)
-                completion?()
-            }
+        guard newViewControllers != viewControllers else {
+            completion?()
+            return
+        }
+        
+        let isInsertion = newViewControllers.last.map { !viewControllers.contains($0) } ?? false
+        
+        makeTransition(
+            to: newViewControllers,
+            from: viewControllers,
+            presentation: presentation ?? self.presentation(for: isInsertion ? newViewControllers.last : viewControllers.last),
+            direction: isInsertion ? .insertion : .removal,
+            animated: animated,
+            completion: completion
+        )
+    }
+}
+
+public extension UIPresentationController {
+    
+    func show(
+        _ viewController: UIViewController,
+        presentation: UIPresentation? = nil,
+        animated: Bool = true,
+        completion: (() -> Void)? = nil
+    ) {
+        if let i = viewControllers.firstIndex(of: viewController) {
+            set(
+                viewControllers: Array(viewControllers.prefix(through: i)),
+                presentation: presentation,
+                animated: animated,
+                completion: completion
+            )
         } else {
-            makeTransition(
-                to: vc,
-                presentation: present,
-                direction: .insertion,
-                animated: animated
-            ) { [weak self] in
-                guard let self else { return }
-                self.append(controller: vc, presentation: presentation)
-                completion?()
-            }
+            set(
+                viewControllers: viewControllers + [viewController],
+                presentation: presentation,
+                animated: animated,
+                completion: completion
+            )
         }
     }
 }
@@ -83,51 +96,169 @@ public extension UIPresentationController {
     var topOrSelf: UIPresentationController {
         top ?? self
     }
+    
+    var visibleViewController: UIViewController? {
+        get { viewControllers.last }
+        set {
+            if let newValue {
+                show(newValue)
+            }
+        }
+    }
+}
+
+private extension UIPresentationController {
+    
+    func presentation(
+        for viewController: UIViewController?
+    ) -> UIPresentation {
+        viewController?.defaultPresentation ?? self.presentation ?? .default
+    }
 }
 
 private extension UIPresentationController {
     
     func makeTransition(
-        to toViewController: UIViewController,
+        to toViewControllers: [UIViewController],
+        from fromViewControllers: [UIViewController],
         presentation: UIPresentation,
         direction: TransitionDirection,
         animated: Bool,
         completion: (() -> Void)?
     ) {
-        var context = UIPresentation.Context(
+        let (prepare, animation, completion) = transitionBlocks(
+            to: toViewControllers,
+            from: fromViewControllers,
+            presentation: presentation,
             direction: direction,
-            container: view,
-            fromController: viewControllers.last,
-            toController: toViewController,
-            isInteractive: false
+            animated: animated,
+            completion: completion
         )
-        
-        presentation.transition.update(context: &context, state: .begin)
-        
+        prepare()
         if animated {
             UIView.animate(with: presentation.animation) {
-                presentation.transition.update(context: &context, state: .change(direction.at(1)))
+                animation()
             } completion: { isCompleted in
-                presentation.transition.update(context: &context, state: .end(completed: isCompleted))
-                completion?()
+                completion(isCompleted)
             }
         } else {
-            presentation.transition.update(context: &context, state: .change(direction.at(1)))
-            presentation.transition.update(context: &context, state: .end(completed: true))
-            completion?()
+            animation()
+            completion(true)
         }
     }
     
-    func afterTransition(
+    func transitionBlocks(
+        to toViewControllers: [UIViewController],
+        from fromViewControllers: [UIViewController],
         presentation: UIPresentation,
+        direction: TransitionDirection,
+        animated: Bool,
         completion: (() -> Void)?
+    ) -> (
+        prepare: () -> Void,
+        animation: () -> Void,
+        completion: (Bool) -> Void
+    ) {
+        
+        var context = UIPresentation.Context(
+            direction: direction,
+            container: view,
+            fromViewControllers: fromViewControllers,
+            toViewControllers: toViewControllers,
+            animated: animated,
+            isInteractive: false,
+            cache: cache
+        )
+        
+        let prepare: () -> Void = { [weak self] in
+            guard let self else { return }
+            
+            presentation.transition.update(context: &context, state: .begin)
+    
+            for toViewController in toViewControllers {
+                if toViewController.parent == nil {
+                    toViewController.willMove(toParent: self)
+                }
+                if toViewController.view.superview == nil {
+                    self.view.addSubview(toViewController.view)
+                    toViewController.view.frame = self.view.bounds
+                    toViewController.view.layoutIfNeeded()
+                }
+                
+                if toViewController.parent == nil {
+                    self.addChild(toViewController)
+                    toViewController.didMove(toParent: self)
+                }
+            }
+            if direction == .removal {
+                fromViewControllers.forEach {
+                    $0.willMove(toParent: nil)
+                }
+            }
+        }
+        
+        let animation: () -> Void = { [weak self] in
+            guard let self else { return }
+            switch direction {
+            case .insertion:
+                for toViewController in toViewControllers {
+                    toViewController.beginAppearanceTransition(true, animated: animated)
+                }
+                fromViewControllers.last?.beginAppearanceTransition(false, animated: animated)
+
+            case .removal:
+                toViewControllers.last?.beginAppearanceTransition(true, animated: animated)
+                for fromViewController in fromViewControllers {
+                    fromViewController.beginAppearanceTransition(false, animated: animated)
+                }
+            }
+            
+            presentation.transition.update(context: &context, state: .change(direction.at(1)))
+        }
+        
+        let completion: (Bool) -> Void = { [weak self] isCompleted in
+            guard let self else { return }
+            self.viewControllers = toViewControllers
+            
+            self.afterTransition(presentation: presentation)
+            presentation.transition.update(context: &context, state: .end(completed: isCompleted))
+            if isCompleted {
+                switch direction {
+                case .insertion:
+                    for toViewController in toViewControllers {
+                        toViewController.endAppearanceTransition()
+                    }
+                    fromViewControllers.last?.endAppearanceTransition()
+                    
+                case .removal:
+                    toViewControllers.last?.endAppearanceTransition()
+                    for fromViewController in fromViewControllers {
+                        fromViewController.endAppearanceTransition()
+                        fromViewController.removeFromParent()
+                        fromViewController.view.removeFromSuperview()
+                        fromViewController.didMove(toParent: nil)
+                    }
+                }
+            } else {
+                
+            }
+            completion?()
+        }
+        
+        return (prepare, animation, completion)
+    }
+    
+    func afterTransition(
+        presentation: UIPresentation
     ) {
         var context = UIPresentation.Context(
             direction: .removal,
             container: view,
-            fromController: viewControllers.last,
-            toController: nil,
-            isInteractive: true
+            fromViewControllers: viewControllers,
+            toViewControllers: viewControllers,
+            animated: true,
+            isInteractive: true,
+            cache: cache
         )
         var animator: UIViewPropertyAnimator?
         presentation.interactivity?.install(context: &context) { state in
@@ -139,7 +270,6 @@ private extension UIPresentationController {
                     presentation.transition.update(context: &context, state: .change(.removal(.end)))
                 }
                 animator?.addCompletion { position in
-                    completion?()
                 }
                 
             case let .change(progress):
@@ -147,20 +277,9 @@ private extension UIPresentationController {
                 
             case let .end(completed):
                 animator?.finishAnimation(at: completed ? .end : .start)
+                animator = nil
             }
             presentation.transition.update(context: &context, state: state)
         }
-    }
-    
-    func removeControllers(at indexes: Range<Int>) {
-        viewControllers[indexes].forEach {
-            presentations[$0] = nil
-        }
-        viewControllers.replaceSubrange(indexes, with: [])
-    }
-    
-    func append(controller: UIViewController, presentation: UIPresentation?) {
-        presentations[controller] = presentation
-        viewControllers.append(controller)
     }
 }

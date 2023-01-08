@@ -55,12 +55,10 @@ public extension UIPresentation.Transition {
             background: .backgroundColor(containerColor),
             applyTransitionOnBothControllers: true
         ) { context in
-            guard
-                context.direction == .insertion,
-                let toViewController = context.toController
-            else { return }
+            guard context.direction == .insertion else { return }
             
-            let changingView: UIView = toViewController.view
+            let toViewControllers = context.toViewControllers
+            let changingViews: [UIView] = toViewControllers.map(\.view)
             
             if let superView = changingView.superview {
                 var edges = Edge.allCases
