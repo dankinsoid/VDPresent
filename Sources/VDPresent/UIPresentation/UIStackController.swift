@@ -1,10 +1,12 @@
 import UIKit
 import VDTransition
 
-open class UIPresentationController: UIViewController {
+open class UIStackController: UIViewController {
   
     public private(set) var viewControllers: [UIViewController] = []
     public var presentation: UIPresentation?
+    
+    open override var shouldAutomaticallyForwardAppearanceMethods: Bool { false }
     
     private var cache = UIPresentation.Context.Cache()
     
@@ -46,7 +48,7 @@ open class UIPresentationController: UIViewController {
     }
 }
 
-public extension UIPresentationController {
+public extension UIStackController {
     
     func show(
         _ viewController: UIViewController,
@@ -72,28 +74,28 @@ public extension UIPresentationController {
     }
 }
 
-public extension UIPresentationController {
+public extension UIStackController {
     
-    static var root: UIPresentationController? {
+    static var root: UIStackController? {
         UIWindow.key?.rootViewController?
-            .selfAndAllPresented.compactMap({ $0 as? UIPresentationController }).first
+            .selfAndAllPresented.compactMap({ $0 as? UIStackController }).first
     }
     
-    static var top: UIPresentationController? {
+    static var top: UIStackController? {
         UIWindow.key?.rootViewController?
-            .selfAndAllPresented.compactMap({ $0 as? UIPresentationController }).last?.topOrSelf
+            .selfAndAllPresented.compactMap({ $0 as? UIStackController }).last?.topOrSelf
     }
     
-    var top: UIPresentationController? {
-        let lastPresentation = viewControllers.last?.selfAndAllChildren.compactMap { $0 as? UIPresentationController }.last
+    var top: UIStackController? {
+        let lastPresentation = viewControllers.last?.selfAndAllChildren.compactMap { $0 as? UIStackController }.last
         let top = lastPresentation?.top ?? lastPresentation
         guard presentedViewController == nil else {
-            return allPresented.compactMap({ $0 as? UIPresentationController }).last?.top ?? top
+            return allPresented.compactMap({ $0 as? UIStackController }).last?.top ?? top
         }
         return top
     }
     
-    var topOrSelf: UIPresentationController {
+    var topOrSelf: UIStackController {
         top ?? self
     }
     
@@ -107,7 +109,7 @@ public extension UIPresentationController {
     }
 }
 
-private extension UIPresentationController {
+private extension UIStackController {
     
     func presentation(
         for viewController: UIViewController?
@@ -116,7 +118,7 @@ private extension UIPresentationController {
     }
 }
 
-private extension UIPresentationController {
+private extension UIStackController {
     
     func makeTransition(
         to toViewControllers: [UIViewController],
@@ -174,46 +176,28 @@ private extension UIPresentationController {
             guard let self else { return }
             
             presentation.transition.update(context: &context, state: .begin)
-    
-            for toViewController in toViewControllers {
-                if toViewController.parent == nil {
-                    toViewController.willMove(toParent: self)
-                }
-                if toViewController.view.superview == nil {
-                    self.view.addSubview(toViewController.view)
-                    toViewController.view.frame = self.view.bounds
-                    toViewController.view.layoutIfNeeded()
-                }
-                
-                if toViewController.parent == nil {
-                    self.addChild(toViewController)
-                    toViewController.didMove(toParent: self)
-                }
+            
+            for toViewController in context.toViewControllers where toViewController.parent == nil {
+                toViewController.willMove(toParent: self)
+                self.addChild(toViewController)
+                toViewController.didMove(toParent: self)
             }
-            if direction == .removal {
-                fromViewControllers.forEach {
-                    $0.willMove(toParent: nil)
-                }
+            
+            context.viewControllersToRemove.forEach {
+                $0.willMove(toParent: nil)
             }
+            self.view.setNeedsLayout()
+            self.view.layoutIfNeeded()
         }
         
         let animation: () -> Void = { [weak self] in
             guard let self else { return }
-            switch direction {
-            case .insertion:
-                for toViewController in toViewControllers {
-                    toViewController.beginAppearanceTransition(true, animated: animated)
-                }
-                fromViewControllers.last?.beginAppearanceTransition(false, animated: animated)
-
-            case .removal:
-                toViewControllers.last?.beginAppearanceTransition(true, animated: animated)
-                for fromViewController in fromViewControllers {
-                    fromViewController.beginAppearanceTransition(false, animated: animated)
-                }
-            }
             
+            context.toViewControllers.last?.beginAppearanceTransition(true, animated: animated)
+            context.fromViewControllers.last?.beginAppearanceTransition(false, animated: animated)
             presentation.transition.update(context: &context, state: .change(direction.at(1)))
+            self.view.setNeedsLayout()
+            self.view.layoutIfNeeded()
         }
         
         let completion: (Bool) -> Void = { [weak self] isCompleted in
@@ -222,25 +206,19 @@ private extension UIPresentationController {
             
             self.afterTransition(presentation: presentation)
             presentation.transition.update(context: &context, state: .end(completed: isCompleted))
+            context.toViewControllers.last?.endAppearanceTransition()
+            context.fromViewControllers.last?.endAppearanceTransition()
             if isCompleted {
-                switch direction {
-                case .insertion:
-                    for toViewController in toViewControllers {
-                        toViewController.endAppearanceTransition()
-                    }
-                    fromViewControllers.last?.endAppearanceTransition()
-                    
-                case .removal:
-                    toViewControllers.last?.endAppearanceTransition()
-                    for fromViewController in fromViewControllers {
-                        fromViewController.endAppearanceTransition()
-                        fromViewController.removeFromParent()
-                        fromViewController.view.removeFromSuperview()
-                        fromViewController.didMove(toParent: nil)
-                    }
+                for fromViewController in context.viewControllersToRemove {
+                    fromViewController.removeFromParent()
+                    fromViewController.didMove(toParent: nil)
                 }
             } else {
-                
+                for toViewController in context.viewControllersToInsert {
+                    toViewController.willMove(toParent: nil)
+                    toViewController.removeFromParent()
+                    toViewController.didMove(toParent: nil)
+                }
             }
             completion?()
         }
@@ -255,7 +233,7 @@ private extension UIPresentationController {
             direction: .removal,
             container: view,
             fromViewControllers: viewControllers,
-            toViewControllers: viewControllers,
+            toViewControllers: viewControllers.dropLast(),
             animated: true,
             isInteractive: true,
             cache: cache
@@ -265,7 +243,7 @@ private extension UIPresentationController {
             switch state {
             case .begin:
                 presentation.transition.update(context: &context, state: .begin)
-                animator = UIViewPropertyAnimator()
+                animator = Animator()
                 animator?.addAnimations {
                     presentation.transition.update(context: &context, state: .change(.removal(.end)))
                 }

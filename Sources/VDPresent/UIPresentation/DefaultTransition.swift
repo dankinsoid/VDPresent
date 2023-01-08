@@ -8,7 +8,7 @@ public extension UIPresentation.Transition {
         background: UITransition<UIView>,
         applyTransitionOnBothControllers: Bool = false,
         prepare: ((inout UIPresentation.Context) -> Void)? = nil,
-        completion: ((UIPresentation.Context, Bool) -> Void)? = nil
+        completion: ((inout UIPresentation.Context, Bool) -> Void)? = nil
     ) {
         var background: UIView?
         let backgroundID = "BackgroundView"
@@ -26,11 +26,11 @@ public extension UIPresentation.Transition {
                 
                 context.transitions = [:]
                 
-                context.toViewControllers.forEach {
+                context.chanchingControllers.forEach {
                     context.transitions[$0.view] = content
                 }
                 if applyTransitionOnBothControllers {
-                    context.fromViewControllers.forEach {
+                    context.backControllers.forEach {
                         context.transitions[$0.view] = content.inverted
                     }
                 }
@@ -38,6 +38,15 @@ public extension UIPresentation.Transition {
                 context.transitions.forEach {
                     if let view = $0.key {
                         context.transitions[$0.key]?.beforeTransition(view: view)
+                    }
+                }
+                
+                context.chanchingControllers.forEach {
+                    context.transitions[$0.view]?.update(progress: context.direction.at(0), view: $0.view)
+                }
+                if applyTransitionOnBothControllers {
+                    context.backControllers.forEach {
+                        context.transitions[$0.view]?.update(progress: context.direction.at(0), view: $0.view)
                     }
                 }
                 
@@ -55,13 +64,13 @@ public extension UIPresentation.Transition {
                     }
                 }
                 context.transitions = [:]
-                completion?(context, completed)
+                completion?(&context, completed)
             }
         }
     }
 }
 
-private extension UIPresentation.Context {
+extension UIPresentation.Context {
     
     var transitions: [UIView?: UITransition<UIView>] {
         get {
@@ -72,12 +81,24 @@ private extension UIPresentation.Context {
         }
     }
     
-    var constraints: [NSLayoutConstraint] {
+    var constraints: [UIView: [NSLayoutConstraint]] {
         get {
-            cache[\.constraints] ?? []
+            cache[\.constraints] ?? [:]
         }
         set {
             cache[\.constraints] = newValue
         }
+    }
+    
+    var chanchingControllers: [UIViewController] {
+        direction == .insertion ? viewControllersToInsert : viewControllersToRemove
+    }
+    
+    var backControllers: [UIViewController] {
+        (direction == .insertion ? viewControllersToRemove : viewControllersToInsert) + remainingControllers
+    }
+    
+    var remainingControllers: [UIViewController] {
+        toViewControllers.filter(fromViewControllers.contains)
     }
 }

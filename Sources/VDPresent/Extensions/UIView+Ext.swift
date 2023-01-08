@@ -21,12 +21,13 @@ extension UILayoutGuide: Constraintable {
 
 extension Constraintable {
     
+    @discardableResult
     func pinEdges(
         _ edges: NSDirectionalRectEdge = .all,
         to view: Constraintable,
         padding: CGFloat = 0,
         priority: UILayoutPriority = .required
-    ) {
+    ) -> [NSLayoutConstraint] {
         asUIView?.translatesAutoresizingMaskIntoConstraints = false
         var array: [NSLayoutConstraint] = []
         if edges.contains(.leading) {
@@ -45,5 +46,6 @@ extension Constraintable {
             $0.priority = priority
         }
         NSLayoutConstraint.activate(array)
+        return array
     }
 }

@@ -29,7 +29,7 @@ public extension UIPresentation {
 
 public extension UIPresentation.Transition {
     
-    static var sheet: UIPresentation {
+    static var sheet: UIPresentation.Transition {
         .sheet()
     }
     
@@ -60,24 +60,24 @@ public extension UIPresentation.Transition {
             let toViewControllers = context.toViewControllers
             let changingViews: [UIView] = toViewControllers.map(\.view)
             
-            if let superView = changingView.superview {
-                var edges = Edge.allCases
-                if let i = edges.firstIndex(of: edge.opposite) {
-                    edges.remove(at: i)
-                }
-                changingView.pinEdges(NSDirectionalRectEdge(edges), to: superView)
-            		changingView.pinEdges(
-                    NSDirectionalRectEdge(edge.opposite),
-                    to: superView.safeAreaLayoutGuide,
-                    padding: minOffset,
-                    priority: .defaultHigh
-                )
-            }
+//            if let superView = changingView.superview {
+//                var edges = Edge.allCases
+//                if let i = edges.firstIndex(of: edge.opposite) {
+//                    edges.remove(at: i)
+//                }
+//                changingView.pinEdges(NSDirectionalRectEdge(edges), to: superView)
+//            		changingView.pinEdges(
+//                    NSDirectionalRectEdge(edge.opposite),
+//                    to: superView.safeAreaLayoutGuide,
+//                    padding: minOffset,
+//                    priority: .defaultHigh
+//                )
+//            }
             
             let recognizer = TransitionContainerTapRecognizer()
-            recognizer.onTap = { [weak toViewController] in
-                toViewController?.hide()
-            }
+//            recognizer.onTap = { [weak toViewController] in
+//                toViewController?.hide()
+//            }
             context.container.addGestureRecognizer(recognizer)
         } completion: { context, isCompleted in
             

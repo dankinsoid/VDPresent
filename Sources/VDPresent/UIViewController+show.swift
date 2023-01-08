@@ -16,13 +16,13 @@ public extension UIViewController {
         }
     }
     
-    var presentationController: UIPresentationController? {
-        (parent as? UIPresentationController) ?? parent?.presentationController
+    var stackController: UIStackController? {
+        (parent as? UIStackController) ?? parent?.stackController
     }
     
     var isShown: Bool {
         get {
-						#warning("TODO")
+            #warning("TODO")
             return isBeingPresented
         }
         set {
@@ -40,24 +40,25 @@ public extension UIViewController {
         as presentation: UIPresentation? = nil,
         animated: Bool = true,
         completion: (() -> Void)? = nil
-    ) -> UIPresentationController {
-        let result: UIPresentationController
+    ) -> UIStackController {
+        let result: UIStackController
         if
-            let presentationController,
-            presentationController.presentedViewController == nil
+            let stackController,
+            stackController.presentedViewController == nil
         {
-            result = presentationController
+            result = stackController
         } else if
-            let presentationController = UIPresentationController.root,
-            presentationController.presentedViewController == nil
+            let stackController = UIStackController.root,
+            stackController.presentedViewController == nil
         {
-            result = presentationController
+            result = stackController
         } else if let window = UIWindow.root, window.rootViewController == nil {
-            result = UIPresentationController()
+            result = UIStackController()
             window.rootViewController = result
             window.makeKeyAndVisible()
         } else {
-            result = UIPresentationController()
+            result = UIStackController()
+            result.modalPresentationStyle = .overFullScreen
             result.present(animated: false) {
                 result.show(self, presentation: presentation, animated: animated, completion: completion)
             }
@@ -72,7 +73,7 @@ public extension UIViewController {
         animated: Bool = true,
         completion: (() -> Void)? = nil
     ) {
-        guard let presentationController else {
+        guard let stackController else {
             dismiss(animated: animated, completion: completion)
             return
         }

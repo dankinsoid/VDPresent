@@ -99,6 +99,17 @@ public extension UIPresentation {
 
 public extension UIPresentation.Context {
     
+    var viewControllersToRemove: [UIViewController] {
+        fromViewControllers.filter { !toViewControllers.contains($0) }
+    }
+    
+    var viewControllersToInsert: [UIViewController] {
+        toViewControllers.filter { !fromViewControllers.contains($0) }
+    }
+}
+    
+public extension UIPresentation.Context {
+    
     struct Cache {
         
         private var values: [PartialKeyPath<UIPresentation.Context>: Any] = [:]
