@@ -4,22 +4,22 @@
 import PackageDescription
 
 let package = Package(
-    name: "VDPresent",
-    platforms: [
-        .iOS(.v13)
-    ],
-    products: [
-        .library(name: "VDPresent", targets: ["VDPresent"]),
-    ],
-    dependencies: [
-        .package(url: "https://github.com/dankinsoid/VDTransition.git", from: "1.13.0")
-    ],
-    targets: [
-        .target(
-            name: "VDPresent",
-            dependencies: [
-                "VDTransition"
-            ]
-        )
-    ]
+	name: "VDPresent",
+	platforms: [
+		.iOS(.v13),
+	],
+	products: [
+		.library(name: "VDPresent", targets: ["VDPresent"]),
+	],
+	dependencies: [
+		.package(url: "https://github.com/dankinsoid/VDTransition.git", from: "1.13.0"),
+	],
+	targets: [
+		.target(
+			name: "VDPresent",
+			dependencies: [
+				"VDTransition",
+			]
+		),
+	]
 )

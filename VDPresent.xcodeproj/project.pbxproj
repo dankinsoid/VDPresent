@@ -35,6 +35,7 @@
 		83F74E61296AEDF400C5E3D4 /* VDTransition in Frameworks */ = {isa = PBXBuildFile; productRef = 83F74E60296AEDF400C5E3D4 /* VDTransition */; };
 		83F74E64296AEEA700C5E3D4 /* UIPresentation+FullScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83F74E63296AEEA700C5E3D4 /* UIPresentation+FullScreen.swift */; };
 		83F74E66296B371A00C5E3D4 /* Animator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83F74E65296B371A00C5E3D4 /* Animator.swift */; };
+		83F8071F296CA8E000AA7AB5 /* FadeLayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83F8071E296CA8E000AA7AB5 /* FadeLayer.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -67,6 +68,7 @@
 		83F74E54296AEC4300C5E3D4 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
 		83F74E63296AEEA700C5E3D4 /* UIPresentation+FullScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UIPresentation+FullScreen.swift"; sourceTree = "<group>"; };
 		83F74E65296B371A00C5E3D4 /* Animator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Animator.swift; sourceTree = "<group>"; };
+		83F8071E296CA8E000AA7AB5 /* FadeLayer.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = FadeLayer.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -168,6 +170,7 @@
 		83F74E4A296AEBE500C5E3D4 /* Project */ = {
 			isa = PBXGroup;
 			children = (
+				83F8071E296CA8E000AA7AB5 /* FadeLayer.swift */,
 				83F74E4D296AEC4300C5E3D4 /* AppDelegate.swift */,
 				83F74E4F296AEC4300C5E3D4 /* Assets.xcassets */,
 				83F74E52296AEC4300C5E3D4 /* Base.lproj */,
@@ -289,6 +292,7 @@
 				83F74E42296AEBCE00C5E3D4 /* SwipeViewDelegate.swift in Sources */,
 				83F74E47296AEBCE00C5E3D4 /* DefaultTransition.swift in Sources */,
 				83F74E43296AEBCE00C5E3D4 /* UIPresentation+Swipe.swift in Sources */,
+				83F8071F296CA8E000AA7AB5 /* FadeLayer.swift in Sources */,
 				83F74E46296AEBCE00C5E3D4 /* UIPresentation+Push.swift in Sources */,
 				83F74E3B296AEBCE00C5E3D4 /* NSDirectionalRectEdge+Ext.swift in Sources */,
 				83F74E64296AEEA700C5E3D4 /* UIPresentation+FullScreen.swift in Sources */,
@@ -442,6 +446,7 @@
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -469,6 +474,7 @@
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
