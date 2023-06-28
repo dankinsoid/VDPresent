@@ -41,14 +41,16 @@ public extension UIPresentation.Interactivity {
                     view.addGestureRecognizer(swipeRecognizer)
                 }
             }
-        } uninstaller: { context, controller in
-            let view = context.container(for: controller)
-            view.gestureRecognizers?
-                .compactMap { $0 as? TransitionContainerTapRecognizer }
-                .forEach(view.removeGestureRecognizer)
-            view.gestureRecognizers?
-                .compactMap { $0 as? SwipeGestureRecognizer }
-                .forEach(view.removeGestureRecognizer)
+        } uninstaller: { context in
+            context.viewControllersToRemove.forEach { controller in
+                let view = context.container(for: controller)
+                view.gestureRecognizers?
+                    .compactMap { $0 as? TransitionContainerTapRecognizer }
+                    .forEach(view.removeGestureRecognizer)
+                view.gestureRecognizers?
+                    .compactMap { $0 as? SwipeGestureRecognizer }
+                    .forEach(view.removeGestureRecognizer)
+            }
         }
 	}
     

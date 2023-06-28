@@ -74,7 +74,7 @@ public extension UIViewController {
 		completion: (() -> Void)? = nil
 	) {
 		guard let stackController else {
-            guard UIWindow.key !== self else {
+            guard UIWindow.root?.rootViewController !== self else {
                 completion?()
                 return
             }

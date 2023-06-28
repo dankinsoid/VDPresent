@@ -43,7 +43,7 @@ open class UIStackController: UIViewController {
 		}
         
         let isEmpty = newViewControllers.isEmpty
-        if isEmpty, self === UIWindow.key?.rootViewController {
+        if isEmpty, self === UIWindow.root?.rootViewController {
             completion?()
             return
         }
@@ -53,7 +53,7 @@ open class UIStackController: UIViewController {
 		makeTransition(
 			to: newViewControllers,
 			from: viewControllers,
-			presentation: presentation ?? self.presentation(for: isInsertion ? newViewControllers.last : viewControllers.last),
+			presentation: presentation ?? self.presentation(for: isInsertion ? newViewControllers : viewControllers),
 			direction: isInsertion ? .insertion : .removal,
 			animated: animated
         ) { [weak self] in
@@ -134,9 +134,12 @@ public extension UIStackController {
 private extension UIStackController {
 
 	func presentation(
-		for viewController: UIViewController?
+		for viewControllers: [UIViewController]
 	) -> UIPresentation {
-		viewController?.defaultPresentation ?? presentation ?? .default
+        if UIWindow.root?.rootViewController === self, viewControllers.count < 2 {
+            return .fullScreen
+        }
+        return viewControllers.last?.defaultPresentation ?? presentation ?? .default
 	}
 }
 
@@ -284,11 +287,7 @@ private extension UIStackController {
 	) {
         var prepare: () -> Void = {}
         var completion: (Bool) -> Void = { _ in }
-        
-        context.viewControllersToRemove.forEach {
-            presentation.interactivity?.uninstall(context: context, for: $0)
-        }
-        
+        presentation.interactivity?.uninstall(context: context)
 		presentation.interactivity?.install(context: context) { [weak self] context, state in
             guard let self else { return }
 			switch state {

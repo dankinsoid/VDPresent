@@ -28,8 +28,8 @@ extension UIView {
     func update(frame: CGRect) {
         bounds.size = frame.size
         center = CGPoint(
-            x: bounds.width / 2.0,
-            y: bounds.height / 2.0
+            x: frame.origin.x + bounds.width / 2.0,
+            y: frame.origin.y + bounds.height / 2.0
         )
     }
 }

@@ -43,36 +43,20 @@ public extension UIPresentation.Transition {
 	) -> UIPresentation.Transition {
 		UIPresentation.Transition(
 			content: .move(edge: edge),
+            layout: .fill,
             background: containerColor == .clear
                 ? .identity
                 : .value(\.backgroundColor, containerColor, default: containerColor.withAlphaComponent(0)),
 			applyTransitionOnBothControllers: false
-		) { context in
-			for viewController in context.toViewControllers {
-                context.container(for: viewController)
-                    .addSubview(
-                        context.view(for: viewController),
-                        alignment: .edges()
-                    )
-			}
-		} completion: { _, _ in
-		}
+		)
 	}
     
     static var fade: UIPresentation.Transition {
         UIPresentation.Transition(
             content: .opacity,
+            layout: .fill,
             background: .identity,
             applyTransitionOnBothControllers: false
-        ) { context in
-            for viewController in context.toViewControllers {
-                context.container(for: viewController)
-                    .addSubview(
-                        context.view(for: viewController),
-                        alignment: .edges()
-                    )
-            }
-        } completion: { _, _ in
-        }
+        )
     }
 }

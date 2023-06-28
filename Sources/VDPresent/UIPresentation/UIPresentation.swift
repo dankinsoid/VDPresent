@@ -78,11 +78,11 @@ public extension UIPresentation {
 	struct Interactivity {
 
 		private let installer: (Context, @escaping (Context, State) -> Void) -> Void
-        private let uninstaller: (Context, UIViewController) -> Void
+        private let uninstaller: (Context) -> Void
 
 		public init(
             installer: @escaping (Context, @escaping (Context, State) -> Void) -> Void,
-            uninstaller: @escaping (Context, UIViewController) -> Void
+            uninstaller: @escaping (Context) -> Void
         ) {
 			self.installer = installer
             self.uninstaller = uninstaller
@@ -92,8 +92,8 @@ public extension UIPresentation {
 			installer(context, observer)
 		}
         
-        public func uninstall(context: Context, for controller: UIViewController) {
-            uninstaller(context, controller)
+        public func uninstall(context: Context) {
+            uninstaller(context)
         }
 	}
 

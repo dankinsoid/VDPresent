@@ -5,6 +5,7 @@ public extension UIPresentation.Transition {
 
 	init(
 		content: UITransition<UIView>,
+        layout: ContentLayout,
 		background: UITransition<UIView>,
 		applyTransitionOnBothControllers: Bool = false,
 		prepare: ((UIPresentation.Context) -> Void)? = nil,
@@ -13,11 +14,23 @@ public extension UIPresentation.Transition {
         self.init { context, state in
 			switch state {
 			case .begin:
+                for viewController in context.viewControllersToInsert {
+                    context.container(for: viewController)
+                        .addSubview(
+                            context.view(for: viewController),
+                            layout: layout
+                        )
+                }
+                
                 prepare?(context)
                 context.changingControllers.forEach {
                     let view = context.view(for: $0)
                     context.transitions[view]?.setInitialState(view: view)
-                    context.transitions[view] = content
+                    if context.toViewControllers.contains($0) {
+                        context.transitions[view] = content
+                    } else {
+                        context.transitions[view] = content.inverted
+                    }
                     
                     if !background.isIdentity {
                         let id = "BackgroundView"
@@ -30,7 +43,7 @@ public extension UIPresentation.Transition {
                             backgroundView.accessibilityIdentifier = id
                             backgroundView.backgroundColor = .clear
                             backgroundView.isUserInteractionEnabled = false
-                            context.container(for: $0).insertSubview(backgroundView, at: 0, alignment: .edges())
+                            context.container(for: $0).insertSubview(backgroundView, at: 0, layout: .fill)
                             context.transitions[backgroundView] = background.reversed
                         }
                     }

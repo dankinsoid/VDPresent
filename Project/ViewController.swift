@@ -44,6 +44,7 @@ class ViewController: UIViewController {
 
 	@objc func tapShow(_: Any) {
 		let controller = ViewController()
+        controller.view.safeAreaLayoutGuide.heightAnchor.constraint(equalToConstant: 200).isActive = true
 //        present(controller, animated: true)
 		controller.show(animated: true)
 	}
