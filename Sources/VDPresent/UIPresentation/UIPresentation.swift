@@ -74,13 +74,13 @@ public extension UIPresentation {
 
 	struct Interactivity {
 
-		private let installer: (Context, @escaping (State) -> Void) -> Void
+		private let installer: (Context, @escaping (Context, State) -> Void) -> Void
 
-		public init(installer: @escaping (Context, @escaping (State) -> Void) -> Void) {
+		public init(installer: @escaping (Context, @escaping (Context, State) -> Void) -> Void) {
 			self.installer = installer
 		}
 
-		public func install(context: Context, observer: @escaping (State) -> Void) {
+		public func install(context: Context, observer: @escaping (Context, State) -> Void) {
 			installer(context, observer)
 		}
 	}

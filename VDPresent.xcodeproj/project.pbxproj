@@ -20,16 +20,12 @@
 		83F74E3D296AEBCE00C5E3D4 /* KeyPath+Ext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83F74E27296AEBCE00C5E3D4 /* KeyPath+Ext.swift */; };
 		83F74E3E296AEBCE00C5E3D4 /* UIViewController+Ext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83F74E28296AEBCE00C5E3D4 /* UIViewController+Ext.swift */; };
 		83F74E3F296AEBCE00C5E3D4 /* UIView+Ext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83F74E29296AEBCE00C5E3D4 /* UIView+Ext.swift */; };
-		83F74E40296AEBCE00C5E3D4 /* SwipeViewInstance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83F74E2B296AEBCE00C5E3D4 /* SwipeViewInstance.swift */; };
-		83F74E41296AEBCE00C5E3D4 /* SwipeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83F74E2C296AEBCE00C5E3D4 /* SwipeView.swift */; };
-		83F74E42296AEBCE00C5E3D4 /* SwipeViewDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83F74E2D296AEBCE00C5E3D4 /* SwipeViewDelegate.swift */; };
 		83F74E43296AEBCE00C5E3D4 /* UIPresentation+Swipe.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83F74E2F296AEBCE00C5E3D4 /* UIPresentation+Swipe.swift */; };
 		83F74E44296AEBCE00C5E3D4 /* UIPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83F74E30296AEBCE00C5E3D4 /* UIPresentation.swift */; };
 		83F74E45296AEBCE00C5E3D4 /* UIStackController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83F74E31296AEBCE00C5E3D4 /* UIStackController.swift */; };
 		83F74E46296AEBCE00C5E3D4 /* UIPresentation+Push.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83F74E32296AEBCE00C5E3D4 /* UIPresentation+Push.swift */; };
 		83F74E47296AEBCE00C5E3D4 /* DefaultTransition.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83F74E33296AEBCE00C5E3D4 /* DefaultTransition.swift */; };
 		83F74E48296AEBCE00C5E3D4 /* UIPresentation+Sheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83F74E34296AEBCE00C5E3D4 /* UIPresentation+Sheet.swift */; };
-		83F74E49296AEBCE00C5E3D4 /* UIPresentation+Wrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83F74E35296AEBCE00C5E3D4 /* UIPresentation+Wrap.swift */; };
 		83F74E57296AEC4300C5E3D4 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83F74E4D296AEC4300C5E3D4 /* AppDelegate.swift */; };
 		83F74E58296AEC4300C5E3D4 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83F74E4E296AEC4300C5E3D4 /* ViewController.swift */; };
 		83F74E59296AEC4300C5E3D4 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 83F74E4F296AEC4300C5E3D4 /* Assets.xcassets */; };
@@ -56,16 +52,12 @@
 		83F74E27296AEBCE00C5E3D4 /* KeyPath+Ext.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "KeyPath+Ext.swift"; sourceTree = "<group>"; };
 		83F74E28296AEBCE00C5E3D4 /* UIViewController+Ext.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "UIViewController+Ext.swift"; sourceTree = "<group>"; };
 		83F74E29296AEBCE00C5E3D4 /* UIView+Ext.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "UIView+Ext.swift"; sourceTree = "<group>"; };
-		83F74E2B296AEBCE00C5E3D4 /* SwipeViewInstance.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SwipeViewInstance.swift; sourceTree = "<group>"; };
-		83F74E2C296AEBCE00C5E3D4 /* SwipeView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SwipeView.swift; sourceTree = "<group>"; };
-		83F74E2D296AEBCE00C5E3D4 /* SwipeViewDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SwipeViewDelegate.swift; sourceTree = "<group>"; };
 		83F74E2F296AEBCE00C5E3D4 /* UIPresentation+Swipe.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "UIPresentation+Swipe.swift"; sourceTree = "<group>"; };
 		83F74E30296AEBCE00C5E3D4 /* UIPresentation.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = UIPresentation.swift; sourceTree = "<group>"; };
 		83F74E31296AEBCE00C5E3D4 /* UIStackController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = UIStackController.swift; sourceTree = "<group>"; };
 		83F74E32296AEBCE00C5E3D4 /* UIPresentation+Push.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "UIPresentation+Push.swift"; sourceTree = "<group>"; };
 		83F74E33296AEBCE00C5E3D4 /* DefaultTransition.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DefaultTransition.swift; sourceTree = "<group>"; };
 		83F74E34296AEBCE00C5E3D4 /* UIPresentation+Sheet.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "UIPresentation+Sheet.swift"; sourceTree = "<group>"; };
-		83F74E35296AEBCE00C5E3D4 /* UIPresentation+Wrap.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "UIPresentation+Wrap.swift"; sourceTree = "<group>"; };
 		83F74E4D296AEC4300C5E3D4 /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		83F74E4E296AEC4300C5E3D4 /* ViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
 		83F74E4F296AEC4300C5E3D4 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -130,7 +122,6 @@
 				83F74E1E296AEBCE00C5E3D4 /* UIViewController+show.swift */,
 				83F74E1F296AEBCE00C5E3D4 /* Utils */,
 				83F74E21296AEBCE00C5E3D4 /* Extensions */,
-				83F74E2A296AEBCE00C5E3D4 /* SwipeView */,
 				83F74E2E296AEBCE00C5E3D4 /* UIPresentation */,
 			);
 			path = VDPresent;
@@ -161,16 +152,6 @@
 			path = Extensions;
 			sourceTree = "<group>";
 		};
-		83F74E2A296AEBCE00C5E3D4 /* SwipeView */ = {
-			isa = PBXGroup;
-			children = (
-				83F74E2B296AEBCE00C5E3D4 /* SwipeViewInstance.swift */,
-				83F74E2C296AEBCE00C5E3D4 /* SwipeView.swift */,
-				83F74E2D296AEBCE00C5E3D4 /* SwipeViewDelegate.swift */,
-			);
-			path = SwipeView;
-			sourceTree = "<group>";
-		};
 		83F74E2E296AEBCE00C5E3D4 /* UIPresentation */ = {
 			isa = PBXGroup;
 			children = (
@@ -179,7 +160,6 @@
 				83F74E2F296AEBCE00C5E3D4 /* UIPresentation+Swipe.swift */,
 				83F74E30296AEBCE00C5E3D4 /* UIPresentation.swift */,
 				83F74E33296AEBCE00C5E3D4 /* DefaultTransition.swift */,
-				83F74E35296AEBCE00C5E3D4 /* UIPresentation+Wrap.swift */,
 			);
 			path = UIPresentation;
 			sourceTree = "<group>";
@@ -295,20 +275,17 @@
 				83F74E39296AEBCE00C5E3D4 /* UIApplication+Ext.swift in Sources */,
 				83F74E3C296AEBCE00C5E3D4 /* UIWindow+Ext.swift in Sources */,
 				83F74E3F296AEBCE00C5E3D4 /* UIView+Ext.swift in Sources */,
-				83F74E49296AEBCE00C5E3D4 /* UIPresentation+Wrap.swift in Sources */,
 				83F74E58296AEC4300C5E3D4 /* ViewController.swift in Sources */,
 				83F74E66296B371A00C5E3D4 /* Animator.swift in Sources */,
 				83F74E48296AEBCE00C5E3D4 /* UIPresentation+Sheet.swift in Sources */,
 				83F74E5B296AEC4300C5E3D4 /* SceneDelegate.swift in Sources */,
 				83F74E3A296AEBCE00C5E3D4 /* CGPoint+Ext.swift in Sources */,
 				833D119F2A4AE5810072468F /* UIStackControllerContainer.swift in Sources */,
-				83F74E40296AEBCE00C5E3D4 /* SwipeViewInstance.swift in Sources */,
 				83F74E38296AEBCE00C5E3D4 /* CACornerMask+Ext.swift in Sources */,
 				83F74E44296AEBCE00C5E3D4 /* UIPresentation.swift in Sources */,
 				83F74E45296AEBCE00C5E3D4 /* UIStackController.swift in Sources */,
 				83F74E37296AEBCE00C5E3D4 /* TransitionContainerTapRecognizer.swift in Sources */,
 				830F1F4B2A4C761D00B67365 /* SwipeGestureRecognizer.swift in Sources */,
-				83F74E42296AEBCE00C5E3D4 /* SwipeViewDelegate.swift in Sources */,
 				83F74E47296AEBCE00C5E3D4 /* DefaultTransition.swift in Sources */,
 				83F74E43296AEBCE00C5E3D4 /* UIPresentation+Swipe.swift in Sources */,
 				83F8071F296CA8E000AA7AB5 /* FadeLayer.swift in Sources */,
@@ -316,7 +293,6 @@
 				83F74E3B296AEBCE00C5E3D4 /* NSDirectionalRectEdge+Ext.swift in Sources */,
 				83F74E64296AEEA700C5E3D4 /* UIPresentation+FullScreen.swift in Sources */,
 				83F74E3D296AEBCE00C5E3D4 /* KeyPath+Ext.swift in Sources */,
-				83F74E41296AEBCE00C5E3D4 /* SwipeView.swift in Sources */,
 				83F74E57296AEC4300C5E3D4 /* AppDelegate.swift in Sources */,
 				833D11A12A4C1E1B0072468F /* UIStackControllerView.swift in Sources */,
 				83F74E36296AEBCE00C5E3D4 /* UIViewController+show.swift in Sources */,

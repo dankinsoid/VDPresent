@@ -74,6 +74,10 @@ public extension UIViewController {
 		completion: (() -> Void)? = nil
 	) {
 		guard let stackController else {
+            guard UIWindow.key !== self else {
+                completion?()
+                return
+            }
             if presentedViewController != nil, let presentingViewController {
                 presentingViewController.dismiss(animated: animated, completion: completion)
             } else {
@@ -82,10 +86,6 @@ public extension UIViewController {
 			return
 		}
         guard let index = stackController.viewControllers.firstIndex(of: self) else {
-            completion?()
-            return
-        }
-        if index == 0, stackController === UIWindow.key?.rootViewController {
             completion?()
             return
         }

@@ -11,55 +11,44 @@ public extension UIPresentation.Interactivity {
 		startFromEdge: Bool = false
 	) -> UIPresentation.Interactivity {
 		UIPresentation.Interactivity { context, observer in
-            context.viewControllersToInsert.forEach { controller in
+            context.toViewControllers.forEach { controller in
                 let view = context.container(for: controller)
-                let tapRecognizer = TransitionContainerTapRecognizer()
-                view.addGestureRecognizer(tapRecognizer)
+                let tapRec = view.gestureRecognizers?.compactMap { $0 as? TransitionContainerTapRecognizer }.first
+                let swipeRec = view.gestureRecognizers?.compactMap { $0 as? SwipeGestureRecognizer }.first
+                guard let i = context.toViewControllers.firstIndex(of: controller), i > 0 else {
+                    tapRec?.isEnabled = false
+                    swipeRec?.isEnabled = false
+                    return
+                }
+                let context = UIPresentation.Context(
+                    direction: .removal,
+                    container: context.container,
+                    fromViewControllers: context.toViewControllers,
+                    toViewControllers: Array(context.toViewControllers.prefix(upTo: i)),
+                    views: context.view,
+                    animated: true,
+                    isInteractive: true,
+                    cache: context.cache
+                )
+                let tapRecognizer = tapRec ?? TransitionContainerTapRecognizer()
+                if tapRec == nil {
+                    view.addGestureRecognizer(tapRecognizer)
+                }
+                tapRecognizer.isEnabled = true
                 tapRecognizer.onTap = { [weak controller] in
                     controller?.hide()
                 }
                 
-                let swipeRecognizer = SwipeGestureRecognizer()
+                let swipeRecognizer = swipeRec ?? SwipeGestureRecognizer()
+                swipeRecognizer.isEnabled = true
                 swipeRecognizer.edges = edges
                 swipeRecognizer.startFromEdges = startFromEdge
-                swipeRecognizer.update = observer
+                swipeRecognizer.update = { observer(context, $0) }
                 swipeRecognizer.target = context.view(for: controller)
-                view.addGestureRecognizer(swipeRecognizer)
+                if swipeRec == nil {
+                    view.addGestureRecognizer(swipeRecognizer)
+                }
             }
 		}
-	}
-}
-
-private final class SwipeViewObserver: SwipeViewDelegate {
-
-	let observer: (UIPresentation.State) -> Void
-	var wasBegun = false
-
-	init(observer: @escaping (UIPresentation.State) -> Void) {
-		self.observer = observer
-	}
-
-	func begin() {
-		guard !wasBegun else { return }
-		wasBegun = true
-		observer(.begin)
-	}
-
-	func shouldBegin() -> Bool {
-		!wasBegun
-	}
-
-	func update(_ percent: CGFloat) {
-		observer(.change(.removal(percent)))
-	}
-
-	func cancel() {
-		wasBegun = false
-		observer(.end(completed: false))
-	}
-
-	func finish() {
-		wasBegun = false
-		observer(.end(completed: true))
 	}
 }

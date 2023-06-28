@@ -41,6 +41,12 @@ open class UIStackController: UIViewController {
 			completion?()
 			return
 		}
+        
+        let isEmpty = newViewControllers.isEmpty
+        if isEmpty, self === UIWindow.key?.rootViewController {
+            completion?()
+            return
+        }
 
 		let isInsertion = newViewControllers.last.map { !viewControllers.contains($0) } ?? false
 
@@ -49,9 +55,14 @@ open class UIStackController: UIViewController {
 			from: viewControllers,
 			presentation: presentation ?? self.presentation(for: isInsertion ? newViewControllers.last : viewControllers.last),
 			direction: isInsertion ? .insertion : .removal,
-			animated: animated,
-			completion: completion
-		)
+			animated: animated
+        ) { [weak self] in
+            if isEmpty {
+                self?.hide(animated: false, completion: completion)
+            } else {
+                completion?()
+            }
+        }
 	}
     
     open func wrap(view: UIView) -> UIView {
@@ -237,7 +248,7 @@ private extension UIStackController {
 
 		let completion: (Bool) -> Void = { [weak self] isCompleted in
 			guard let self else { return }
-            self.viewControllers = context.toViewControllers
+            self.viewControllers = isCompleted ? context.toViewControllers : context.fromViewControllers
 			self.afterTransition(
                 presentation: presentation,
                 context: context
@@ -269,15 +280,18 @@ private extension UIStackController {
 		presentation: UIPresentation,
         context: UIPresentation.Context
 	) {
-        let (prepare, _, completion) = transitionBlocks(
-            presentation: presentation,
-            context: context,
-            completion: nil
-        )
+        var prepare: () -> Void = {}
+        var completion: (Bool) -> Void = { _ in }
         
-		presentation.interactivity?.install(context: context) { state in
+		presentation.interactivity?.install(context: context) { [weak self] context, state in
+            guard let self else { return }
 			switch state {
 			case .begin:
+                (prepare, _, completion) = self.transitionBlocks(
+                    presentation: presentation,
+                    context: context,
+                    completion: nil
+                )
                 prepare()
                 presentation.transition.update(context: context, state: state)
                 
@@ -291,7 +305,10 @@ private extension UIStackController {
                 }
                 if let animation {
                     UIView.animate(with: animation) {
-                        presentation.transition.update(context: context, state: .change(context.direction.at(1)))
+                        presentation.transition.update(
+                            context: context,
+                            state: .change(context.direction.at(completed ? 1 : 0))
+                        )
                     } completion: { _ in
                         end()
                     }
