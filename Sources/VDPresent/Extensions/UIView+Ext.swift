@@ -19,6 +19,21 @@ extension UILayoutGuide: Constraintable {
 	var asUIView: UIView? { owningView }
 }
 
+extension UIView {
+    
+    var allSubviews: [UIView] {
+        subviews + subviews.flatMap(\.allSubviews)
+    }
+    
+    func update(frame: CGRect) {
+        bounds.size = frame.size
+        center = CGPoint(
+            x: bounds.width / 2.0,
+            y: bounds.height / 2.0
+        )
+    }
+}
+
 extension Constraintable {
 
 	@discardableResult

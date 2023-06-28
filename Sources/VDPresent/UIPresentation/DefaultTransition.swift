@@ -7,64 +7,77 @@ public extension UIPresentation.Transition {
 		content: UITransition<UIView>,
 		background: UITransition<UIView>,
 		applyTransitionOnBothControllers: Bool = false,
-		prepare: ((inout UIPresentation.Context) -> Void)? = nil,
-		completion: ((inout UIPresentation.Context, Bool) -> Void)? = nil
+		prepare: ((UIPresentation.Context) -> Void)? = nil,
+		completion: ((UIPresentation.Context, Bool) -> Void)? = nil
 	) {
-		var background: UIView?
-		let backgroundID = "BackgroundView"
-
-		self.init { context, state in
+        self.init { context, state in
 			switch state {
 			case .begin:
-				prepare?(&context)
-
-				context.transitions.forEach {
-					if let view = $0.key {
-						$0.value.setInitialState(view: view)
-					}
-				}
-
-				context.transitions = [:]
-
-				context.chanchingControllers.forEach {
-					context.transitions[$0.view] = content
-				}
-				if applyTransitionOnBothControllers {
-					context.backControllers.forEach {
-						context.transitions[$0.view] = content.inverted
-					}
-				}
-
-				context.transitions.forEach {
-					if let view = $0.key {
-						context.transitions[$0.key]?.beforeTransition(view: view)
-					}
-				}
-
-				context.chanchingControllers.forEach {
-					context.transitions[$0.view]?.update(progress: context.direction.at(0), view: $0.view)
-				}
-				if applyTransitionOnBothControllers {
-					context.backControllers.forEach {
-						context.transitions[$0.view]?.update(progress: context.direction.at(0), view: $0.view)
-					}
-				}
+                prepare?(context)
+                context.changingControllers.forEach {
+                    let view = context.view(for: $0)
+                    context.transitions[view]?.setInitialState(view: view)
+                    context.transitions[view] = content
+                    
+                    if !background.isIdentity {
+                        let id = "BackgroundView"
+                        if let backgroundView = context.container(for: $0).subviews
+                            .first(where: { $0.accessibilityIdentifier == id }) {
+                            context.transitions[backgroundView]?.setInitialState(view: backgroundView)
+                            context.transitions[backgroundView] = background.reversed
+                        } else {
+                            let backgroundView = UIView()
+                            backgroundView.accessibilityIdentifier = id
+                            backgroundView.backgroundColor = .clear
+                            backgroundView.isUserInteractionEnabled = false
+                            context.container(for: $0).insertSubview(backgroundView, at: 0, alignment: .edges())
+                            context.transitions[backgroundView] = background.reversed
+                        }
+                    }
+                }
+                
+                if applyTransitionOnBothControllers {
+                    context.backControllers.forEach {
+                        let view = context.view(for: $0)
+                        context.transitions[view]?.setInitialState(view: view)
+                        context.transitions[view] = content.inverted
+                    }
+                }
+        
+                context.transitions.forEach {
+                    if let view = $0.key {
+                        context.transitions[view]?.beforeTransition(view: view)
+                    }
+                }
 
 			case let .change(progress):
-				context.transitions.forEach {
-					if let view = $0.key {
-						$0.value.update(progress: progress, view: view)
-					}
-				}
+                let changingViews = context.changingControllers.map(context.container)
+                context.transitions.forEach { view, _ in
+                    if let view, changingViews.contains(where: view.isDescendant) {
+                        context.transitions[view]?.update(progress: progress, view: view)
+                    }
+                }
 
-			case let .end(completed):
-				context.transitions.forEach {
-					if let view = $0.key {
-						$0.value.setInitialState(view: view)
-					}
-				}
-				context.transitions = [:]
-				completion?(&context, completed)
+			case let .end(completed, animation):
+                let viewsToRemove = context.viewControllersToRemove.map(context.container)
+                let block: () -> Void = {
+                    context.transitions.forEach { view, _ in
+                        if let view, viewsToRemove.contains(where: view.isDescendant) {
+                            context.transitions[view]?.setInitialState(view: view)
+                            context.transitions[view] = nil
+                        }
+                    }
+                }
+                if let animation {
+                    UIView.animate(with: animation) {
+                        block()
+                    } completion: { _ in
+                        completion?(context, completed)
+                    }
+                } else {
+                    block()
+                    completion?(context, completed)
+                }
 			}
 		}
 	}
@@ -76,21 +89,12 @@ extension UIPresentation.Context {
 		get {
 			cache[\.transitions] ?? [:]
 		}
-		set {
+		nonmutating set {
 			cache[\.transitions] = newValue
 		}
 	}
 
-	var constraints: [UIView: [NSLayoutConstraint]] {
-		get {
-			cache[\.constraints] ?? [:]
-		}
-		set {
-			cache[\.constraints] = newValue
-		}
-	}
-
-	var chanchingControllers: [UIViewController] {
+	var changingControllers: [UIViewController] {
 		direction == .insertion ? viewControllersToInsert : viewControllersToRemove
 	}
 

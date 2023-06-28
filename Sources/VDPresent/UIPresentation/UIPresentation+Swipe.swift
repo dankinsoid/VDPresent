@@ -7,24 +7,23 @@ public extension UIPresentation.Interactivity {
 	}
 
 	static func swipe(
-		to edge: NSDirectionalRectEdge,
+		to edges: NSDirectionalRectEdge,
 		startFromEdge: Bool = false
 	) -> UIPresentation.Interactivity {
 		UIPresentation.Interactivity { context, observer in
-			let swipeView: SwipeView
-			let key = SwipeView.Key(edge: edge, startFromEdges: startFromEdge)
-			if let existedScroll = context.container.subviews.compactMap({ $0 as? SwipeView }).first {
-				swipeView = existedScroll
-				context.container.bringSubviewToFront(existedScroll)
-			} else {
-				swipeView = SwipeView()
-				context.container.addSubview(swipeView)
-				swipeView.frame = context.container.bounds
-				swipeView.pinEdges(to: context.container)
-			}
-			swipeView[key].delegate = SwipeViewObserver(observer: observer)
-			swipeView.visibleContent = context.toViewControllers.last?.view
-			swipeView.setNeedsLayout()
+            context.viewControllersToInsert.forEach { controller in
+                let view = context.container(for: controller)
+                let tapRecognizer = TransitionContainerTapRecognizer()
+                view.addGestureRecognizer(tapRecognizer)
+                tapRecognizer.onTap = { [weak controller] in
+                    controller?.hide()
+                }
+                let swipeRecognizer = SwipeGestureRecognizer()
+                swipeRecognizer.edges = edges
+                swipeRecognizer.startFromEdges = startFromEdge
+                swipeRecognizer.update = observer
+                context.view(for: controller).addGestureRecognizer(swipeRecognizer)
+            }
 		}
 	}
 }

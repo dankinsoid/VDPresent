@@ -6,7 +6,7 @@ public extension UIPresentation {
 	static var fullScreen: UIPresentation {
 		.fullScreen()
 	}
-
+    
 	static func fullScreen(
 		from edge: Edge = .bottom,
 		containerColor: UIColor = .pageSheetBackground,
@@ -21,6 +21,14 @@ public extension UIPresentation {
 			animation: .default
 		)
 	}
+    
+    static var fade: UIPresentation {
+        UIPresentation(
+            transition: .fade,
+            interactivity: nil,
+            animation: .default
+        )
+    }
 }
 
 public extension UIPresentation.Transition {
@@ -35,29 +43,36 @@ public extension UIPresentation.Transition {
 	) -> UIPresentation.Transition {
 		UIPresentation.Transition(
 			content: .move(edge: edge),
-			background: .backgroundColor(containerColor),
+            background: containerColor == .clear
+                ? .identity
+                : .value(\.backgroundColor, containerColor, default: containerColor.withAlphaComponent(0)),
 			applyTransitionOnBothControllers: false
 		) { context in
 			for viewController in context.toViewControllers {
-				context.container.addSubview(viewController.view)
-				if context.constraints[viewController.view] == nil {
-					context.constraints[viewController.view] = viewController.view.pinEdges(
-						to: viewController.view.superview ?? context.container
-					)
-				}
+                context.container(for: viewController)
+                    .addSubview(
+                        context.view(for: viewController),
+                        alignment: .edges()
+                    )
 			}
-		} completion: { context, isCompleted in
-			if isCompleted {
-				context.viewControllersToRemove.forEach {
-					$0.view.removeFromSuperview()
-					context.constraints[$0.view] = nil
-				}
-			} else {
-				context.viewControllersToInsert.forEach {
-					$0.view.removeFromSuperview()
-					context.constraints[$0.view] = nil
-				}
-			}
+		} completion: { _, _ in
 		}
 	}
+    
+    static var fade: UIPresentation.Transition {
+        UIPresentation.Transition(
+            content: .opacity,
+            background: .identity,
+            applyTransitionOnBothControllers: false
+        ) { context in
+            for viewController in context.toViewControllers {
+                context.container(for: viewController)
+                    .addSubview(
+                        context.view(for: viewController),
+                        alignment: .edges()
+                    )
+            }
+        } completion: { _, _ in
+        }
+    }
 }

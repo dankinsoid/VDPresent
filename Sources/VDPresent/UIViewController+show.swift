@@ -74,10 +74,31 @@ public extension UIViewController {
 		completion: (() -> Void)? = nil
 	) {
 		guard let stackController else {
-			dismiss(animated: animated, completion: completion)
+            if presentedViewController != nil, let presentingViewController {
+                presentingViewController.dismiss(animated: animated, completion: completion)
+            } else {
+                dismiss(animated: animated, completion: completion)
+            }
 			return
 		}
-		#warning("TODO")
+        guard let index = stackController.viewControllers.firstIndex(of: self) else {
+            completion?()
+            return
+        }
+        if index == 0, stackController === UIWindow.key?.rootViewController {
+            completion?()
+            return
+        }
+        stackController.set(
+            viewControllers: Array(stackController.viewControllers.prefix(upTo: index)),
+            animated: animated
+        ) {
+            if index == 0 {
+                stackController.hide(animated: false, completion: completion)
+            } else {
+                completion?()
+            }
+        }
 	}
 }
 

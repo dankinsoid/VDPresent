@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		830F1F4B2A4C761D00B67365 /* SwipeGestureRecognizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 830F1F4A2A4C761D00B67365 /* SwipeGestureRecognizer.swift */; };
+		833D119F2A4AE5810072468F /* UIStackControllerContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 833D119E2A4AE5810072468F /* UIStackControllerContainer.swift */; };
+		833D11A12A4C1E1B0072468F /* UIStackControllerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 833D11A02A4C1E1B0072468F /* UIStackControllerView.swift */; };
 		83F74E36296AEBCE00C5E3D4 /* UIViewController+show.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83F74E1E296AEBCE00C5E3D4 /* UIViewController+show.swift */; };
 		83F74E37296AEBCE00C5E3D4 /* TransitionContainerTapRecognizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83F74E20296AEBCE00C5E3D4 /* TransitionContainerTapRecognizer.swift */; };
 		83F74E38296AEBCE00C5E3D4 /* CACornerMask+Ext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83F74E22296AEBCE00C5E3D4 /* CACornerMask+Ext.swift */; };
@@ -39,6 +42,9 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		830F1F4A2A4C761D00B67365 /* SwipeGestureRecognizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwipeGestureRecognizer.swift; sourceTree = "<group>"; };
+		833D119E2A4AE5810072468F /* UIStackControllerContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIStackControllerContainer.swift; sourceTree = "<group>"; };
+		833D11A02A4C1E1B0072468F /* UIStackControllerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIStackControllerView.swift; sourceTree = "<group>"; };
 		83F74E05296AEB7D00C5E3D4 /* VDPresent.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VDPresent.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		83F74E1E296AEBCE00C5E3D4 /* UIViewController+show.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "UIViewController+show.swift"; sourceTree = "<group>"; };
 		83F74E20296AEBCE00C5E3D4 /* TransitionContainerTapRecognizer.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TransitionContainerTapRecognizer.swift; sourceTree = "<group>"; };
@@ -83,6 +89,16 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		833D119D2A4AE5640072468F /* UIStackController */ = {
+			isa = PBXGroup;
+			children = (
+				83F74E31296AEBCE00C5E3D4 /* UIStackController.swift */,
+				833D119E2A4AE5810072468F /* UIStackControllerContainer.swift */,
+				833D11A02A4C1E1B0072468F /* UIStackControllerView.swift */,
+			);
+			path = UIStackController;
+			sourceTree = "<group>";
+		};
 		83F74DFC296AEB7D00C5E3D4 = {
 			isa = PBXGroup;
 			children = (
@@ -125,6 +141,7 @@
 			children = (
 				83F74E20296AEBCE00C5E3D4 /* TransitionContainerTapRecognizer.swift */,
 				83F74E65296B371A00C5E3D4 /* Animator.swift */,
+				830F1F4A2A4C761D00B67365 /* SwipeGestureRecognizer.swift */,
 			);
 			path = Utils;
 			sourceTree = "<group>";
@@ -157,10 +174,10 @@
 		83F74E2E296AEBCE00C5E3D4 /* UIPresentation */ = {
 			isa = PBXGroup;
 			children = (
+				833D119D2A4AE5640072468F /* UIStackController */,
 				83F74E62296AEE7D00C5E3D4 /* Presentations */,
 				83F74E2F296AEBCE00C5E3D4 /* UIPresentation+Swipe.swift */,
 				83F74E30296AEBCE00C5E3D4 /* UIPresentation.swift */,
-				83F74E31296AEBCE00C5E3D4 /* UIStackController.swift */,
 				83F74E33296AEBCE00C5E3D4 /* DefaultTransition.swift */,
 				83F74E35296AEBCE00C5E3D4 /* UIPresentation+Wrap.swift */,
 			);
@@ -284,11 +301,13 @@
 				83F74E48296AEBCE00C5E3D4 /* UIPresentation+Sheet.swift in Sources */,
 				83F74E5B296AEC4300C5E3D4 /* SceneDelegate.swift in Sources */,
 				83F74E3A296AEBCE00C5E3D4 /* CGPoint+Ext.swift in Sources */,
+				833D119F2A4AE5810072468F /* UIStackControllerContainer.swift in Sources */,
 				83F74E40296AEBCE00C5E3D4 /* SwipeViewInstance.swift in Sources */,
 				83F74E38296AEBCE00C5E3D4 /* CACornerMask+Ext.swift in Sources */,
 				83F74E44296AEBCE00C5E3D4 /* UIPresentation.swift in Sources */,
 				83F74E45296AEBCE00C5E3D4 /* UIStackController.swift in Sources */,
 				83F74E37296AEBCE00C5E3D4 /* TransitionContainerTapRecognizer.swift in Sources */,
+				830F1F4B2A4C761D00B67365 /* SwipeGestureRecognizer.swift in Sources */,
 				83F74E42296AEBCE00C5E3D4 /* SwipeViewDelegate.swift in Sources */,
 				83F74E47296AEBCE00C5E3D4 /* DefaultTransition.swift in Sources */,
 				83F74E43296AEBCE00C5E3D4 /* UIPresentation+Swipe.swift in Sources */,
@@ -299,6 +318,7 @@
 				83F74E3D296AEBCE00C5E3D4 /* KeyPath+Ext.swift in Sources */,
 				83F74E41296AEBCE00C5E3D4 /* SwipeView.swift in Sources */,
 				83F74E57296AEC4300C5E3D4 /* AppDelegate.swift in Sources */,
+				833D11A12A4C1E1B0072468F /* UIStackControllerView.swift in Sources */,
 				83F74E36296AEBCE00C5E3D4 /* UIViewController+show.swift in Sources */,
 				83F74E3E296AEBCE00C5E3D4 /* UIViewController+Ext.swift in Sources */,
 			);
@@ -446,7 +466,7 @@
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -474,7 +494,7 @@
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -517,7 +537,7 @@
 			repositoryURL = "https://github.com/dankinsoid/VDTransition.git";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 1.0.0;
+				minimumVersion = 1.16.0;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */

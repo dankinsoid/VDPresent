@@ -74,11 +74,11 @@ public extension UIPresentation.Transition {
 			//                )
 			//            }
 
-			let recognizer = TransitionContainerTapRecognizer()
+//			let recognizer = TransitionContainerTapRecognizer()
 			//            recognizer.onTap = { [weak toViewController] in
 			//                toViewController?.hide()
 			//            }
-			context.container.addGestureRecognizer(recognizer)
+//			context.container.addGestureRecognizer(recognizer)
 		} completion: { _, _ in
 		}
 		//        result.restoreDisappearedViews = false

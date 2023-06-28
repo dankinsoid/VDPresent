@@ -1,5 +1,5 @@
 import UIKit
-import VDTransition
+@_exported import VDTransition
 
 public typealias Progress = VDTransition.Progress
 
@@ -26,33 +26,44 @@ public extension UIPresentation {
 
 	struct Context {
 
-		public var direction: TransitionDirection
-		public var container: UIView
-		public var fromViewControllers: [UIViewController]
-		public var toViewControllers: [UIViewController]
-		public var animated: Bool
-		public var isInteractive: Bool
-		public var cache: Cache
+		public let direction: TransitionDirection
+        private let container: (UIViewController) -> UIStackControllerContainer
+		public let fromViewControllers: [UIViewController]
+		public let toViewControllers: [UIViewController]
+        private let views: (UIViewController) -> UIView
+		public let animated: Bool
+		public let isInteractive: Bool
+		public let cache: Cache
 
 		public init(
 			direction: TransitionDirection,
-			container: UIView,
+			container: @escaping (UIViewController) -> UIStackControllerContainer,
 			fromViewControllers: [UIViewController],
 			toViewControllers: [UIViewController],
+            views: @escaping (UIViewController) -> UIView,
 			animated: Bool,
 			isInteractive: Bool,
 			cache: Cache
-		) {
-			self.direction = direction
-			self.container = container
-			self.fromViewControllers = fromViewControllers
-			self.toViewControllers = toViewControllers
-			self.animated = animated
-			self.isInteractive = isInteractive
-			self.cache = cache
-		}
-
-		public func viewController(_ key: UITransitionContextViewControllerKey) -> [UIViewController] {
+        ) {
+            self.direction = direction
+            self.container = container
+            self.fromViewControllers = fromViewControllers
+            self.toViewControllers = toViewControllers
+            self.views = views
+            self.animated = animated
+            self.isInteractive = isInteractive
+            self.cache = cache
+        }
+        
+        public func container(for controller: UIViewController) -> UIStackControllerContainer {
+            container(controller)
+        }
+        
+        public func view(for controller: UIViewController) -> UIView {
+            views(controller)
+        }
+        
+		public func viewControllers(_ key: UITransitionContextViewControllerKey) -> [UIViewController] {
 			switch key {
 			case .from: return fromViewControllers
 			case .to: return toViewControllers
@@ -63,37 +74,37 @@ public extension UIPresentation {
 
 	struct Interactivity {
 
-		private let installer: (inout Context, @escaping (State) -> Void) -> Void
+		private let installer: (Context, @escaping (State) -> Void) -> Void
 
-		public init(installer: @escaping (inout Context, @escaping (State) -> Void) -> Void) {
+		public init(installer: @escaping (Context, @escaping (State) -> Void) -> Void) {
 			self.installer = installer
 		}
 
-		public func install(context: inout Context, observer: @escaping (State) -> Void) {
-			installer(&context, observer)
+		public func install(context: Context, observer: @escaping (State) -> Void) {
+			installer(context, observer)
 		}
 	}
 
 	struct Transition {
 
-		private var updater: (inout Context, State) -> Void
+		private var updater: (Context, State) -> Void
 
 		public init(
-			updater: @escaping (inout Context, State) -> Void
+			updater: @escaping (Context, State) -> Void
 		) {
 			self.updater = updater
 		}
 
-		public func update(context: inout Context, state: State) {
-			updater(&context, state)
+		public func update(context: Context, state: State) {
+			updater(context, state)
 		}
 	}
 
-	enum State: Hashable {
+	enum State: Equatable {
 
 		case begin
 		case change(Progress)
-		case end(completed: Bool)
+        case end(completed: Bool, animation: UIKitAnimation? = nil)
 	}
 }
 
@@ -110,11 +121,11 @@ public extension UIPresentation.Context {
 
 public extension UIPresentation.Context {
 
-	struct Cache {
+	final class Cache {
 
 		private var values: [PartialKeyPath<UIPresentation.Context>: Any] = [:]
 
-		public subscript<T>(_ keyPath: KeyPath<UIPresentation.Context, T>) -> T? {
+		public subscript<T>(_ keyPath: ReferenceWritableKeyPath<UIPresentation.Context, T>) -> T? {
 			get { values[keyPath] as? T }
 			set { values[keyPath] = newValue }
 		}
