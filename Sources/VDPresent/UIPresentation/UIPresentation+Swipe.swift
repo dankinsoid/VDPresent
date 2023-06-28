@@ -1,4 +1,4 @@
-import UIKit
+import SwiftUI
 
 public extension UIPresentation.Interactivity {
 
@@ -8,28 +8,13 @@ public extension UIPresentation.Interactivity {
 
 	static func swipe(
 		to edges: NSDirectionalRectEdge,
-		startFromEdge: Bool = false
+        configuration: SwipeConfiguration = .default
 	) -> UIPresentation.Interactivity {
 		UIPresentation.Interactivity { context, observer in
             context.toViewControllers.forEach { controller in
                 let view = context.container(for: controller)
                 let tapRec = view.gestureRecognizers?.compactMap { $0 as? TransitionContainerTapRecognizer }.first
                 let swipeRec = view.gestureRecognizers?.compactMap { $0 as? SwipeGestureRecognizer }.first
-                guard let i = context.toViewControllers.firstIndex(of: controller), i > 0 else {
-                    tapRec?.isEnabled = false
-                    swipeRec?.isEnabled = false
-                    return
-                }
-                let context = UIPresentation.Context(
-                    direction: .removal,
-                    container: context.container,
-                    fromViewControllers: context.toViewControllers,
-                    toViewControllers: Array(context.toViewControllers.prefix(upTo: i)),
-                    views: context.view,
-                    animated: true,
-                    isInteractive: true,
-                    cache: context.cache
-                )
                 let tapRecognizer = tapRec ?? TransitionContainerTapRecognizer()
                 if tapRec == nil {
                     view.addGestureRecognizer(tapRecognizer)
@@ -42,9 +27,14 @@ public extension UIPresentation.Interactivity {
                 let swipeRecognizer = swipeRec ?? SwipeGestureRecognizer()
                 swipeRecognizer.isEnabled = true
                 swipeRecognizer.edges = edges
-                swipeRecognizer.startFromEdges = startFromEdge
-                swipeRecognizer.update = { percent, edge in
-                    observer(context, percent)
+                swipeRecognizer.startFromEdges = configuration.startFromEdge
+                swipeRecognizer.shouldStart = { [weak controller] edge in
+                    guard let controller else { return false }
+                    return configuration.shouldStart(for: context, from: controller, to: edge)
+                }
+                swipeRecognizer.update = { [weak controller] percent, edge in
+                    guard let controller else { return }
+                    observer(configuration.context(for: context, from: controller, to: edge), percent)
                 }
                 swipeRecognizer.target = context.view(for: controller)
                 if swipeRec == nil {
@@ -53,4 +43,65 @@ public extension UIPresentation.Interactivity {
             }
 		}
 	}
+    
+    struct SwipeConfiguration {
+        
+        private let _shouldStart: (UIPresentation.Context, UIViewController, Edge) -> Bool
+        private let _moveToEdgeContext: (UIPresentation.Context, UIViewController, Edge) -> UIPresentation.Context
+        public let startFromEdge: Bool
+        
+        public init(
+            startFromEdge: Bool = false,
+            shouldStart: @escaping (UIPresentation.Context, UIViewController, Edge) -> Bool,
+            moveToEdgeContext: @escaping (UIPresentation.Context, UIViewController, Edge) -> UIPresentation.Context
+        ) {
+            self.startFromEdge = startFromEdge
+            self._shouldStart = shouldStart
+            self._moveToEdgeContext = moveToEdgeContext
+        }
+        
+        public func shouldStart(
+            for context: UIPresentation.Context,
+            from controller: UIViewController,
+            to edge: Edge
+        ) -> Bool {
+            _shouldStart(context, controller, edge)
+        }
+        
+        public func context(
+            for context: UIPresentation.Context,
+            from controller: UIViewController,
+            to edge: Edge
+        ) -> UIPresentation.Context {
+            _moveToEdgeContext(context, controller, edge)
+        }
+        
+        public static var `default`: SwipeConfiguration {
+            .default(startFromEdge: false)
+        }
+        
+        public static func `default`(startFromEdge: Bool) -> SwipeConfiguration {
+            SwipeConfiguration(startFromEdge: startFromEdge) { context, controller, edge in
+                guard let i = context.toViewControllers.firstIndex(of: controller) else {
+                    return false
+                }
+                return i > 0
+            } moveToEdgeContext: { context, controller, edge in
+                UIPresentation.Context(
+                    direction: .removal,
+                    container: context.container,
+                    fromViewControllers: context.toViewControllers,
+                    toViewControllers: Array(
+                        context.toViewControllers.prefix(
+                            upTo: context.toViewControllers.firstIndex(of: controller) ?? context.toViewControllers.count - 1
+                        )
+                    ),
+                    views: context.view,
+                    animated: true,
+                    isInteractive: true,
+                    cache: context.cache
+                )
+            }
+        }
+    }
 }
