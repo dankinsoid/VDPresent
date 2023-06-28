@@ -28,6 +28,18 @@ extension NSDirectionalRectEdge {
 	}
 }
 
+extension NSDirectionalEdgeInsets {
+    
+    init(_ values: [Edge: CGFloat]) {
+        self.init(
+            top: values[.top] ?? 0,
+            leading: values[.leading] ?? 0,
+            bottom: values[.bottom] ?? 0,
+            trailing: values[.trailing] ?? 0
+        )
+    }
+}
+
 extension UIView {
 
 	var rightEdge: NSDirectionalRectEdge {

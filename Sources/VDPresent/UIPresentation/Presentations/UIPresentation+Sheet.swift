@@ -9,6 +9,7 @@ public extension UIPresentation {
 	static func sheet(
 		from edge: Edge = .bottom,
 		minOffset: CGFloat = 10,
+        selfSized: Bool = true,
 		cornerRadius: CGFloat = 10,
 		containerColor: UIColor = .pageSheetBackground,
 		onBouncing: @escaping (CGFloat) -> Void = { _ in }
@@ -17,6 +18,7 @@ public extension UIPresentation {
 			transition: .sheet(
 				from: edge,
 				minOffset: minOffset,
+                selfSized: selfSized,
 				cornerRadius: cornerRadius,
 				containerColor: containerColor,
 				onBouncing: onBouncing
@@ -36,11 +38,16 @@ public extension UIPresentation.Transition {
 	static func sheet(
 		from edge: Edge = .bottom,
 		minOffset: CGFloat = 10,
+        selfSized: Bool = true,
 		cornerRadius: CGFloat = 10,
 		containerColor: UIColor = .pageSheetBackground,
 		onBouncing: @escaping (CGFloat) -> Void = { _ in }
 	) -> UIPresentation.Transition {
-		UIPresentation.Transition(
+        let paddingLayout = ContentLayout.padding(
+            NSDirectionalEdgeInsets([edge.opposite: minOffset]),
+            insideSafeArea: NSDirectionalRectEdge(edge.opposite)
+        )
+		return UIPresentation.Transition(
 			content: .asymmetric(
 				insertion: [
 					.move(edge: edge),
@@ -52,7 +59,7 @@ public extension UIPresentation.Transition {
 					.constant(\.clipsToBounds, true),
 				]
 			),
-            layout: .alignment(.edge(edge)),
+            layout: selfSized ? paddingLayout.combine(.alignment(.edge(edge))) : paddingLayout,
 			background: .backgroundColor(containerColor),
 			applyTransitionOnBothControllers: false
 		)

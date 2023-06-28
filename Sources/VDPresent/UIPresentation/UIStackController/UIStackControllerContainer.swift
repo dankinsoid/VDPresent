@@ -33,27 +33,36 @@ final class UIStackControllerContainerView: UIView, UIStackControllerContainer {
         subviews.forEach {
             $0.setNeedsLayout()
             $0.layoutIfNeeded()
-            layouts[$0]?.layout($0, in: frame.size)
+            layouts[$0]?.layout($0, in: bounds.size, safeArea: safeAreaInsets)
         }
     }
 }
 
 public struct ContentLayout {
     
-    private let _layout: (UIView, CGSize) -> Void
+    private let _layout: (UIView, CGSize, UIEdgeInsets) -> Void
     
-    public func layout(_ view: UIView, in size: CGSize) {
-        _layout(view, size)
+    public func layout(_ view: UIView, in size: CGSize, safeArea: UIEdgeInsets) {
+        _layout(view, size, safeArea)
     }
     
     public func combine(_ next: ContentLayout) -> ContentLayout {
-        .custom { view, size in
-            layout(view, in: size)
-            next.layout(view, in: view.bounds.size)
+        .custom { view, size, insets in
+            layout(view, in: size, safeArea: insets)
+            next.layout(
+                view,
+                in: view.bounds.size,
+                safeArea: UIEdgeInsets(
+                    top: max(0, insets.top - view.frame.minY),
+                    left: max(0, insets.left - view.frame.minX),
+                    bottom: max(0, insets.bottom - (size.height - view.frame.maxY)),
+                    right: max(0, insets.right - (size.width - view.frame.maxX))
+                )
+            )
         }
     }
     
-    public static func custom(_ layout: @escaping (UIView, CGSize) -> Void) -> ContentLayout {
+    public static func custom(_ layout: @escaping (UIView, CGSize, UIEdgeInsets) -> Void) -> ContentLayout {
         self.init(_layout: layout)
     }
     
@@ -62,13 +71,15 @@ public struct ContentLayout {
     }
     
     public static func padding(
-        _ edges: NSDirectionalEdgeInsets
+        _ edges: NSDirectionalEdgeInsets,
+        insideSafeArea: NSDirectionalRectEdge = []
     ) -> ContentLayout {
         .padding(
             top: edges.top,
             leading: edges.leading,
             bottom: edges.bottom,
-            trailing: edges.trailing
+            trailing: edges.trailing,
+            insideSafeArea: insideSafeArea
         )
     }
     
@@ -76,16 +87,30 @@ public struct ContentLayout {
         top: CGFloat = 0,
         leading: CGFloat = 0,
         bottom: CGFloat = 0,
-        trailing: CGFloat = 0
+        trailing: CGFloat = 0,
+        insideSafeArea: NSDirectionalRectEdge = []
     ) -> ContentLayout {
-        .custom { view, size in
+        .custom { view, size, insets in
             let isLtr = view.effectiveUserInterfaceLayoutDirection == .leftToRight
+            var insets = insets
+            if !insideSafeArea.contains(.top) {
+                insets.top = 0
+            }
+            if !insideSafeArea.contains(.bottom) {
+                insets.bottom = 0
+            }
+            if !insideSafeArea.contains(.leading) {
+                if isLtr { insets.left = 0 } else { insets.right = 0 }
+            }
+            if !insideSafeArea.contains(.trailing) {
+                if isLtr { insets.right = 0 } else { insets.left = 0 }
+            }
             view.update(
                 frame: CGRect(
-                    x: isLtr ? leading : trailing,
-                    y: top,
-                    width: max(0, size.width - (leading + trailing)),
-                    height: max(size.height - (top + bottom), 0)
+                    x: (isLtr ? leading : trailing) + insets.left,
+                    y: top + insets.top,
+                    width: max(0, size.width - (leading + trailing + insets.left + insets.right)),
+                    height: max(size.height - (top + bottom + insets.top + insets.bottom), 0)
                 )
             )
         }
@@ -94,7 +119,7 @@ public struct ContentLayout {
     public static func alignment(
         _ alignment: Alignment
     ) -> ContentLayout {
-        .custom { view, size in
+        .custom { view, size, _ in
             view.update(
                 frame: view.frame(of: view.bounds.size, in: size, alignment: alignment)
             )
@@ -102,11 +127,11 @@ public struct ContentLayout {
             if alignment.horizontal == .fill, alignment.vertical == .fill {
                 targetSize = size
             } else if alignment.horizontal == .fill {
-                targetSize = CGSize(width: size.width, height: UIView.layoutFittingCompressedSize.height)
+                targetSize = CGSize(width: size.width, height: UIView.layoutFittingExpandedSize.height)
             } else if alignment.vertical == .fill {
-                targetSize = CGSize(width: UIView.layoutFittingCompressedSize.width, height: size.height)
+                targetSize = CGSize(width: UIView.layoutFittingExpandedSize.width, height: size.height)
             } else {
-                targetSize = UIView.layoutFittingCompressedSize
+                targetSize = UIView.layoutFittingExpandedSize
             }
             targetSize = view.systemLayoutSizeFitting(
                 targetSize,
@@ -189,9 +214,9 @@ private extension UIView {
         let x: CGFloat
         switch alignment.horizontal {
         case .leading:
-            x = isLtr ? size.width - targetSize.width : 0
+            x = isLtr ? max(0, size.width - targetSize.width) : 0
         case .trailing:
-            x = isLtr ? 0 : size.width - targetSize.width
+            x = isLtr ? 0 : max(0, size.width - targetSize.width)
         case .center:
             x = (size.width - targetSize.width) / 2
         case .fill:
@@ -202,15 +227,18 @@ private extension UIView {
         case .top:
             y = 0
         case .bottom:
-            y = size.height - targetSize.height
+            y = max(0, size.height - targetSize.height)
         case .center:
-            y = (size.height - targetSize.height) / 2
+            y = max(0, size.height - targetSize.height) / 2
         case .fill:
             y = 0
         }
         return CGRect(
             origin: CGPoint(x: x, y: y),
-            size: targetSize
+            size: CGSize(
+                width: min(targetSize.width, size.width),
+                height: min(targetSize.width, size.width)
+            )
         )
     }
 }

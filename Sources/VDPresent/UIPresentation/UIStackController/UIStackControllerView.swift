@@ -9,7 +9,10 @@ final class UIStackControllerView: UIView {
                     $0.removeFromSuperview()
                 }
             }
-            containers.forEach(addSubview)
+            containers.forEach {
+                addSubview($0)
+                $0.translatesAutoresizingMaskIntoConstraints = false
+            }
             layout()
         }
     }
