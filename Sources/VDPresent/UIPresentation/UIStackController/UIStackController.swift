@@ -284,9 +284,20 @@ private extension UIStackController {
 			case .change:
                 presentation.transition.update(context: context, state: state)
                 
-			case let .end(completed, _):
-                presentation.transition.update(context: context, state: state)
-                completion(completed)
+			case let .end(completed, animation):
+                let end: () -> Void = {
+                    presentation.transition.update(context: context, state: state)
+                    completion(completed)
+                }
+                if let animation {
+                    UIView.animate(with: animation) {
+                        presentation.transition.update(context: context, state: .change(context.direction.at(1)))
+                    } completion: { _ in
+                        end()
+                    }
+                } else {
+                    end()
+                }
 			}
 		}
 	}

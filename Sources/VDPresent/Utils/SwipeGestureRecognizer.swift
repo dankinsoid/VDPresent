@@ -7,6 +7,8 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
     var edges: NSDirectionalRectEdge = []
     var update: (UIPresentation.State) -> Void = { _ in }
     var direction: TransitionDirection = .removal
+    weak var target: UIView?
+    private var axis: NSLayoutConstraint.Axis?
     private var wasBegun = false
     private var lastPercent: CGFloat?
     
@@ -19,7 +21,8 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
     }
     
     func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
-        touch.view?.isDescendant(of: gestureRecognizer.view ?? UIView()) ?? false
+        guard let target, let view = touch.view else { return false }
+        return view.isDescendant(of: target) && target.bounds.contains(touch.location(in: target))
     }
     
     @objc
@@ -53,18 +56,24 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
     
     private func finish(completed: Bool) {
         wasBegun = false
+        axis = nil
         lastPercent = nil
         let duration = UIKitAnimation.defaultDuration * (completed ? (1 - percent) : percent)
         update(.end(completed: completed, animation: .default(duration)))
     }
     
     private var percent: CGFloat {
-        guard let view else { return 0 }
-        let dif = translation(in: view)
-        if dif.x == 0 {
-            return offset / view.frame.height
-        } else {
-            return offset / view.frame.width
+        guard let target else { return 0 }
+        setAxisIfNeeded()
+        switch axis ?? .vertical {
+        case .vertical:
+            guard target.frame.height > 0 else { return 1 }
+            return offset / target.frame.height
+        case .horizontal:
+            guard target.frame.width > 0 else { return 1 }
+            return offset / target.frame.width
+        @unknown default:
+            return 0
         }
     }
     
@@ -72,29 +81,41 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
         guard let view else { return 0 }
         var value: CGFloat
         let offset = translation(in: view)
-        if offset.x == 0 {
+        setAxisIfNeeded()
+        switch axis ?? .vertical {
+        case .vertical:
             guard edges.contains(.top) || edges.contains(.bottom) else { return 0 }
-            value = offset.y
+            value = -offset.y
             if edges.contains(.bottom), edges.contains(.top) {
                 value = abs(value)
             } else if edges.contains(.bottom) {
                 value = -value
             }
             return value
-        } else {
+            
+        case .horizontal:
             guard edges.contains(.leading) || edges.contains(.trailing) else { return 0 }
-            value = offset.x
+            value = -offset.x
             if edges.contains(.trailing), edges.contains(.leading) {
                 value = abs(value)
             } else if edges.contains(.trailing) {
                 value = -value
             }
             return value
+            
+        @unknown default:
+            return 0
         }
     }
     
+    private func setAxisIfNeeded() {
+        guard axis == nil else { return }
+        let offset = velocity   (in: view)
+        axis = abs(offset.x) < abs(offset.y) ? .vertical : .horizontal
+    }
+    
     func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
-        guard let view = gestureRecognizer.view else { return false }
+        guard let view, let target, target.bounds.contains(gestureRecognizer.location(in: target)) else { return false }
         let threshold: CGFloat = 36
         guard startFromEdges else {
             return true

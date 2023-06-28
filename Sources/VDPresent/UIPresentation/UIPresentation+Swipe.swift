@@ -18,11 +18,13 @@ public extension UIPresentation.Interactivity {
                 tapRecognizer.onTap = { [weak controller] in
                     controller?.hide()
                 }
+                
                 let swipeRecognizer = SwipeGestureRecognizer()
                 swipeRecognizer.edges = edges
                 swipeRecognizer.startFromEdges = startFromEdge
                 swipeRecognizer.update = observer
-                context.view(for: controller).addGestureRecognizer(swipeRecognizer)
+                swipeRecognizer.target = context.view(for: controller)
+                view.addGestureRecognizer(swipeRecognizer)
             }
 		}
 	}

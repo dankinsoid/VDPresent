@@ -58,26 +58,15 @@ public extension UIPresentation.Transition {
                     }
                 }
 
-			case let .end(completed, animation):
+			case let .end(completed, _):
                 let viewsToRemove = context.viewControllersToRemove.map(context.container)
-                let block: () -> Void = {
-                    context.transitions.forEach { view, _ in
-                        if let view, viewsToRemove.contains(where: view.isDescendant) {
-                            context.transitions[view]?.setInitialState(view: view)
-                            context.transitions[view] = nil
-                        }
+                context.transitions.forEach { view, _ in
+                    if let view, viewsToRemove.contains(where: view.isDescendant) {
+                        context.transitions[view]?.setInitialState(view: view)
+                        context.transitions[view] = nil
                     }
                 }
-                if let animation {
-                    UIView.animate(with: animation) {
-                        block()
-                    } completion: { _ in
-                        completion?(context, completed)
-                    }
-                } else {
-                    block()
-                    completion?(context, completed)
-                }
+                completion?(context, completed)
 			}
 		}
 	}
