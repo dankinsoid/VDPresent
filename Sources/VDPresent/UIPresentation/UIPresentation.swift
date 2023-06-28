@@ -27,13 +27,16 @@ public extension UIPresentation {
 	struct Context {
 
 		public let direction: TransitionDirection
-        private let container: (UIViewController) -> UIStackControllerContainer
-		public let fromViewControllers: [UIViewController]
-		public let toViewControllers: [UIViewController]
-        private let views: (UIViewController) -> UIView
+        public var fromViewControllers: [UIViewController] { _fromViewControllers.compactMap(\.value) }
+        public var toViewControllers: [UIViewController] { _toViewControllers.compactMap(\.value) }
 		public let animated: Bool
 		public let isInteractive: Bool
 		public let cache: Cache
+        
+        private let _fromViewControllers: [Weak<UIViewController>]
+        private let _toViewControllers: [Weak<UIViewController>]
+        private let views: (UIViewController) -> UIView
+        private let container: (UIViewController) -> UIStackControllerContainer
 
 		public init(
 			direction: TransitionDirection,
@@ -47,8 +50,8 @@ public extension UIPresentation {
         ) {
             self.direction = direction
             self.container = container
-            self.fromViewControllers = fromViewControllers
-            self.toViewControllers = toViewControllers
+            self._fromViewControllers = fromViewControllers.map { Weak($0) }
+            self._toViewControllers = toViewControllers.map { Weak($0) }
             self.views = views
             self.animated = animated
             self.isInteractive = isInteractive
@@ -75,14 +78,23 @@ public extension UIPresentation {
 	struct Interactivity {
 
 		private let installer: (Context, @escaping (Context, State) -> Void) -> Void
+        private let uninstaller: (Context, UIViewController) -> Void
 
-		public init(installer: @escaping (Context, @escaping (Context, State) -> Void) -> Void) {
+		public init(
+            installer: @escaping (Context, @escaping (Context, State) -> Void) -> Void,
+            uninstaller: @escaping (Context, UIViewController) -> Void
+        ) {
 			self.installer = installer
+            self.uninstaller = uninstaller
 		}
 
 		public func install(context: Context, observer: @escaping (Context, State) -> Void) {
 			installer(context, observer)
 		}
+        
+        public func uninstall(context: Context, for controller: UIViewController) {
+            uninstaller(context, controller)
+        }
 	}
 
 	struct Transition {

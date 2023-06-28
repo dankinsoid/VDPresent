@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		830F1F4B2A4C761D00B67365 /* SwipeGestureRecognizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 830F1F4A2A4C761D00B67365 /* SwipeGestureRecognizer.swift */; };
+		830F1F4D2A4CAC8600B67365 /* Weak.swift in Sources */ = {isa = PBXBuildFile; fileRef = 830F1F4C2A4CAC8600B67365 /* Weak.swift */; };
 		833D119F2A4AE5810072468F /* UIStackControllerContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 833D119E2A4AE5810072468F /* UIStackControllerContainer.swift */; };
 		833D11A12A4C1E1B0072468F /* UIStackControllerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 833D11A02A4C1E1B0072468F /* UIStackControllerView.swift */; };
 		83F74E36296AEBCE00C5E3D4 /* UIViewController+show.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83F74E1E296AEBCE00C5E3D4 /* UIViewController+show.swift */; };
@@ -39,6 +40,7 @@
 
 /* Begin PBXFileReference section */
 		830F1F4A2A4C761D00B67365 /* SwipeGestureRecognizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwipeGestureRecognizer.swift; sourceTree = "<group>"; };
+		830F1F4C2A4CAC8600B67365 /* Weak.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Weak.swift; sourceTree = "<group>"; };
 		833D119E2A4AE5810072468F /* UIStackControllerContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIStackControllerContainer.swift; sourceTree = "<group>"; };
 		833D11A02A4C1E1B0072468F /* UIStackControllerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIStackControllerView.swift; sourceTree = "<group>"; };
 		83F74E05296AEB7D00C5E3D4 /* VDPresent.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VDPresent.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -133,6 +135,7 @@
 				83F74E20296AEBCE00C5E3D4 /* TransitionContainerTapRecognizer.swift */,
 				83F74E65296B371A00C5E3D4 /* Animator.swift */,
 				830F1F4A2A4C761D00B67365 /* SwipeGestureRecognizer.swift */,
+				830F1F4C2A4CAC8600B67365 /* Weak.swift */,
 			);
 			path = Utils;
 			sourceTree = "<group>";
@@ -275,6 +278,7 @@
 				83F74E39296AEBCE00C5E3D4 /* UIApplication+Ext.swift in Sources */,
 				83F74E3C296AEBCE00C5E3D4 /* UIWindow+Ext.swift in Sources */,
 				83F74E3F296AEBCE00C5E3D4 /* UIView+Ext.swift in Sources */,
+				830F1F4D2A4CAC8600B67365 /* Weak.swift in Sources */,
 				83F74E58296AEC4300C5E3D4 /* ViewController.swift in Sources */,
 				83F74E66296B371A00C5E3D4 /* Animator.swift in Sources */,
 				83F74E48296AEBCE00C5E3D4 /* UIPresentation+Sheet.swift in Sources */,

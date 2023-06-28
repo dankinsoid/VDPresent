@@ -249,10 +249,12 @@ private extension UIStackController {
 		let completion: (Bool) -> Void = { [weak self] isCompleted in
 			guard let self else { return }
             self.viewControllers = isCompleted ? context.toViewControllers : context.fromViewControllers
-			self.afterTransition(
-                presentation: presentation,
-                context: context
-            )
+            if isCompleted {
+                self.afterTransition(
+                    presentation: presentation,
+                    context: context
+                )
+            }
 			presentation.transition.update(context: context, state: .end(completed: isCompleted))
             
             self.didSetViewControllers()
@@ -282,6 +284,10 @@ private extension UIStackController {
 	) {
         var prepare: () -> Void = {}
         var completion: (Bool) -> Void = { _ in }
+        
+        context.viewControllersToRemove.forEach {
+            presentation.interactivity?.uninstall(context: context, for: $0)
+        }
         
 		presentation.interactivity?.install(context: context) { [weak self] context, state in
             guard let self else { return }

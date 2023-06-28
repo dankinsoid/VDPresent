@@ -45,23 +45,23 @@ public extension UIPresentation.Transition {
                 }
         
                 context.transitions.forEach {
-                    if let view = $0.key {
+                    if let view = $0.key.value {
                         context.transitions[view]?.beforeTransition(view: view)
                     }
                 }
 
 			case let .change(progress):
                 let changingViews = context.changingControllers.map(context.container)
-                context.transitions.forEach { view, _ in
-                    if let view, changingViews.contains(where: view.isDescendant) {
+                context.transitions.forEach { key, _ in
+                    if let view = key.value, changingViews.contains(where: view.isDescendant) {
                         context.transitions[view]?.update(progress: progress, view: view)
                     }
                 }
 
 			case let .end(completed, _):
                 let viewsToRemove = context.viewControllersToRemove.map(context.container)
-                context.transitions.forEach { view, _ in
-                    if let view, viewsToRemove.contains(where: view.isDescendant) {
+                context.transitions.forEach { key, _ in
+                    if let view = key.value, viewsToRemove.contains(where: view.isDescendant) {
                         context.transitions[view]?.setInitialState(view: view)
                         context.transitions[view] = nil
                     }
@@ -74,7 +74,7 @@ public extension UIPresentation.Transition {
 
 extension UIPresentation.Context {
 
-	var transitions: [UIView?: UITransition<UIView>] {
+	var transitions: [Weak<UIView>: UITransition<UIView>] {
 		get {
 			cache[\.transitions] ?? [:]
 		}
@@ -94,4 +94,12 @@ extension UIPresentation.Context {
 	var remainingControllers: [UIViewController] {
 		toViewControllers.filter(fromViewControllers.contains)
 	}
+}
+
+extension Dictionary {
+    
+    subscript<T: AnyObject>(_ key: T?) -> Value? where Key == Weak<T> {
+        get { self[Weak(key)] }
+        set { self[Weak(key)] = newValue }
+    }
 }
