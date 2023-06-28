@@ -43,7 +43,9 @@ public extension UIPresentation.Interactivity {
                 swipeRecognizer.isEnabled = true
                 swipeRecognizer.edges = edges
                 swipeRecognizer.startFromEdges = startFromEdge
-                swipeRecognizer.update = { observer(context, $0) }
+                swipeRecognizer.update = { percent, edge in
+                    observer(context, percent)
+                }
                 swipeRecognizer.target = context.view(for: controller)
                 if swipeRec == nil {
                     view.addGestureRecognizer(swipeRecognizer)

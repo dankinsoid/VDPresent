@@ -1,14 +1,21 @@
-import UIKit
+import SwiftUI
 import VDTransition
 
 final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerDelegate {
     
     var startFromEdges = false
     var edges: NSDirectionalRectEdge = []
-    var update: (UIPresentation.State) -> Void = { _ in }
+    var shouldStart: (Edge) -> Bool = { _ in true }
+    var update: (UIPresentation.State, Edge) -> Void = { _, _ in }
     var direction: TransitionDirection = .removal
     weak var target: UIView?
-    private var axis: NSLayoutConstraint.Axis?
+    private var edge: Edge?
+    private var axis: NSLayoutConstraint.Axis {
+        switch edge {
+        case .leading, .trailing: return .horizontal
+        default: return .vertical
+        }
+    }
     private var wasBegun = false
     private var lastPercent: CGFloat?
     
@@ -32,16 +39,17 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
             break
             
         case .began:
+            setAxisIfNeeded()
             guard !wasBegun else { return }
             wasBegun = true
-            update(.begin)
+            update(.begin, edge ?? .leading)
             
         case .changed:
             guard wasBegun else { return }
             let percent = abs(max(0, min(1, percent)))
             guard percent != lastPercent else { return }
             lastPercent = percent
-            update(.change(direction.at(percent)))
+            update(.change(direction.at(percent)), edge ?? .leading)
             
         case .ended:
             finish(completed: percent > 0.5)
@@ -56,16 +64,16 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
     
     private func finish(completed: Bool) {
         wasBegun = false
-        axis = nil
         lastPercent = nil
         let duration = UIKitAnimation.defaultDuration * (completed ? (1 - percent) : percent)
-        update(.end(completed: completed, animation: .default(duration)))
+        update(.end(completed: completed, animation: .default(duration)), edge ?? .leading)
+        edge = nil
     }
     
     private var percent: CGFloat {
         guard let target else { return 0 }
         setAxisIfNeeded()
-        switch axis ?? .vertical {
+        switch axis {
         case .vertical:
             guard target.frame.height > 0 else { return 1 }
             return offset / target.frame.height
@@ -82,7 +90,7 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
         var value: CGFloat
         let offset = translation(in: view)
         setAxisIfNeeded()
-        switch axis ?? .vertical {
+        switch axis {
         case .vertical:
             guard edges.contains(.top) || edges.contains(.bottom) else { return 0 }
             value = -offset.y
@@ -109,13 +117,31 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
     }
     
     private func setAxisIfNeeded() {
-        guard axis == nil else { return }
-        let offset = velocity   (in: view)
-        axis = abs(offset.x) < abs(offset.y) ? .vertical : .horizontal
+        guard edge == nil else { return }
+        edge = computeEdge()
+    }
+    
+    private func computeEdge() -> Edge {
+        let offset = velocity(in: view)
+        let isLtr = view?.effectiveUserInterfaceLayoutDirection != .rightToLeft
+        let leftEdge: Edge = isLtr ? .leading : .trailing
+        let rightEdge: Edge = isLtr ? .trailing : .leading
+        return abs(offset.x) < abs(offset.y)
+            ? offset.y < 0 ? .top : .bottom
+            : offset.x < 0 ? leftEdge : rightEdge
     }
     
     func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
-        guard let view, let target, target.bounds.contains(gestureRecognizer.location(in: target)) else { return false }
+        let edge = computeEdge()
+        guard
+            let view,
+            let target,
+            target.bounds.contains(gestureRecognizer.location(in: target)),
+            edges.contains(NSDirectionalRectEdge(edge)),
+            shouldStart(computeEdge())
+        else {
+            return false
+        }
         let threshold: CGFloat = 36
         guard startFromEdges else {
             return true

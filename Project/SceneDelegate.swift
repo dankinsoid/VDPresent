@@ -9,7 +9,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 		// If using a storyboard, the `window` property will automatically be initialized and attached to the scene.
 		// This delegate does not imply the connecting scene or session are new (see `application:configurationForConnectingSceneSession` instead).
         UIPresentation.default = .fullScreen(interactive: true)
-		UIPresentation.default.animation = .default(1)
+//		UIPresentation.default.animation = .default(1)
 		guard let scene = (scene as? UIWindowScene) else { return }
 		window = UIWindow(windowScene: scene)
 		ViewController().show(animated: false)
