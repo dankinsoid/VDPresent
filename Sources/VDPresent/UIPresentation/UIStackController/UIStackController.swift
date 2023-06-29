@@ -4,6 +4,7 @@ import VDTransition
 open class UIStackController: UIViewController {
 
     public private(set) var viewControllers: [UIViewController] = []
+    public private(set) var isSettingControllers = false
 	public var presentation: UIPresentation?
 
 	override open var shouldAutomaticallyForwardAppearanceMethods: Bool { false }
@@ -12,7 +13,8 @@ open class UIStackController: UIViewController {
     private var containers: [UIViewController: UIStackControllerContainerView] = [:]
     private var wrappers: [UIViewController: UIView] = [:]
     private var presentations: [UIViewController: UIPresentation] = [:]
-	private let cache = UIPresentation.Context.Cache()
+    private var caches: [UIViewController: UIPresentation.Context.Cache] = [:]
+    private var presentationStack: [Setting] = []
 
     override public func loadView() {
         view = content
@@ -38,6 +40,17 @@ open class UIStackController: UIViewController {
 		animated: Bool = true,
 		completion: (() -> Void)? = nil
 	) {
+        guard !isSettingControllers else {
+            presentationStack.append(
+                Setting(
+                    viewControllers: newViewControllers,
+                    presentation: presentation,
+                    animated: animated,
+                    completion: completion
+                )
+            )
+            return
+        }
 		guard newViewControllers != viewControllers else {
 			completion?()
 			return
@@ -95,6 +108,20 @@ public extension UIStackController {
 			)
 		}
 	}
+    
+    func hideTop(
+        _ count: Int = 1,
+        as presentation: UIPresentation? = nil,
+        animated: Bool = true,
+        completion: (() -> Void)? = nil
+    ) {
+        set(
+            viewControllers: Array(viewControllers.dropLast(count)),
+            as: presentation,
+            animated: animated,
+            completion: completion
+        )
+    }
 }
 
 public extension UIStackController {
@@ -106,28 +133,30 @@ public extension UIStackController {
 
 	static var top: UIStackController? {
 		UIWindow.key?.rootViewController?
-			.selfAndAllPresented.compactMap { $0 as? UIStackController }.last?.topOrSelf
+			.selfAndAllPresented.compactMap { $0 as? UIStackController }.last?.topStackControllerOrSelf
 	}
 
-	var top: UIStackController? {
+	var topStackController: UIStackController? {
 		let lastPresentation = viewControllers.last?.selfAndAllChildren.compactMap { $0 as? UIStackController }.last
-		let top = lastPresentation?.top ?? lastPresentation
+		let top = lastPresentation?.topStackController ?? lastPresentation
 		guard presentedViewController == nil else {
-			return allPresented.compactMap { $0 as? UIStackController }.last?.top ?? top
+			return allPresented.compactMap { $0 as? UIStackController }.last?.topStackController ?? top
 		}
 		return top
 	}
 
-	var topOrSelf: UIStackController {
-		top ?? self
+	var topStackControllerOrSelf: UIStackController {
+        topStackController ?? self
 	}
 
-	var visibleViewController: UIViewController? {
+	var topViewController: UIViewController? {
 		get { viewControllers.last }
 		set {
 			if let newValue {
 				show(newValue)
-			}
+            } else {
+                hideTop(viewControllers.count)
+            }
 		}
 	}
 }
@@ -197,7 +226,11 @@ private extension UIStackController {
             views: { [weak self] in self?.wrapper(for: $0) ?? $0.view },
             animated: animated,
             isInteractive: isInteractive,
-            cache: cache
+            cache: cache(
+                for: direction == .insertion
+                    ? toViewControllers.last ?? UIViewController()
+                    : fromViewControllers.last ?? UIViewController()
+            )
         )
         return transitionBlocks(presentation: presentation, context: context, completion: completion)
     }
@@ -230,6 +263,7 @@ private extension UIStackController {
         presentation: UIPresentation,
         context: UIPresentation.Context
     ) {
+        isSettingControllers = true
         for toViewController in context.viewControllersToInsert {
             if wrappers[toViewController] == nil {
                 wrappers[toViewController] = wrap(view: toViewController.view)
@@ -303,7 +337,17 @@ private extension UIStackController {
                 toViewController.didMove(toParent: nil)
             }
         }
+        isSettingControllers = false
         completion?()
+        if let next = presentationStack.first {
+            presentationStack.removeFirst()
+            set(
+                viewControllers: next.viewControllers,
+                as: next.presentation,
+                animated: next.animated,
+                completion: next.completion
+            )
+        }
     }
     
 	func configureInteractivity(
@@ -314,9 +358,10 @@ private extension UIStackController {
         var completion: (Bool) -> Void = { _ in }
         presentation.interactivity?.uninstall(context: context)
 		presentation.interactivity?.install(context: context) { [weak self] context, state in
-            guard let self else { return }
+            guard let self else { return .prevent }
 			switch state {
 			case .begin:
+                guard !self.isSettingControllers else { return .prevent }
                 (prepare, _, completion) = self.transitionBlocks(
                     presentation: presentation,
                     context: context,
@@ -351,6 +396,7 @@ private extension UIStackController {
                     end()
                 }
 			}
+            return .allow
 		}
 	}
 }
@@ -362,6 +408,7 @@ private extension UIStackController {
         containers = containers.filter { set.contains($0.key) }
         wrappers = wrappers.filter { set.contains($0.key) }
         presentations = presentations.filter { set.contains($0.key) }
+        caches = caches.filter { set.contains($0.key) }
         updateContainers()
     }
         
@@ -384,7 +431,26 @@ private extension UIStackController {
         return container
     }
     
+    func cache(for controller: UIViewController) -> UIPresentation.Context.Cache {
+        if let result = caches[controller] {
+            return result
+        }
+        let cache = UIPresentation.Context.Cache()
+        caches[controller] = cache
+        return cache
+    }
+    
     func updateContainers() {
         content.containers = viewControllers.map(container)
+    }
+}
+
+private extension UIStackController {
+    
+    struct Setting {
+        var viewControllers: [UIViewController]
+        var presentation: UIPresentation?
+        var animated: Bool
+        var completion: (() -> Void)?
     }
 }

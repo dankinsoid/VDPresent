@@ -20,6 +20,12 @@ public struct UIPresentation {
 	}
 
 	public static var `default` = UIPresentation.sheet
+    
+    public var nonInteractive: UIPresentation {
+        var result = self
+        result.interactivity = nil
+        return result
+    }
 }
 
 public extension UIPresentation {
@@ -77,23 +83,27 @@ public extension UIPresentation {
 
 	struct Interactivity {
 
-		private let installer: (Context, @escaping (Context, State) -> Void) -> Void
+		private let installer: (Context, @escaping (Context, State) -> Policy) -> Void
         private let uninstaller: (Context) -> Void
 
 		public init(
-            installer: @escaping (Context, @escaping (Context, State) -> Void) -> Void,
+            installer: @escaping (Context, @escaping (Context, State) -> Policy) -> Void,
             uninstaller: @escaping (Context) -> Void
         ) {
 			self.installer = installer
             self.uninstaller = uninstaller
 		}
 
-		public func install(context: Context, observer: @escaping (Context, State) -> Void) {
+		public func install(context: Context, observer: @escaping (Context, State) -> Policy) {
 			installer(context, observer)
 		}
         
         public func uninstall(context: Context) {
             uninstaller(context)
+        }
+        
+        public enum Policy {
+            case allow, prevent
         }
 	}
 

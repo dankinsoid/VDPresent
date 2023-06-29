@@ -6,7 +6,7 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
     var startFromEdges = false
     var edges: NSDirectionalRectEdge = []
     var shouldStart: (Edge) -> Bool = { _ in true }
-    var update: (UIPresentation.State, Edge) -> Void = { _, _ in }
+    var update: (UIPresentation.State, Edge) -> UIPresentation.Interactivity.Policy = { _, _ in .prevent }
     var direction: TransitionDirection = .removal
     weak var target: UIView?
     private var edge: Edge?
@@ -41,20 +41,27 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
         case .began:
             setAxisIfNeeded()
             guard !wasBegun else { return }
-            wasBegun = true
-            update(.begin, edge ?? .leading)
+            if update(.begin, edge ?? .leading) == .allow {
+                wasBegun = true
+            } else {
+                stop()
+            }
             
         case .changed:
             guard wasBegun else { return }
             let percent = abs(max(0, min(1, percent)))
             guard percent != lastPercent else { return }
             lastPercent = percent
-            update(.change(direction.at(percent)), edge ?? .leading)
+            if update(.change(direction.at(percent)), edge ?? .leading) == .prevent {
+                stop()
+            }
             
         case .ended:
+            guard wasBegun else { return }
             finish(completed: percent > 0.35 || velocityInDirection > 800)
             
         case .failed, .cancelled:
+            guard wasBegun else { return }
             finish(completed: false)
             
         @unknown default:
@@ -63,8 +70,6 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
     }
     
     private func finish(completed: Bool) {
-        wasBegun = false
-        lastPercent = nil
         let duration: Double
         if completed {
             let _offset = offset
@@ -81,7 +86,13 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
         } else {
             duration = UIKitAnimation.defaultDuration * percent
         }
-        update(.end(completed: completed, animation: .default(duration)), edge ?? .leading)
+        _ = update(.end(completed: completed, animation: .default(duration)), edge ?? .leading)
+        stop()
+    }
+    
+    private func stop() {
+        wasBegun = false
+        lastPercent = nil
         edge = nil
     }
     

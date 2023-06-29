@@ -52,12 +52,12 @@ public extension UIPresentation.Transition {
                     }
                 }
                 
-//                if applyTransitionOnBothControllers {
-//                    context.backControllers.forEach {
-//                        let view = context.view(for: $0)
-//                        context.transitions[view] = content.inverted
-//                    }
-//                }
+                if applyTransitionOnBothControllers {
+                    context.remainingControllers.forEach {
+                        let view = context.view(for: $0)
+                        context.transitions[view] = content.inverted
+                    }
+                }
 
 			case let .change(progress):
                 let changingViews = context.changingControllers.map(context.container)

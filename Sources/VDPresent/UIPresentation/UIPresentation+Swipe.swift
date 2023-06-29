@@ -41,8 +41,8 @@ public extension UIPresentation.Interactivity {
                     return configuration.shouldStart(for: context, from: controller, to: edge)
                 }
                 swipeRecognizer.update = { [weak controller] percent, edge in
-                    guard let controller else { return }
-                    observer(configuration.context(for: context, from: controller, to: edge), percent)
+                    guard let controller else { return .prevent }
+                    return observer(configuration.context(for: context, from: controller, to: edge), percent)
                 }
                 swipeRecognizer.target = context.view(for: controller)
                 if swipeRec == nil {
@@ -100,7 +100,7 @@ public extension UIPresentation.Interactivity {
         
         public static func `default`(startFromEdge: Bool) -> SwipeConfiguration {
             SwipeConfiguration(startFromEdge: startFromEdge) { context, controller, edge in
-                guard let i = context.toViewControllers.firstIndex(of: controller) else {
+                guard let i = context.toViewControllers.firstIndex(where: controller.isDescendant) else {
                     return false
                 }
                 return i > 0
@@ -111,7 +111,8 @@ public extension UIPresentation.Interactivity {
                     fromViewControllers: context.toViewControllers,
                     toViewControllers: Array(
                         context.toViewControllers.prefix(
-                            upTo: context.toViewControllers.firstIndex(of: controller) ?? context.toViewControllers.count - 1
+                            upTo: context.toViewControllers.firstIndex(where: controller.isDescendant)
+                                ?? context.toViewControllers.count - 1
                         )
                     ),
                     views: context.view,
