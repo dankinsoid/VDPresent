@@ -29,7 +29,7 @@ import PackageDescription
 let package = Package(
   name: "SomeProject",
   dependencies: [
-    .package(url: "https://github.com/dankinsoid/VDPresent.git", from: "0.14.0")
+    .package(url: "https://github.com/dankinsoid/VDPresent.git", from: "0.14.1")
   ],
   targets: [
     .target(name: "SomeProject", dependencies: ["VDPresent"])
