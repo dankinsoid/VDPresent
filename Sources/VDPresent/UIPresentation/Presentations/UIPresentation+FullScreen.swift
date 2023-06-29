@@ -47,7 +47,8 @@ public extension UIPresentation.Transition {
             background: containerColor == .clear
                 ? .identity
                 : .value(\.backgroundColor, containerColor, default: containerColor.withAlphaComponent(0)),
-			applyTransitionOnBothControllers: false
+            applyTransitionOnBackControllers: false,
+            animateBackControllersReorder: false
 		)
 	}
     
@@ -56,7 +57,8 @@ public extension UIPresentation.Transition {
             content: .opacity,
             layout: .fill,
             background: .identity,
-            applyTransitionOnBothControllers: false
+            applyTransitionOnBackControllers: false,
+            animateBackControllersReorder: false
         )
     }
 }

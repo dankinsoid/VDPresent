@@ -40,17 +40,6 @@ open class UIStackController: UIViewController {
 		animated: Bool = true,
 		completion: (() -> Void)? = nil
 	) {
-		guard newViewControllers != viewControllers else {
-			completion?()
-			return
-		}
-        
-        let isEmpty = newViewControllers.isEmpty
-        if isEmpty, self === UIWindow.root?.rootViewController {
-            completion?()
-            return
-        }
-
         guard !isSettingControllers else {
             presentationStack.append(
                 Setting(
@@ -63,6 +52,17 @@ open class UIStackController: UIViewController {
             return
         }
         
+		guard newViewControllers != viewControllers else {
+			completion?()
+			return
+		}
+        
+        let isEmpty = newViewControllers.isEmpty
+        if isEmpty, self === UIWindow.root?.rootViewController {
+            completion?()
+            return
+        }
+
 		let isInsertion = newViewControllers.last.map { !viewControllers.contains($0) } ?? false
 
 		makeTransition(
@@ -276,6 +276,16 @@ private extension UIStackController {
                 presentations[toViewController] = presentation
             }
         }
+        
+        let top = context.direction == .insertion
+            ? context.toViewControllers.suffix(1).map(container)
+            : context.fromViewControllers.suffix(1).map(container)
+        let second = context.direction == .insertion
+            ? context.fromViewControllers.suffix(1).map(container)
+            : context.toViewControllers.suffix(1).map(container)
+        
+        second.forEach(content.bringSubviewToFront)
+        top.forEach(content.bringSubviewToFront)
         
         presentation.transition.update(context: context, state: .begin)
         

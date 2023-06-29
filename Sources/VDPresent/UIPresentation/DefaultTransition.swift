@@ -7,7 +7,8 @@ public extension UIPresentation.Transition {
 		content: UITransition<UIView>,
         layout: ContentLayout,
 		background: UITransition<UIView>,
-		applyTransitionOnBothControllers: Bool = false,
+		applyTransitionOnBackControllers: Bool,
+        animateBackControllersReorder: Bool,
 		prepare: ((UIPresentation.Context) -> Void)? = nil,
 		completion: ((UIPresentation.Context, Bool) -> Void)? = nil
 	) {
@@ -23,7 +24,11 @@ public extension UIPresentation.Transition {
                 }
                 
                 prepare?(context)
-                context.changingControllers.forEach {
+                let changing = animateBackControllersReorder
+                    ? context.changingControllers
+                    : context.topViewController
+                
+                changing.forEach {
                     let view = context.view(for: $0)
                     let currentTransition = context.transitions[view]
                     if context.toViewControllers.contains($0) {
@@ -52,17 +57,32 @@ public extension UIPresentation.Transition {
                     }
                 }
                 
-                if applyTransitionOnBothControllers {
-                    context.remainingControllers.forEach {
+                if applyTransitionOnBackControllers {
+                    let controllers = animateBackControllersReorder
+                        ? context.remainingControllers
+                        : context.secondViewController
+                    controllers.forEach {
                         let view = context.view(for: $0)
-                        context.transitions[view] = content.inverted
+                        let current = context.transitions[view]
+                        context.transitions[view] = context.direction == .insertion
+                            ? content.inverted.reversed
+                            : content.reversed
+                        context.transitions[view]?.beforeTransitionIfNeeded(view: view, current: current)
                     }
                 }
 
 			case let .change(progress):
-                let changingViews = context.changingControllers.map(context.container)
+                var controllers = animateBackControllersReorder
+                    ? context.changingControllers
+                    : context.topViewController
+                if applyTransitionOnBackControllers {
+                    controllers += animateBackControllersReorder
+                        ? context.remainingControllers
+                        : context.secondViewController
+                }
+                let views = Set(controllers.map { context.container(for: $0) as UIView })
                 context.transitions.forEach { key, _ in
-                    if let view = key.value, changingViews.contains(where: view.isDescendant) {
+                    if let view = key.value, views.contains(where: view.isDescendant) {
                         context.transitions[view]?.update(progress: progress, view: view)
                     }
                 }
@@ -105,6 +125,22 @@ extension UIPresentation.Context {
 	var remainingControllers: [UIViewController] {
 		toViewControllers.filter(fromViewControllers.contains)
 	}
+    
+    var allViewControllers: [UIViewController] {
+        changingControllers + remainingControllers
+    }
+    
+    var topViewController: [UIViewController] {
+        direction == .insertion
+            ? Array(toViewControllers.suffix(1))
+            : Array(fromViewControllers.suffix(1))
+    }
+    
+    var secondViewController: [UIViewController] {
+        direction == .insertion
+            ? Array(fromViewControllers.suffix(1))
+            : Array(toViewControllers.suffix(1))
+    }
 }
 
 extension Dictionary {

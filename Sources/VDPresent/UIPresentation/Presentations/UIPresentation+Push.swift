@@ -37,7 +37,9 @@ public extension UIPresentation.Transition {
                 removal: .move(edge: edge.opposite, offset: offset)
             ),
             layout: .fill,
-            background: .value(\.backgroundColor, containerColor, default: containerColor.withAlphaComponent(0))
+            background: .value(\.backgroundColor, containerColor, default: containerColor.withAlphaComponent(0)),
+            applyTransitionOnBackControllers: true,
+            animateBackControllersReorder: false
         )
     }
 }

@@ -58,7 +58,8 @@ public extension UIPresentation.Transition {
 			),
             layout: selfSized ? paddingLayout.combine(.alignment(.edge(edge))) : paddingLayout,
 			background: .backgroundColor(containerColor),
-			applyTransitionOnBothControllers: true
+			applyTransitionOnBackControllers: true,
+            animateBackControllersReorder: true
         ) { context in
             context.viewControllersToInsert.forEach {
                 let view = context.view(for: $0)
