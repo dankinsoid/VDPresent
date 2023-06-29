@@ -40,17 +40,6 @@ open class UIStackController: UIViewController {
 		animated: Bool = true,
 		completion: (() -> Void)? = nil
 	) {
-        guard !isSettingControllers else {
-            presentationStack.append(
-                Setting(
-                    viewControllers: newViewControllers,
-                    presentation: presentation,
-                    animated: animated,
-                    completion: completion
-                )
-            )
-            return
-        }
 		guard newViewControllers != viewControllers else {
 			completion?()
 			return
@@ -62,6 +51,18 @@ open class UIStackController: UIViewController {
             return
         }
 
+        guard !isSettingControllers else {
+            presentationStack.append(
+                Setting(
+                    viewControllers: newViewControllers,
+                    presentation: presentation,
+                    animated: animated,
+                    completion: completion
+                )
+            )
+            return
+        }
+        
 		let isInsertion = newViewControllers.last.map { !viewControllers.contains($0) } ?? false
 
 		makeTransition(
