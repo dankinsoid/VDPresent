@@ -52,7 +52,7 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
             update(.change(direction.at(percent)), edge ?? .leading)
             
         case .ended:
-            finish(completed: percent > 0.5)
+            finish(completed: percent > 0.35 || velocityInDirection > 800)
             
         case .failed, .cancelled:
             finish(completed: false)
@@ -65,7 +65,22 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
     private func finish(completed: Bool) {
         wasBegun = false
         lastPercent = nil
-        let duration = UIKitAnimation.defaultDuration * (completed ? (1 - percent) : percent)
+        let duration: Double
+        if completed {
+            let _offset = offset
+            let _percent = percent
+            let linearDuration = UIKitAnimation.defaultDuration * (1 - _percent)
+            let velocity = velocityInDirection
+            if _percent != 0, velocity != 0 {
+                let remaining = _offset / _percent - _offset
+                let naturalDuration = remaining / velocity
+                duration = min(linearDuration, naturalDuration)
+            } else {
+                duration = linearDuration
+            }
+        } else {
+            duration = UIKitAnimation.defaultDuration * percent
+        }
         update(.end(completed: completed, animation: .default(duration)), edge ?? .leading)
         edge = nil
     }
@@ -113,6 +128,21 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
             
         @unknown default:
             return 0
+        }
+    }
+    
+    private var velocityInDirection: CGFloat {
+        let vector = velocity(in: view)
+        let isLtr = view?.effectiveUserInterfaceLayoutDirection != .rightToLeft
+        switch edge {
+        case .top:
+            return -vector.y
+        case .bottom:
+            return vector.y
+        case .trailing:
+            return isLtr ? vector.x : -vector.x
+        default:
+            return isLtr ? -vector.x : vector.x
         }
     }
     

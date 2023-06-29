@@ -50,19 +50,24 @@ public extension UIPresentation.Transition {
 		return UIPresentation.Transition(
 			content: .asymmetric(
 				insertion: [
-					.move(edge: edge),
-					.constant(\.layer.cornerRadius, cornerRadius),
-					.constant(\.clipsToBounds, true),
-					.constant(\.layer.maskedCorners, .edge(edge.opposite)),
+					.move(edge: edge)
 				],
 				removal: [
-					.constant(\.clipsToBounds, true),
+                    .scale(0.98)
 				]
 			),
             layout: selfSized ? paddingLayout.combine(.alignment(.edge(edge))) : paddingLayout,
 			background: .backgroundColor(containerColor),
-			applyTransitionOnBothControllers: false
-		)
+			applyTransitionOnBothControllers: true
+        ) { context in
+            context.viewControllersToInsert.forEach {
+                let view = context.view(for: $0)
+                view.clipsToBounds = true
+                view.layer.cornerRadius = cornerRadius
+                view.layer.maskedCorners = .edge(edge.opposite)
+            }
+        } completion: { _, _ in
+        }
 	}
 }
 

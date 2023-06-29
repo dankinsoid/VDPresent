@@ -25,19 +25,21 @@ public extension UIPresentation.Transition {
                 prepare?(context)
                 context.changingControllers.forEach {
                     let view = context.view(for: $0)
-                    context.transitions[view]?.setInitialState(view: view)
+                    let currentTransition = context.transitions[view]
                     if context.toViewControllers.contains($0) {
                         context.transitions[view] = content
                     } else {
                         context.transitions[view] = content.inverted
                     }
+                    context.transitions[view]?.beforeTransitionIfNeeded(view: view, current: currentTransition)
                     
                     if !background.isIdentity {
                         let id = "BackgroundView"
                         if let backgroundView = context.container(for: $0).subviews
                             .first(where: { $0.accessibilityIdentifier == id }) {
-                            context.transitions[backgroundView]?.setInitialState(view: backgroundView)
+                            let current = context.transitions[backgroundView]
                             context.transitions[backgroundView] = background.reversed
+                            context.transitions[backgroundView]?.beforeTransitionIfNeeded(view: backgroundView, current: current)
                         } else {
                             let backgroundView = UIView()
                             backgroundView.accessibilityIdentifier = id
@@ -45,23 +47,17 @@ public extension UIPresentation.Transition {
                             backgroundView.isUserInteractionEnabled = false
                             context.container(for: $0).insertSubview(backgroundView, at: 0, layout: .fill)
                             context.transitions[backgroundView] = background.reversed
+                            context.transitions[backgroundView]?.beforeTransitionIfNeeded(view: backgroundView)
                         }
                     }
                 }
                 
-                if applyTransitionOnBothControllers {
-                    context.backControllers.forEach {
-                        let view = context.view(for: $0)
-                        context.transitions[view]?.setInitialState(view: view)
-                        context.transitions[view] = content.inverted
-                    }
-                }
-        
-                context.transitions.forEach {
-                    if let view = $0.key.value {
-                        context.transitions[view]?.beforeTransition(view: view)
-                    }
-                }
+//                if applyTransitionOnBothControllers {
+//                    context.backControllers.forEach {
+//                        let view = context.view(for: $0)
+//                        context.transitions[view] = content.inverted
+//                    }
+//                }
 
 			case let .change(progress):
                 let changingViews = context.changingControllers.map(context.container)
@@ -72,9 +68,11 @@ public extension UIPresentation.Transition {
                 }
 
 			case let .end(completed, _):
-                let viewsToRemove = context.viewControllersToRemove.map(context.container)
+                let array = completed
+                    ? context.viewControllersToRemove.map(context.container)
+                    : context.viewControllersToInsert.map(context.container)
                 context.transitions.forEach { key, _ in
-                    if let view = key.value, viewsToRemove.contains(where: view.isDescendant) {
+                    if let view = key.value, array.contains(where: view.isDescendant) {
                         context.transitions[view]?.setInitialState(view: view)
                         context.transitions[view] = nil
                     }
