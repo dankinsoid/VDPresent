@@ -60,11 +60,11 @@ public extension UIViewController {
 			result = UIStackController()
 			result.modalPresentationStyle = .overFullScreen
 			result.present(animated: false) {
-				result.show(self, presentation: presentation, animated: animated, completion: completion)
+				result.show(self, as: presentation, animated: animated, completion: completion)
 			}
 			return result
 		}
-		result.show(self, presentation: presentation, animated: animated, completion: completion)
+		result.show(self, as: presentation, animated: animated, completion: completion)
 		return result
 	}
 
@@ -85,7 +85,7 @@ public extension UIViewController {
             }
 			return
 		}
-        guard let index = stackController.viewControllers.firstIndex(of: self) else {
+        guard let index = stackController.viewControllers.firstIndex(where: isDescendant) else {
             completion?()
             return
         }

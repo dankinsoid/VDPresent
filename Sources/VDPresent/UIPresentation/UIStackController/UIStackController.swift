@@ -34,7 +34,7 @@ open class UIStackController: UIViewController {
 
 	open func set(
 		viewControllers newViewControllers: [UIViewController],
-		presentation: UIPresentation? = nil,
+		as presentation: UIPresentation? = nil,
 		animated: Bool = true,
 		completion: (() -> Void)? = nil
 	) {
@@ -75,21 +75,21 @@ public extension UIStackController {
 
 	func show(
 		_ viewController: UIViewController,
-		presentation: UIPresentation? = nil,
+		as presentation: UIPresentation? = nil,
 		animated: Bool = true,
 		completion: (() -> Void)? = nil
 	) {
-		if let i = viewControllers.firstIndex(of: viewController) {
+        if let i = viewControllers.firstIndex(where: viewController.isDescendant) {
 			set(
 				viewControllers: Array(viewControllers.prefix(through: i)),
-				presentation: presentation,
+				as: presentation,
 				animated: animated,
 				completion: completion
 			)
 		} else {
 			set(
 				viewControllers: viewControllers + [viewController],
-				presentation: presentation,
+				as: presentation,
 				animated: animated,
 				completion: completion
 			)
