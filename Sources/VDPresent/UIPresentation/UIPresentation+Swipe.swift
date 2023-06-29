@@ -5,7 +5,15 @@ public extension UIPresentation.Interactivity {
 	static var swipe: UIPresentation.Interactivity {
 		swipe(to: .bottom)
 	}
-
+    
+    @_disfavoredOverload
+    static func swipe(
+        to edge: Edge,
+        configuration: SwipeConfiguration = .default
+    ) -> UIPresentation.Interactivity {
+        .swipe(to: NSDirectionalRectEdge(edge), configuration: configuration)
+    }
+    
 	static func swipe(
 		to edges: NSDirectionalRectEdge,
         configuration: SwipeConfiguration = .default

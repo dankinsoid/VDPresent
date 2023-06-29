@@ -17,7 +17,7 @@ public extension UIPresentation {
 				from: edge,
 				containerColor: containerColor
 			),
-			interactivity: interactive ? .swipe(to: NSDirectionalRectEdge(edge)) : nil,
+			interactivity: interactive ? .swipe(to: edge) : nil,
 			animation: .default
 		)
 	}

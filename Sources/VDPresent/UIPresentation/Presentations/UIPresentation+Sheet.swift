@@ -5,6 +5,10 @@ public extension UIPresentation {
 	static var sheet: UIPresentation {
 		.sheet()
 	}
+    
+    static var pageSheet: UIPresentation {
+        .sheet(selfSized: false)
+    }
 
 	static func sheet(
 		from edge: Edge = .bottom,
@@ -23,7 +27,7 @@ public extension UIPresentation {
 				containerColor: containerColor,
 				onBouncing: onBouncing
 			),
-			interactivity: .swipe(to: NSDirectionalRectEdge(edge)),
+			interactivity: .swipe(to: edge),
 			animation: .default
 		)
 	}
@@ -49,12 +53,8 @@ public extension UIPresentation.Transition {
         )
 		return UIPresentation.Transition(
 			content: .asymmetric(
-				insertion: [
-					.move(edge: edge)
-				],
-				removal: [
-                    .scale(0.98)
-				]
+                insertion: .move(edge: edge),
+				removal: .scale(0.98)
 			),
             layout: selfSized ? paddingLayout.combine(.alignment(.edge(edge))) : paddingLayout,
 			background: .backgroundColor(containerColor),

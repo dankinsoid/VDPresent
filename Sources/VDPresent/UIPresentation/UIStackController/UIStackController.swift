@@ -325,8 +325,13 @@ private extension UIStackController {
                 prepare()
                 presentation.transition.update(context: context, state: state)
                 
-			case .change:
-                presentation.transition.update(context: context, state: state)
+			case let .change(progress):
+                if progress.progress > 1 {
+                    #warning("TODO")
+                    presentation.transition.update(context: context, state: state)
+                } else {
+                    presentation.transition.update(context: context, state: state)
+                }
                 
 			case let .end(completed, animation):
                 let end: () -> Void = {
