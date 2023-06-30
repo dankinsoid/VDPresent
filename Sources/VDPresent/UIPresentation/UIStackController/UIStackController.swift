@@ -15,6 +15,7 @@ open class UIStackController: UIViewController {
     private var presentations: [UIViewController: UIPresentation] = [:]
     private var caches: [UIViewController: UIPresentation.Context.Cache] = [:]
     private var presentationStack: [Setting] = []
+    private var animator: Animator?
 
     override public func loadView() {
         view = content
@@ -70,14 +71,9 @@ open class UIStackController: UIViewController {
 			from: viewControllers,
 			presentation: presentation ?? self.presentation(for: isInsertion ? newViewControllers : viewControllers),
 			direction: isInsertion ? .insertion : .removal,
-			animated: animated
-        ) { [weak self] in
-            if isEmpty {
-                self?.hide(animated: false, completion: completion)
-            } else {
-                completion?()
-            }
-        }
+			animated: animated,
+            completion: completion
+        )
 	}
     
     open func wrap(view: UIView) -> UIView {
@@ -94,12 +90,16 @@ public extension UIStackController {
 		completion: (() -> Void)? = nil
 	) {
         if let i = viewControllers.firstIndex(where: viewController.isDescendant) {
-			set(
-				viewControllers: Array(viewControllers.prefix(through: i)),
-				as: presentation,
-				animated: animated,
-				completion: completion
-			)
+            if let child = viewController.stackController, child !== self {
+                child.show(as: presentation, animated: animated, completion: completion)
+            } else {
+                set(
+                    viewControllers: Array(viewControllers.prefix(through: i)),
+                    as: presentation,
+                    animated: animated,
+                    completion: completion
+                )
+            }
 		} else {
 			set(
 				viewControllers: viewControllers + [viewController],
@@ -304,7 +304,7 @@ private extension UIStackController {
             context.fromViewControllers.last?.beginAppearanceTransition(false, animated: context.animated)
         }
         
-        presentation.transition.update(context: context, state: .change(context.direction.at(0)))
+        presentation.transition.update(context: context, state: .change(context.direction, .start))
     }
     
     func animationBlock(
@@ -315,7 +315,7 @@ private extension UIStackController {
             context.toViewControllers.last?.beginAppearanceTransition(true, animated: context.animated)
             context.fromViewControllers.last?.beginAppearanceTransition(false, animated: context.animated)
         }
-        presentation.transition.update(context: context, state: .change(context.direction.at(1)))
+        presentation.transition.update(context: context, state: .change(context.direction, .end))
     }
     
     func completionBlock(
@@ -365,47 +365,33 @@ private extension UIStackController {
 		presentation: UIPresentation,
         context: UIPresentation.Context
 	) {
-        var prepare: () -> Void = {}
-        var completion: (Bool) -> Void = { _ in }
         presentation.interactivity?.uninstall(context: context)
 		presentation.interactivity?.install(context: context) { [weak self] context, state in
             guard let self else { return .prevent }
 			switch state {
 			case .begin:
                 guard !self.isSettingControllers else { return .prevent }
-                (prepare, _, completion) = self.transitionBlocks(
+                let (prepare, animate, completion) = self.transitionBlocks(
                     presentation: presentation,
                     context: context,
                     completion: nil
                 )
                 prepare()
-                presentation.transition.update(context: context, state: state)
+                let animator = Animator()
+                self.animator = animator
+                animator.addAnimations(animate)
+                animator.addCompletion { position in
+                    completion(position == .end)
+                }
+                animator.startAnimation()
+                animator.pauseAnimation()
                 
 			case let .change(progress):
-                if progress.progress > 1 {
-                    #warning("TODO")
-                    presentation.transition.update(context: context, state: state)
-                } else {
-                    presentation.transition.update(context: context, state: state)
-                }
+                self.animator?.fractionComplete = progress.value
                 
-			case let .end(completed, animation):
-                let end: () -> Void = {
-                    presentation.transition.update(context: context, state: state)
-                    completion(completed)
-                }
-                if let animation {
-                    UIView.animate(with: animation) {
-                        presentation.transition.update(
-                            context: context,
-                            state: .change(context.direction.at(completed ? 1 : 0))
-                        )
-                    } completion: { _ in
-                        end()
-                    }
-                } else {
-                    end()
-                }
+			case let .end(completed):
+                self.animator?.finishAnimation(at: completed ? .end : .start)
+                self.animator = nil
 			}
             return .allow
 		}

@@ -6,8 +6,9 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
     var startFromEdges = false
     var edges: NSDirectionalRectEdge = []
     var shouldStart: (Edge) -> Bool = { _ in true }
-    var update: (UIPresentation.State, Edge) -> UIPresentation.Interactivity.Policy = { _, _ in .prevent }
+    var update: (UIPresentation.Interactivity.State, Edge) -> UIPresentation.Interactivity.Policy = { _, _ in .prevent }
     var direction: TransitionDirection = .removal
+    var fullDuration: Double = UIKitAnimation.defaultDuration
     weak var target: UIView?
     private var edge: Edge?
     private var axis: NSLayoutConstraint.Axis {
@@ -18,6 +19,8 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
     }
     private var wasBegun = false
     private var lastPercent: CGFloat?
+    private var initialPercent: CGFloat = 0
+    private var displayLink: DisplayLink?
     
     init() {
         super.init(target: nil, action: nil)
@@ -39,8 +42,14 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
             break
             
         case .began:
+            guard !wasBegun else {
+                if displayLink != nil {
+                    initialPercent = lastPercent ?? 0
+                    displayLink = nil
+                }
+                return
+            }
             setAxisIfNeeded()
-            guard !wasBegun else { return }
             if update(.begin, edge ?? .leading) == .allow {
                 wasBegun = true
             } else {
@@ -50,11 +59,7 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
         case .changed:
             guard wasBegun else { return }
             let percent = abs(max(0, min(1, percent)))
-            guard percent != lastPercent else { return }
-            lastPercent = percent
-            if update(.change(direction.at(percent)), edge ?? .leading) == .prevent {
-                stop()
-            }
+            update(percent: percent)
             
         case .ended:
             guard wasBegun else { return }
@@ -69,12 +74,20 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
         }
     }
     
+    private func update(percent: Double) {
+        guard percent != lastPercent else { return }
+        lastPercent = percent
+        if update(.change(direction.at(percent)), edge ?? .leading) == .prevent {
+            stop()
+        }
+    }
+    
     private func finish(completed: Bool) {
         let duration: Double
+        let _percent = percent
         if completed {
             let _offset = offset
-            let _percent = percent
-            let linearDuration = UIKitAnimation.defaultDuration * (1 - _percent)
+            let linearDuration = fullDuration * (1 - _percent)
             let velocity = velocityInDirection
             if _percent != 0, velocity != 0 {
                 let remaining = _offset / _percent - _offset
@@ -84,16 +97,25 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
                 duration = linearDuration
             }
         } else {
-            duration = UIKitAnimation.defaultDuration * percent
+            duration = fullDuration * percent
         }
-        _ = update(.end(completed: completed, animation: .default(duration)), edge ?? .leading)
-        stop()
+        
+        displayLink = DisplayLink(duration: duration) { [weak self] completed in
+            guard let self else { return }
+            update(percent: _percent + (1 - _percent) * completed)
+            if completed == 1 {
+                _ = update(.end(completed: true), edge ?? .leading)
+                stop()
+            }
+        }
+        displayLink?.start()
     }
     
     private func stop() {
         wasBegun = false
         lastPercent = nil
         edge = nil
+        displayLink = nil
     }
     
     private var percent: CGFloat {
@@ -107,7 +129,7 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
             guard target.frame.width > 0 else { return 1 }
             return offset / target.frame.width
         @unknown default:
-            return 0
+            return initialPercent
         }
     }
     
@@ -125,7 +147,7 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
             } else if edges.contains(.bottom) {
                 value = -value
             }
-            return value
+            return value + initialPercent * (target?.frame.height ?? 0)
             
         case .horizontal:
             guard edges.contains(.leading) || edges.contains(.trailing) else { return 0 }
@@ -135,7 +157,7 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
             } else if edges.contains(.trailing) {
                 value = -value
             }
-            return value
+            return value + initialPercent * (target?.frame.width ?? 0)
             
         @unknown default:
             return 0
@@ -204,5 +226,41 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
             edges.contains(.bottom) && edgeInsets.top < threshold
         )
         return result
+    }
+}
+
+private final class DisplayLink: NSObject {
+    
+    private var displayLink: CADisplayLink?
+    private var startedAt: Double?
+    private let duration: Double
+    private let observe: (Double) -> Void
+    
+    init(duration: Double, observer: @escaping (Double) -> Void) {
+        self.duration = duration
+        self.observe = observer
+        super.init()
+    }
+    
+    func start() {
+        displayLink = CADisplayLink(target: self, selector: #selector(handler))
+        displayLink?.add(to: .main, forMode: .default)
+        startedAt = CACurrentMediaTime()
+    }
+    
+    deinit {
+        displayLink?.isPaused = true
+        displayLink?.invalidate()
+    }
+    
+    @objc private func handler(displayLink: CADisplayLink) {
+        let currentTime = CACurrentMediaTime()
+        let completed = duration > 0
+            ? min(1, max(0, (currentTime - (startedAt ?? currentTime)) / duration))
+            : 1.0
+        if completed == 1 {
+            displayLink.isPaused = true
+        }
+        observe(completed)
     }
 }

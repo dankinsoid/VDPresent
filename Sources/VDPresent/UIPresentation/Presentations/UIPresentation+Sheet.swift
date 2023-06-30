@@ -54,7 +54,7 @@ public extension UIPresentation.Transition {
 		return UIPresentation.Transition(
 			content: .asymmetric(
                 insertion: .move(edge: edge),
-				removal: .scale(0.98)
+                removal: [.scale(0.98), .move(edge: edge.opposite, offset: .absolute(10))]
 			),
             layout: selfSized ? paddingLayout.combine(.alignment(.edge(edge))) : paddingLayout,
 			background: .backgroundColor(containerColor),

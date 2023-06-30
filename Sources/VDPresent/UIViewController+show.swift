@@ -64,7 +64,25 @@ public extension UIViewController {
 			}
 			return result
 		}
-		result.show(self, as: presentation, animated: animated, completion: completion)
+        if result.stackController != nil {
+            var isCompleted = false
+            result.show(self, as: presentation, animated: animated) {
+                guard isCompleted else {
+                    isCompleted = true
+                    return
+                }
+                completion?()
+            }
+            result.show(animated: animated) {
+                guard isCompleted else {
+                    isCompleted = true
+                    return
+                }
+                completion?()
+            }
+        } else {
+            result.show(self, as: presentation, animated: animated, completion: completion)
+        }
 		return result
 	}
 
@@ -93,7 +111,7 @@ public extension UIViewController {
             viewControllers: Array(stackController.viewControllers.prefix(upTo: index)),
             animated: animated
         ) {
-            if index == 0 {
+            if index == 0, stackController !== UIWindow.root?.rootViewController {
                 stackController.hide(animated: false, completion: completion)
             } else {
                 completion?()

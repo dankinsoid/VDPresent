@@ -105,6 +105,13 @@ public extension UIPresentation {
         public enum Policy {
             case allow, prevent
         }
+        
+        public enum State: Equatable {
+            
+            case begin
+            case change(Progress)
+            case end(completed: Bool)
+        }
 	}
 
 	struct Transition {
@@ -125,8 +132,8 @@ public extension UIPresentation {
 	enum State: Equatable {
 
 		case begin
-		case change(Progress)
-        case end(completed: Bool, animation: UIKitAnimation? = nil)
+        case change(TransitionDirection, Progress.Edge)
+        case end(completed: Bool)
 	}
 }
 

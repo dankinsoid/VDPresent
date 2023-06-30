@@ -71,7 +71,7 @@ public extension UIPresentation.Transition {
                     }
                 }
 
-			case let .change(progress):
+			case let .change(direction, progress):
                 var controllers = animateBackControllersReorder
                     ? context.changingControllers
                     : context.topViewController
@@ -83,11 +83,11 @@ public extension UIPresentation.Transition {
                 let views = Set(controllers.map { context.container(for: $0) as UIView })
                 context.transitions.forEach { key, _ in
                     if let view = key.value, views.contains(where: view.isDescendant) {
-                        context.transitions[view]?.update(progress: progress, view: view)
+                        context.transitions[view]?.update(progress: direction.at(progress), view: view)
                     }
                 }
 
-			case let .end(completed, _):
+			case let .end(completed):
                 let array = completed
                     ? context.viewControllersToRemove.map(context.container)
                     : context.viewControllersToInsert.map(context.container)
