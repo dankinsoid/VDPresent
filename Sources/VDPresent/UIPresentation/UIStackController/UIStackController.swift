@@ -231,7 +231,8 @@ private extension UIStackController {
                 for: direction == .insertion
                     ? toViewControllers.last ?? UIViewController()
                     : fromViewControllers.last ?? UIViewController()
-            )
+            ),
+            environment: presentation.environment
         )
         return transitionBlocks(presentation: presentation, context: context, completion: completion)
     }
@@ -298,12 +299,7 @@ private extension UIStackController {
         context.viewControllersToRemove.forEach {
             $0.willMove(toParent: nil)
         }
-        
-        if context.isInteractive {
-            context.toViewControllers.last?.beginAppearanceTransition(true, animated: context.animated)
-            context.fromViewControllers.last?.beginAppearanceTransition(false, animated: context.animated)
-        }
-        
+      
         presentation.transition.update(context: context, state: .change(context.direction, .start))
     }
     
@@ -311,10 +307,8 @@ private extension UIStackController {
         presentation: UIPresentation,
         context: UIPresentation.Context
     ) {
-        if !context.isInteractive {
-            context.toViewControllers.last?.beginAppearanceTransition(true, animated: context.animated)
-            context.fromViewControllers.last?.beginAppearanceTransition(false, animated: context.animated)
-        }
+        context.toViewControllers.last?.beginAppearanceTransition(true, animated: context.animated)
+        context.fromViewControllers.last?.beginAppearanceTransition(false, animated: context.animated)
         presentation.transition.update(context: context, state: .change(context.direction, .end))
     }
     
@@ -361,7 +355,7 @@ private extension UIStackController {
         }
     }
     
-	func configureInteractivity(
+    func configureInteractivity(
 		presentation: UIPresentation,
         context: UIPresentation.Context
 	) {

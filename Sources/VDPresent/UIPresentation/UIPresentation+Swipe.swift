@@ -35,7 +35,7 @@ public extension UIPresentation.Interactivity {
                 let swipeRecognizer = swipeRec ?? SwipeGestureRecognizer()
                 swipeRecognizer.isEnabled = true
                 swipeRecognizer.edges = edges
-                swipeRecognizer.startFromEdges = configuration.startFromEdge
+                swipeRecognizer.startFromEdges = context.environment.swipeFromEdge
                 swipeRecognizer.shouldStart = { [weak controller] edge in
                     guard let controller else { return false }
                     return configuration.shouldStart(for: context, from: controller, to: edge)
@@ -66,14 +66,11 @@ public extension UIPresentation.Interactivity {
         
         private let _shouldStart: (UIPresentation.Context, UIViewController, Edge) -> Bool
         private let _moveToEdgeContext: (UIPresentation.Context, UIViewController, Edge) -> UIPresentation.Context
-        public let startFromEdge: Bool
         
         public init(
-            startFromEdge: Bool = false,
             shouldStart: @escaping (UIPresentation.Context, UIViewController, Edge) -> Bool,
             moveToEdgeContext: @escaping (UIPresentation.Context, UIViewController, Edge) -> UIPresentation.Context
         ) {
-            self.startFromEdge = startFromEdge
             self._shouldStart = shouldStart
             self._moveToEdgeContext = moveToEdgeContext
         }
@@ -95,11 +92,7 @@ public extension UIPresentation.Interactivity {
         }
         
         public static var `default`: SwipeConfiguration {
-            .default(startFromEdge: false)
-        }
-        
-        public static func `default`(startFromEdge: Bool) -> SwipeConfiguration {
-            SwipeConfiguration(startFromEdge: startFromEdge) { context, controller, edge in
+            SwipeConfiguration { context, controller, edge in
                 guard let i = context.toViewControllers.firstIndex(where: controller.isDescendant) else {
                     return false
                 }
@@ -118,9 +111,18 @@ public extension UIPresentation.Interactivity {
                     views: context.view,
                     animated: true,
                     isInteractive: true,
-                    cache: context.cache
+                    cache: context.cache,
+                    environment: context.environment
                 )
             }
         }
+    }
+}
+
+public extension UIPresentation.Environment {
+    
+    var swipeFromEdge: Bool {
+        get { self[\.swipeFromEdge] ?? false }
+        set { self[\.swipeFromEdge] = newValue }
     }
 }

@@ -47,6 +47,7 @@ class ViewController: UIViewController {
 //        controller.view.safeAreaLayoutGuide.heightAnchor.constraint(equalToConstant: 200).isActive = true
 //        present(controller, animated: true)
 		controller.show(animated: true)
+//        navigationController?.pushViewController(controller, animated: true)
 	}
     
     @objc func tapHide(_: Any) {

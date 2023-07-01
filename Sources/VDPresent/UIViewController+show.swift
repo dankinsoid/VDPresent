@@ -22,8 +22,22 @@ public extension UIViewController {
 
 	var isShown: Bool {
 		get {
-			#warning("TODO")
-			return isBeingPresented
+            #warning("TODO")
+            guard viewIfLoaded?.window != nil else { return false }
+            if let stackController {
+                guard let top = stackController.topViewController else {
+                    return false
+                }
+                return isDescendant(of: top) && stackController.isShown
+            } else if let root = UIWindow.root?.rootViewController {
+                if let presented = root.allPresented.last {
+                    return isDescendant(of: presented)
+                } else {
+                    return isDescendant(of: root)
+                }
+            } else {
+                return false
+            }
 		}
 		set {
 			guard newValue != isShown else { return }

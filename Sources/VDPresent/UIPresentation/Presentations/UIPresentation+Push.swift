@@ -10,36 +10,27 @@ public extension UIPresentation {
     static func push(
         to edge: Edge = .trailing,
         containerColor: UIColor = .black.withAlphaComponent(0.1),
-        backViewControllerOffset offset: RelationValue<CGFloat> = .relative(0.7)
+        backViewControllerOffset offset: RelationValue<CGFloat> = .relative(0.3)
     ) -> UIPresentation {
         UIPresentation(
-            transition: .push(
-                to: edge,
-                containerColor: containerColor,
-                backViewControllerOffset: offset
-            ),
+            transition: .default(),
             interactivity: .swipe(to: edge),
             animation: .default(UINavigationController.hideShowBarDuration)
         )
-    }
-}
-
-public extension UIPresentation.Transition {
-    
-    static func push(
-        to edge: Edge = .trailing,
-        containerColor: UIColor = .black.withAlphaComponent(0.1),
-        backViewControllerOffset offset: RelationValue<CGFloat> = .relative(0.7)
-    ) -> UIPresentation.Transition {
-        UIPresentation.Transition(
-            content: .asymmetric(
+        .environment(
+            \.contentTransition,
+             .asymmetric(
                 insertion: .move(edge: edge),
                 removal: .move(edge: edge.opposite, offset: offset)
-            ),
-            layout: .fill,
-            background: .value(\.backgroundColor, containerColor, default: containerColor.withAlphaComponent(0)),
-            applyTransitionOnBackControllers: true,
-            animateBackControllersReorder: false
+             )
         )
+        .environment(
+            \.backgroundTransition,
+             .value(\.backgroundColor, containerColor, default: containerColor.withAlphaComponent(0))
+        )
+        .environment(\.applyTransitionOnBackControllers, true)
+        .environment(\.animateBackControllersReorder, false)
+        .environment(\.hideBackControllers, true)
+        .environment(\.swipeFromEdge, true)
     }
 }

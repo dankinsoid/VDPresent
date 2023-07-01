@@ -8,15 +8,18 @@ public struct UIPresentation {
 	public var transition: Transition
 	public var interactivity: Interactivity?
 	public var animation: UIKitAnimation
+    public var environment: UIPresentation.Environment
 
 	public init(
 		transition: Transition,
 		interactivity: Interactivity? = nil,
-		animation: UIKitAnimation = .default
+		animation: UIKitAnimation = .default,
+        environment: UIPresentation.Environment = UIPresentation.Environment()
 	) {
 		self.transition = transition
 		self.interactivity = interactivity
 		self.animation = animation
+        self.environment = environment
 	}
 
 	public static var `default` = UIPresentation.sheet
@@ -24,6 +27,21 @@ public struct UIPresentation {
     public var nonInteractive: UIPresentation {
         var result = self
         result.interactivity = nil
+        return result
+    }
+    
+    public func environment<T>(_ keyPath: WritableKeyPath<UIPresentation.Environment, T>, _ value: T) -> UIPresentation {
+        var result = self
+        result.environment[keyPath: keyPath] = value
+        return result
+    }
+    
+    public func transformEnvironment<T>(
+        _ keyPath: WritableKeyPath<UIPresentation.Environment, T>,
+        _ value: (T) -> T
+    ) -> UIPresentation {
+        var result = self
+        result.environment[keyPath: keyPath] = value(result.environment[keyPath: keyPath])
         return result
     }
 }
@@ -38,6 +56,7 @@ public extension UIPresentation {
 		public let animated: Bool
 		public let isInteractive: Bool
 		public let cache: Cache
+        public let environment: UIPresentation.Environment
         
         private let _fromViewControllers: [Weak<UIViewController>]
         private let _toViewControllers: [Weak<UIViewController>]
@@ -52,7 +71,8 @@ public extension UIPresentation {
             views: @escaping (UIViewController) -> UIView,
 			animated: Bool,
 			isInteractive: Bool,
-			cache: Cache
+			cache: Cache,
+            environment: UIPresentation.Environment
         ) {
             self.direction = direction
             self.container = container
@@ -62,6 +82,7 @@ public extension UIPresentation {
             self.animated = animated
             self.isInteractive = isInteractive
             self.cache = cache
+            self.environment = environment
         }
         
         public func container(for controller: UIViewController) -> UIStackControllerContainer {
@@ -161,4 +182,19 @@ public extension UIPresentation.Context {
 
 		public init() {}
 	}
+}
+
+public extension UIPresentation {
+    
+    struct Environment {
+        
+        private var values: [PartialKeyPath<UIPresentation.Environment>: Any] = [:]
+        
+        public subscript<T>(_ keyPath: WritableKeyPath<UIPresentation.Environment, T>) -> T? {
+            get { values[keyPath] as? T }
+            set { values[keyPath] = newValue }
+        }
+        
+        public init() {}
+    }
 }

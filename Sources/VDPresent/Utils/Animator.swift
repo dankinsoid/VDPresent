@@ -15,7 +15,7 @@ final class Animator: UIViewPropertyAnimator {
 	}
 
 	deinit {
-		finishAnimation(at: .current)
+		finishAnimation(at: .end)
 	}
 }
 

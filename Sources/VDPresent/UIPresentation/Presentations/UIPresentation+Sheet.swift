@@ -18,57 +18,38 @@ public extension UIPresentation {
 		containerColor: UIColor = .pageSheetBackground,
 		onBouncing: @escaping (CGFloat) -> Void = { _ in }
 	) -> UIPresentation {
-		UIPresentation(
-			transition: .sheet(
-				from: edge,
-				minOffset: minOffset,
-                selfSized: selfSized,
-				cornerRadius: cornerRadius,
-				containerColor: containerColor,
-				onBouncing: onBouncing
-			),
-			interactivity: .swipe(to: edge),
-			animation: .default
-		)
-	}
-}
-
-public extension UIPresentation.Transition {
-
-	static var sheet: UIPresentation.Transition {
-		.sheet()
-	}
-
-	static func sheet(
-		from edge: Edge = .bottom,
-		minOffset: CGFloat = 10,
-        selfSized: Bool = true,
-		cornerRadius: CGFloat = 10,
-		containerColor: UIColor = .pageSheetBackground,
-		onBouncing: @escaping (CGFloat) -> Void = { _ in }
-	) -> UIPresentation.Transition {
         let paddingLayout = ContentLayout.padding(
             NSDirectionalEdgeInsets([edge.opposite: minOffset]),
             insideSafeArea: NSDirectionalRectEdge(edge.opposite)
         )
-		return UIPresentation.Transition(
-			content: .asymmetric(
+		return UIPresentation(
+            transition: .default { context in
+                context.viewControllersToInsert.forEach {
+                    let view = context.view(for: $0)
+                    view.clipsToBounds = true
+                    view.layer.cornerRadius = cornerRadius
+                    view.layer.maskedCorners = .edge(edge.opposite)
+                }
+            } completion: { _, _ in
+            },
+			interactivity: .swipe(to: edge),
+			animation: .default
+		)
+        .environment(
+            \.contentTransition,
+             .asymmetric(
                 insertion: .move(edge: edge),
                 removal: [.scale(0.98), .move(edge: edge.opposite, offset: .absolute(10))]
-			),
-            layout: selfSized ? paddingLayout.combine(.alignment(.edge(edge))) : paddingLayout,
-			background: .backgroundColor(containerColor),
-			applyTransitionOnBackControllers: true,
-            animateBackControllersReorder: true
-        ) { context in
-            context.viewControllersToInsert.forEach {
-                let view = context.view(for: $0)
-                view.clipsToBounds = true
-                view.layer.cornerRadius = cornerRadius
-                view.layer.maskedCorners = .edge(edge.opposite)
-            }
-        } completion: { _, _ in
-        }
+             )
+        )
+        .environment(
+            \.contentLayout,
+             selfSized ? paddingLayout.combine(.alignment(.edge(edge))) : paddingLayout
+        )
+        .environment(\.backgroundTransition, .backgroundColor(containerColor))
+        .environment(\.applyTransitionOnBackControllers, true)
+        .environment(\.animateBackControllersReorder, true)
+        .environment(\.hideBackControllers, false)
 	}
 }
 
