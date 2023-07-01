@@ -11,7 +11,7 @@ public struct UIPresentation {
     public var environment: UIPresentation.Environment
 
 	public init(
-		transition: Transition,
+        transition: Transition = .default(),
 		interactivity: Interactivity? = nil,
 		animation: UIKitAnimation = .default,
         environment: UIPresentation.Environment = UIPresentation.Environment()
@@ -27,6 +27,18 @@ public struct UIPresentation {
     public var nonInteractive: UIPresentation {
         var result = self
         result.interactivity = nil
+        return result
+    }
+    
+    public func with(animation: UIKitAnimation) -> UIPresentation {
+        var result = self
+        result.animation = animation
+        return result
+    }
+    
+    public func with(interactivity: Interactivity?) -> UIPresentation {
+        var result = self
+        result.interactivity = interactivity
         return result
     }
     
@@ -57,6 +69,7 @@ public extension UIPresentation {
 		public let isInteractive: Bool
 		public let cache: Cache
         public let environment: UIPresentation.Environment
+        public let animation: UIKitAnimation
         
         private let _fromViewControllers: [Weak<UIViewController>]
         private let _toViewControllers: [Weak<UIViewController>]
@@ -70,6 +83,7 @@ public extension UIPresentation {
 			toViewControllers: [UIViewController],
             views: @escaping (UIViewController) -> UIView,
 			animated: Bool,
+            animation: UIKitAnimation,
 			isInteractive: Bool,
 			cache: Cache,
             environment: UIPresentation.Environment
@@ -83,6 +97,7 @@ public extension UIPresentation {
             self.isInteractive = isInteractive
             self.cache = cache
             self.environment = environment
+            self.animation = animation
         }
         
         public func container(for controller: UIViewController) -> UIStackControllerContainer {
@@ -131,7 +146,7 @@ public extension UIPresentation {
             
             case begin
             case change(Progress)
-            case end(completed: Bool)
+            case end(completed: Bool, after: Double)
         }
 	}
 

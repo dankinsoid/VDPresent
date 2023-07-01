@@ -36,6 +36,7 @@ public extension UIPresentation.Interactivity {
                 swipeRecognizer.isEnabled = true
                 swipeRecognizer.edges = edges
                 swipeRecognizer.startFromEdges = context.environment.swipeFromEdge
+                swipeRecognizer.fullDuration = context.animation.duration
                 swipeRecognizer.shouldStart = { [weak controller] edge in
                     guard let controller else { return false }
                     return configuration.shouldStart(for: context, from: controller, to: edge)
@@ -110,6 +111,7 @@ public extension UIPresentation.Interactivity {
                     ),
                     views: context.view,
                     animated: true,
+                    animation: context.animation,
                     isInteractive: true,
                     cache: context.cache,
                     environment: context.environment

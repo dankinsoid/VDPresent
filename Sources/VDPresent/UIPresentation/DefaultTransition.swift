@@ -95,11 +95,16 @@ public extension UIPresentation.Transition {
                         context.transitions[view] = nil
                     }
                 }
-                if completed, context.environment.hideBackControllers, !context.toViewControllers.isEmpty {
-                    context.toViewControllers.dropLast().forEach {
-                        context.container(for: $0).isHidden = true
-                        let view = context.view(for: $0)
-                        context.transitions[view]?.setInitialState(view: view)
+                if context.environment.hideBackControllers {
+                    let array = completed
+                        ? context.toViewControllers
+                        : context.fromViewControllers
+                    if !array.isEmpty {
+                        array.dropLast().forEach {
+                            context.container(for: $0).isHidden = true
+                            let view = context.view(for: $0)
+                            context.transitions[view]?.setInitialState(view: view)
+                        }
                     }
                 }
                 completion?(context, completed)

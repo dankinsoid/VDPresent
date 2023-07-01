@@ -83,19 +83,21 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
     }
     
     private func finish(completed: Bool) {
-        let _percent = percent
-        displayLink = DisplayLink(duration: fullDuration) { [weak self] progress in
-            guard let self else { return }
-            let percent = completed
-                ? _percent + (1 - _percent) * progress
-                : _percent * (1 - progress)
-            update(percent: percent)
-            if progress == 1 {
-                _ = update(.end(completed: completed), edge ?? .leading)
-                stop()
-            }
-        }
-        displayLink?.start()
+        _ = update(.end(completed: completed, after: fullDuration), edge ?? .leading)
+        stop()
+//        let _percent = percent
+//        displayLink = DisplayLink(duration: fullDuration) { [weak self] progress in
+//            guard let self else { return }
+//            let percent = completed
+//                ? _percent + (1 - _percent) * progress
+//                : _percent * (1 - progress)
+//            update(percent: percent)
+//            if progress == 1 {
+//                _ = update(.end(completed: completed, after: 0), edge ?? .leading)
+//                stop()
+//            }
+//        }
+//        displayLink?.start()
     }
     
     private func stop() {

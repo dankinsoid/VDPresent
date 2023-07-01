@@ -4,47 +4,44 @@ import VDTransition
 public extension UIPresentation {
 
 	static var fullScreen: UIPresentation {
-		.fullScreen()
+        .fullScreen(from: .bottom)
 	}
     
     static var overFullScreen: UIPresentation {
-        .fullScreen(overCurrentContext: true)
+        .fullScreen(from: .bottom, overCurrentContext: true)
     }
     
-	static func fullScreen(
-		from edge: Edge = .bottom,
-		containerColor: UIColor = .pageSheetBackground,
-		interactive: Bool = false,
+    static func fullScreen(
+        from edge: Edge,
+        containerColor: UIColor = .pageSheetBackground,
+        interactive: Bool = false,
         overCurrentContext: Bool = false
-	) -> UIPresentation {
-		UIPresentation(
-            transition: .default(),
-			interactivity: interactive ? .swipe(to: edge) : nil,
-			animation: .default
-		)
-        .environment(\.contentTransition, .move(edge: edge))
-        .environment(\.contentLayout, .fill)
+    ) -> UIPresentation {
+        .fullScreen(
+            .move(edge: edge),
+            interactivity: interactive ? .swipe(to: edge) : nil
+        )
         .environment(
             \.backgroundTransition,
              containerColor == .clear
-                ? .identity
-                : .value(\.backgroundColor, containerColor, default: containerColor.withAlphaComponent(0))
+               ? .identity
+               : .value(\.backgroundColor, containerColor, default: containerColor.withAlphaComponent(0))
         )
+    }
+    
+	static func fullScreen(
+        _ transition: UIViewTransition,
+        interactivity: UIPresentation.Interactivity? = nil,
+        overCurrentContext: Bool = false
+	) -> UIPresentation {
+		UIPresentation(
+			interactivity: interactivity,
+			animation: .default
+		)
+        .environment(\.contentTransition, transition)
+        .environment(\.contentLayout, .fill)
         .environment(\.applyTransitionOnBackControllers, false)
         .environment(\.animateBackControllersReorder, false)
         .environment(\.hideBackControllers, !overCurrentContext)
 	}
-    
-    static var fade: UIPresentation {
-        UIPresentation(
-            transition: .default(),
-            interactivity: nil,
-            animation: .default
-        )
-        .environment(\.contentTransition, .opacity)
-        .environment(\.contentLayout, .fill)
-        .environment(\.applyTransitionOnBackControllers, false)
-        .environment(\.animateBackControllersReorder, false)
-        .environment(\.hideBackControllers, true)
-    }
 }

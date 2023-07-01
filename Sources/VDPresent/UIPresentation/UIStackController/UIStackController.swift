@@ -13,7 +13,7 @@ open class UIStackController: UIViewController {
     private var containers: [UIViewController: UIStackControllerContainerView] = [:]
     private var wrappers: [UIViewController: UIView] = [:]
     private var presentations: [UIViewController: UIPresentation] = [:]
-    private var caches: [UIViewController: UIPresentation.Context.Cache] = [:]
+    private let cache = UIPresentation.Context.Cache()
     private var presentationStack: [Setting] = []
     private var animator: Animator?
 
@@ -226,6 +226,7 @@ private extension UIStackController {
             toViewControllers: toViewControllers,
             views: { [weak self] in self?.wrapper(for: $0) ?? $0.view },
             animated: animated,
+            animation: presentation.animation,
             isInteractive: isInteractive,
             cache: cache(
                 for: direction == .insertion
@@ -299,7 +300,7 @@ private extension UIStackController {
         context.viewControllersToRemove.forEach {
             $0.willMove(toParent: nil)
         }
-      
+     
         presentation.transition.update(context: context, state: .change(context.direction, .start))
     }
     
@@ -374,8 +375,10 @@ private extension UIStackController {
                 let animator = Animator()
                 self.animator = animator
                 animator.addAnimations(animate)
-                animator.addCompletion { position in
+                animator.addCompletion { [weak self] position in
                     completion(position == .end)
+                    self?.animator?.finishAnimation(at: position == .end ? .end : .start)
+                    self?.animator = nil
                 }
                 animator.startAnimation()
                 animator.pauseAnimation()
@@ -383,9 +386,9 @@ private extension UIStackController {
 			case let .change(progress):
                 self.animator?.fractionComplete = progress.value
                 
-			case let .end(completed):
-                self.animator?.finishAnimation(at: completed ? .end : .start)
-                self.animator = nil
+			case let .end(completed, duration):
+                self.animator?.isReversed = !completed
+                self.animator?.continueAnimation(duration: duration)
 			}
             return .allow
 		}
@@ -399,7 +402,7 @@ private extension UIStackController {
         containers = containers.filter { set.contains($0.key) }
         wrappers = wrappers.filter { set.contains($0.key) }
         presentations = presentations.filter { set.contains($0.key) }
-        caches = caches.filter { set.contains($0.key) }
+//        caches = caches.filter { set.contains($0.key) }
         updateContainers()
     }
         
@@ -423,12 +426,13 @@ private extension UIStackController {
     }
     
     func cache(for controller: UIViewController) -> UIPresentation.Context.Cache {
-        if let result = caches[controller] {
-            return result
-        }
-        let cache = UIPresentation.Context.Cache()
-        caches[controller] = cache
         return cache
+//        if let result = caches[controller] {
+//            return result
+//        }
+//        let cache = UIPresentation.Context.Cache()
+//        caches[controller] = cache
+//        return cache
     }
     
     func updateContainers() {

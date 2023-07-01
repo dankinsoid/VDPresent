@@ -13,6 +13,13 @@ final class Animator: UIViewPropertyAnimator {
 			fractionComplete = value
 		}
 	}
+    
+    func continueAnimation(withTimingParameters parameters: UITimingCurveProvider? = nil, duration: Double) {
+        continueAnimation(
+            withTimingParameters: parameters,
+            durationFactor: self.duration == 0 ? 1 : duration / self.duration
+        )
+    }
 
 	deinit {
 		finishAnimation(at: .end)

@@ -13,7 +13,6 @@ public extension UIPresentation {
         backViewControllerOffset offset: RelationValue<CGFloat> = .relative(0.3)
     ) -> UIPresentation {
         UIPresentation(
-            transition: .default(),
             interactivity: .swipe(to: edge),
             animation: .default(UINavigationController.hideShowBarDuration)
         )
