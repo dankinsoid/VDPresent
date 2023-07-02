@@ -14,7 +14,7 @@ public extension UIPresentation {
     ) -> UIPresentation {
         UIPresentation(
             interactivity: .swipe(to: edge),
-            animation: .default(UINavigationController.hideShowBarDuration)
+            animation: .default
         )
         .environment(
             \.contentTransition,

@@ -169,7 +169,7 @@ private extension UIStackController {
         if UIWindow.root?.rootViewController === self, viewControllers.count < 2 {
             return .fullScreen
         }
-        return viewControllers.last?.defaultPresentation ?? presentation ?? .default
+        return viewControllers.last.flatMap { presentations[$0] ?? $0.defaultPresentation } ?? presentation ?? .default
 	}
 }
 
