@@ -20,7 +20,6 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
     private var wasBegun = false
     private var lastPercent: CGFloat?
     private var initialPercent: CGFloat = 0
-    private var displayLink: DisplayLink?
     
     init() {
         super.init(target: nil, action: nil)
@@ -43,10 +42,6 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
             
         case .began:
             guard !wasBegun else {
-                if displayLink != nil {
-                    initialPercent = lastPercent ?? 0
-                    displayLink = nil
-                }
                 return
             }
             setAxisIfNeeded()
@@ -85,26 +80,12 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
     private func finish(completed: Bool) {
         _ = update(.end(completed: completed, after: fullDuration), edge ?? .leading)
         stop()
-//        let _percent = percent
-//        displayLink = DisplayLink(duration: fullDuration) { [weak self] progress in
-//            guard let self else { return }
-//            let percent = completed
-//                ? _percent + (1 - _percent) * progress
-//                : _percent * (1 - progress)
-//            update(percent: percent)
-//            if progress == 1 {
-//                _ = update(.end(completed: completed, after: 0), edge ?? .leading)
-//                stop()
-//            }
-//        }
-//        displayLink?.start()
     }
     
     private func stop() {
         wasBegun = false
         lastPercent = nil
         edge = nil
-        displayLink = nil
     }
     
     private var percent: CGFloat {
@@ -215,41 +196,5 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
             edges.contains(.bottom) && edgeInsets.top < threshold
         )
         return result
-    }
-}
-
-private final class DisplayLink: NSObject {
-    
-    private var displayLink: CADisplayLink?
-    private var startedAt: Double?
-    private let duration: Double
-    private let observe: (Double) -> Void
-    
-    init(duration: Double, observer: @escaping (Double) -> Void) {
-        self.duration = duration
-        self.observe = observer
-        super.init()
-    }
-    
-    func start() {
-        displayLink = CADisplayLink(target: self, selector: #selector(handler))
-        displayLink?.add(to: .main, forMode: .default)
-        startedAt = CACurrentMediaTime()
-    }
-    
-    deinit {
-        displayLink?.isPaused = true
-        displayLink?.invalidate()
-    }
-    
-    @objc private func handler(displayLink: CADisplayLink) {
-        let currentTime = CACurrentMediaTime()
-        let completed = duration > 0
-            ? min(1, max(0, (currentTime - (startedAt ?? currentTime)) / duration))
-            : 1.0
-        if completed == 1 {
-            displayLink.isPaused = true
-        }
-        observe(completed)
     }
 }

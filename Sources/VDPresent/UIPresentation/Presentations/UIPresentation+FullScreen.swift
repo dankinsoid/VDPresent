@@ -41,7 +41,6 @@ public extension UIPresentation {
         .environment(\.contentTransition, transition)
         .environment(\.contentLayout, .fill)
         .environment(\.applyTransitionOnBackControllers, false)
-        .environment(\.animateBackControllersReorder, false)
         .environment(\.hideBackControllers, !overCurrentContext)
 	}
 }

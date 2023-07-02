@@ -12,7 +12,7 @@ let package = Package(
 		.library(name: "VDPresent", targets: ["VDPresent"]),
 	],
 	dependencies: [
-		.package(url: "https://github.com/dankinsoid/VDTransition.git", from: "1.19.0"),
+		.package(url: "https://github.com/dankinsoid/VDTransition.git", from: "1.23.0"),
 	],
 	targets: [
 		.target(

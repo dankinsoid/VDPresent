@@ -28,7 +28,6 @@ public extension UIPresentation {
              .value(\.backgroundColor, containerColor, default: containerColor.withAlphaComponent(0))
         )
         .environment(\.applyTransitionOnBackControllers, true)
-        .environment(\.animateBackControllersReorder, false)
         .environment(\.hideBackControllers, true)
         .environment(\.swipeFromEdge, true)
     }

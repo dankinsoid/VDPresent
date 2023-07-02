@@ -24,11 +24,10 @@ public extension UIPresentation {
         )
 		return UIPresentation(
             transition: .default { context in
-                context.viewControllersToInsert.forEach {
-                    let view = context.view(for: $0)
-                    view.clipsToBounds = true
-                    view.layer.cornerRadius = cornerRadius
-                    view.layer.maskedCorners = .edge(edge.opposite)
+                if context.viewControllers.toInsert.contains(context.viewController) {
+                    context.view.clipsToBounds = true
+                    context.view.layer.cornerRadius = cornerRadius
+                    context.view.layer.maskedCorners = .edge(edge.opposite)
                 }
             } completion: { _, _ in
             },
@@ -47,8 +46,7 @@ public extension UIPresentation {
              selfSized ? paddingLayout.combine(.alignment(.edge(edge))) : paddingLayout
         )
         .environment(\.backgroundTransition, .backgroundColor(containerColor))
-        .environment(\.applyTransitionOnBackControllers, true)
-        .environment(\.animateBackControllersReorder, true)
+//        .environment(\.applyTransitionOnBackControllers, true)
         .environment(\.hideBackControllers, false)
 	}
 }

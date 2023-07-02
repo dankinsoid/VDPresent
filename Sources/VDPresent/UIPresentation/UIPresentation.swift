@@ -62,22 +62,36 @@ public extension UIPresentation {
 
 	struct Context {
 
-		public let direction: TransitionDirection
-        public var fromViewControllers: [UIViewController] { _fromViewControllers.compactMap(\.value) }
-        public var toViewControllers: [UIViewController] { _toViewControllers.compactMap(\.value) }
+        public var viewController: UIViewController {
+            _controller ?? UIViewController()
+        }
+        public var view: UIView {
+            view(for: viewController)
+        }
+        public var container: UIStackControllerContainer {
+            container(for: viewController)
+        }
 		public let animated: Bool
 		public let isInteractive: Bool
 		public let cache: Cache
         public let environment: UIPresentation.Environment
         public let animation: UIKitAnimation
+        public let viewControllers: Controllers
         
-        private let _fromViewControllers: [Weak<UIViewController>]
-        private let _toViewControllers: [Weak<UIViewController>]
+        public var direction: TransitionDirection {
+            if viewControllers.to.last === viewController || !viewControllers.from.contains(viewController) {
+                return .insertion
+            } else {
+                return .removal
+            }
+        }
+        
+        private weak var _controller: UIViewController?
         private let views: (UIViewController) -> UIView
-        private let container: (UIViewController) -> UIStackControllerContainer
+        private let _container: (UIViewController) -> UIStackControllerContainer
 
 		public init(
-			direction: TransitionDirection,
+            controller: UIViewController,
 			container: @escaping (UIViewController) -> UIStackControllerContainer,
 			fromViewControllers: [UIViewController],
 			toViewControllers: [UIViewController],
@@ -88,10 +102,12 @@ public extension UIPresentation {
 			cache: Cache,
             environment: UIPresentation.Environment
         ) {
-            self.direction = direction
-            self.container = container
-            self._fromViewControllers = fromViewControllers.map { Weak($0) }
-            self._toViewControllers = toViewControllers.map { Weak($0) }
+            self._controller = controller
+            self._container = container
+            self.viewControllers = Controllers(
+                fromViewControllers: fromViewControllers,
+                toViewControllers: toViewControllers
+            )
             self.views = views
             self.animated = animated
             self.isInteractive = isInteractive
@@ -101,20 +117,57 @@ public extension UIPresentation {
         }
         
         public func container(for controller: UIViewController) -> UIStackControllerContainer {
-            container(controller)
+            _container(controller)
         }
         
         public func view(for controller: UIViewController) -> UIView {
             views(controller)
         }
         
-		public func viewControllers(_ key: UITransitionContextViewControllerKey) -> [UIViewController] {
-			switch key {
-			case .from: return fromViewControllers
-			case .to: return toViewControllers
-			default: return []
-			}
-		}
+        public func `for`(controller: UIViewController) -> Self {
+            var result = self
+            result._controller = controller
+            return result
+        }
+        
+        public struct Controllers {
+            
+            public var from: [UIViewController] { _fromViewControllers.compactMap(\.value) }
+            public var to: [UIViewController] { _toViewControllers.compactMap(\.value) }
+            public var direction: TransitionDirection {
+                to.last.map { !from.contains($0) } ?? false
+                    ? .insertion
+                    : .removal
+            }
+            public var all: [UIViewController] {
+                guard !from.isEmpty else { return to }
+                guard !to.isEmpty else { return from }
+                let prefix = from.dropLast().filter { !to.contains($0) } + to.dropLast()
+                let suffix = from.suffix(1) + to.suffix(1).filter { $0 !== from.last }
+                return direction == .insertion
+                    ? prefix + suffix
+                    : prefix + suffix.reversed()
+            }
+            private let _fromViewControllers: [Weak<UIViewController>]
+            private let _toViewControllers: [Weak<UIViewController>]
+            
+            public init(
+                fromViewControllers: [UIViewController],
+                toViewControllers: [UIViewController]
+            ) {
+                self._fromViewControllers = fromViewControllers.map { Weak($0) }
+                self._toViewControllers = toViewControllers.map { Weak($0) }
+            }
+            
+            public subscript(_ key: UITransitionContextViewControllerKey) -> [UIViewController] {
+                switch key {
+                case .from: return from
+                case .to: return to
+                default: return []
+                }
+            }
+            
+        }
 	}
 
 	struct Interactivity {
@@ -168,19 +221,19 @@ public extension UIPresentation {
 	enum State: Equatable {
 
 		case begin
-        case change(TransitionDirection, Progress.Edge)
+        case change(Progress.Edge)
         case end(completed: Bool)
 	}
 }
 
-public extension UIPresentation.Context {
+public extension UIPresentation.Context.Controllers {
 
-	var viewControllersToRemove: [UIViewController] {
-		fromViewControllers.filter { !toViewControllers.contains($0) }
+	var toRemove: [UIViewController] {
+		from.filter { !to.contains($0) }
 	}
 
-	var viewControllersToInsert: [UIViewController] {
-		toViewControllers.filter { !fromViewControllers.contains($0) }
+	var toInsert: [UIViewController] {
+		to.filter { !from.contains($0) }
 	}
 }
 

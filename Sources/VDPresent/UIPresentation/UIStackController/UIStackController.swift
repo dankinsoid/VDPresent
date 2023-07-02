@@ -14,7 +14,7 @@ open class UIStackController: UIViewController {
     private var wrappers: [UIViewController: UIView] = [:]
     private var presentations: [UIViewController: UIPresentation] = [:]
     private let cache = UIPresentation.Context.Cache()
-    private var presentationStack: [Setting] = []
+    private var queue: [Setting] = []
     private var animator: Animator?
 
     override public func loadView() {
@@ -42,7 +42,7 @@ open class UIStackController: UIViewController {
 		completion: (() -> Void)? = nil
 	) {
         guard !isSettingControllers else {
-            presentationStack.append(
+            queue.append(
                 Setting(
                     viewControllers: newViewControllers,
                     presentation: presentation,
@@ -70,7 +70,6 @@ open class UIStackController: UIViewController {
 			to: newViewControllers,
 			from: viewControllers,
 			presentation: presentation ?? self.presentation(for: isInsertion ? newViewControllers : viewControllers),
-			direction: isInsertion ? .insertion : .removal,
 			animated: animated,
             completion: completion
         )
@@ -180,7 +179,6 @@ private extension UIStackController {
 		to toViewControllers: [UIViewController],
 		from fromViewControllers: [UIViewController],
 		presentation: UIPresentation,
-		direction: TransitionDirection,
 		animated: Bool,
 		completion: (() -> Void)?
 	) {
@@ -188,7 +186,6 @@ private extension UIStackController {
 			to: toViewControllers,
 			from: fromViewControllers,
 			presentation: presentation,
-			direction: direction,
 			animated: animated,
             isInteractive: false,
 			completion: completion
@@ -210,7 +207,6 @@ private extension UIStackController {
         to toViewControllers: [UIViewController],
         from fromViewControllers: [UIViewController],
         presentation: UIPresentation,
-        direction: TransitionDirection,
         animated: Bool,
         isInteractive: Bool,
         completion: (() -> Void)?
@@ -219,28 +215,38 @@ private extension UIStackController {
         animation: () -> Void,
         completion: (Bool) -> Void
     ) {
-        let context = UIPresentation.Context(
-            direction: direction,
-            container: { [weak self] in self?.container(for: $0) ?? UIStackControllerContainerView() },
+        let controllers = UIPresentation.Context.Controllers(
             fromViewControllers: fromViewControllers,
-            toViewControllers: toViewControllers,
-            views: { [weak self] in self?.wrapper(for: $0) ?? $0.view },
-            animated: animated,
-            animation: presentation.animation,
-            isInteractive: isInteractive,
-            cache: cache(
-                for: direction == .insertion
-                    ? toViewControllers.last ?? UIViewController()
-                    : fromViewControllers.last ?? UIViewController()
-            ),
-            environment: presentation.environment
+            toViewControllers: toViewControllers
         )
-        return transitionBlocks(presentation: presentation, context: context, completion: completion)
+        let context: (UIViewController) -> UIPresentation.Context = { [cache] in
+            UIPresentation.Context(
+                controller: $0,
+                container: { [weak self] in self?.container(for: $0) ?? UIStackControllerContainerView() },
+                fromViewControllers: fromViewControllers,
+                toViewControllers: toViewControllers,
+                views: { [weak self] in self?.wrapper(for: $0) ?? $0.view },
+                animated: animated,
+                animation: presentation.animation,
+                isInteractive: isInteractive,
+                cache: cache,
+                environment: presentation.environment
+            )
+        }
+        return transitionBlocks(
+            presentation: presentation,
+            animated: animated,
+            controllers: controllers,
+            context: context,
+            completion: completion
+        )
     }
     
     func transitionBlocks(
         presentation: UIPresentation,
-        context: UIPresentation.Context,
+        animated: Bool,
+        controllers: UIPresentation.Context.Controllers,
+        context: @escaping (UIViewController) -> UIPresentation.Context,
         completion: (() -> Void)?
     ) -> (
         prepare: () -> Void,
@@ -248,15 +254,21 @@ private extension UIStackController {
         completion: (Bool) -> Void
     ) {
 		let prepare: () -> Void = { [weak self] in
-            self?.prepareBlock(presentation: presentation, context: context)
+            self?.prepareBlock(presentation: presentation, controllers: controllers, context: context)
 		}
 
 		let animation: () -> Void = { [weak self] in
-            self?.animationBlock(presentation: presentation, context: context)
+            self?.animationBlock(presentation: presentation, animated: animated, controllers: controllers, context: context)
 		}
 
 		let completion: (Bool) -> Void = { [weak self] in
-            self?.completionBlock(presentation: presentation, context: context, isCompleted: $0, completion: completion)
+            self?.completionBlock(
+                presentation: presentation,
+                controllers: controllers,
+                context: context,
+                isCompleted: $0,
+                completion: completion
+            )
 		}
 
 		return (prepare, animation, completion)
@@ -264,10 +276,11 @@ private extension UIStackController {
     
     func prepareBlock(
         presentation: UIPresentation,
-        context: UIPresentation.Context
+        controllers: UIPresentation.Context.Controllers,
+        context: @escaping (UIViewController) -> UIPresentation.Context
     ) {
         isSettingControllers = true
-        for toViewController in context.viewControllersToInsert {
+        for toViewController in controllers.toInsert {
             if wrappers[toViewController] == nil {
                 wrappers[toViewController] = wrap(view: toViewController.view)
             }
@@ -279,65 +292,75 @@ private extension UIStackController {
             }
         }
         
-        let top = context.direction == .insertion
-            ? context.toViewControllers.suffix(1).map(container)
-            : context.fromViewControllers.suffix(1).map(container)
-        let second = context.direction == .insertion
-            ? context.fromViewControllers.suffix(1).map(container)
-            : context.toViewControllers.suffix(1).map(container)
+        let allControllers = controllers.all
+        allControllers.suffix(2).map(container).forEach(content.bringSubviewToFront)
         
-        second.forEach(content.bringSubviewToFront)
-        top.forEach(content.bringSubviewToFront)
+        allControllers.forEach {
+            presentations[$0, default: presentation].transition.update(context: context($0), state: .begin)
+        }
         
-        presentation.transition.update(context: context, state: .begin)
-        
-        for toViewController in context.toViewControllers where toViewController.parent == nil {
+        for toViewController in controllers.to where toViewController.parent == nil {
             toViewController.willMove(toParent: self)
             self.addChild(toViewController)
             toViewController.didMove(toParent: self)
         }
         
-        context.viewControllersToRemove.forEach {
+        controllers.toRemove.forEach {
             $0.willMove(toParent: nil)
         }
      
-        presentation.transition.update(context: context, state: .change(context.direction, .start))
+        allControllers.forEach {
+            presentations[$0, default: presentation]
+                .transition.update(context: context($0), state: .change(.start))
+        }
     }
     
     func animationBlock(
         presentation: UIPresentation,
-        context: UIPresentation.Context
+        animated: Bool,
+        controllers: UIPresentation.Context.Controllers,
+        context: @escaping (UIViewController) -> UIPresentation.Context
     ) {
-        context.toViewControllers.last?.beginAppearanceTransition(true, animated: context.animated)
-        context.fromViewControllers.last?.beginAppearanceTransition(false, animated: context.animated)
-        presentation.transition.update(context: context, state: .change(context.direction, .end))
+        controllers.to.last?.beginAppearanceTransition(true, animated: animated)
+        controllers.from.last?.beginAppearanceTransition(false, animated: animated)
+        
+        controllers.all.forEach {
+            presentations[$0, default: presentation]
+                .transition.update(context: context($0), state: .change(.end))
+        }
     }
     
     func completionBlock(
         presentation: UIPresentation,
-        context: UIPresentation.Context,
+        controllers: UIPresentation.Context.Controllers,
+        context: @escaping (UIViewController) -> UIPresentation.Context,
         isCompleted: Bool,
         completion: (() -> Void)?
     ) {
-        viewControllers = isCompleted ? context.toViewControllers : context.fromViewControllers
+        viewControllers = isCompleted ? controllers.to : controllers.from
         if isCompleted {
             configureInteractivity(
                 presentation: presentation,
+                controllers: controllers,
                 context: context
             )
         }
-        presentation.transition.update(context: context, state: .end(completed: isCompleted))
+        
+        controllers.all.forEach {
+            presentations[$0, default: presentation]
+                .transition.update(context: context($0), state: .end(completed: isCompleted))
+        }
         
         didSetViewControllers()
-        context.toViewControllers.last?.endAppearanceTransition()
-        context.fromViewControllers.last?.endAppearanceTransition()
+        controllers.to.last?.endAppearanceTransition()
+        controllers.from.last?.endAppearanceTransition()
         if isCompleted {
-            for fromViewController in context.viewControllersToRemove {
+            for fromViewController in controllers.toRemove {
                 fromViewController.removeFromParent()
                 fromViewController.didMove(toParent: nil)
             }
         } else {
-            for toViewController in context.viewControllersToInsert {
+            for toViewController in controllers.toInsert {
                 toViewController.willMove(toParent: nil)
                 toViewController.removeFromParent()
                 toViewController.didMove(toParent: nil)
@@ -345,8 +368,8 @@ private extension UIStackController {
         }
         isSettingControllers = false
         completion?()
-        if let next = presentationStack.first {
-            presentationStack.removeFirst()
+        if let next = queue.first {
+            queue.removeFirst()
             set(
                 viewControllers: next.viewControllers,
                 as: next.presentation,
@@ -358,40 +381,50 @@ private extension UIStackController {
     
     func configureInteractivity(
 		presentation: UIPresentation,
-        context: UIPresentation.Context
+        controllers: UIPresentation.Context.Controllers,
+        context: @escaping (UIViewController) -> UIPresentation.Context
 	) {
-        presentation.interactivity?.uninstall(context: context)
-		presentation.interactivity?.install(context: context) { [weak self] context, state in
-            guard let self else { return .prevent }
-			switch state {
-			case .begin:
-                guard !self.isSettingControllers else { return .prevent }
-                let (prepare, animate, completion) = self.transitionBlocks(
-                    presentation: presentation,
-                    context: context,
-                    completion: nil
-                )
-                prepare()
-                let animator = Animator()
-                self.animator = animator
-                animator.addAnimations(animate)
-                animator.addCompletion { [weak self] position in
-                    completion(position == .end)
-                    self?.animator?.finishAnimation(at: position == .end ? .end : .start)
-                    self?.animator = nil
+        controllers.toRemove.forEach {
+            presentations[$0, default: presentation]
+                .interactivity?.uninstall(context: context($0))
+        }
+        controllers.toInsert.forEach { controller in
+            let ctxt = context(controller)
+            presentations[controller, default: presentation]
+                .interactivity?.install(context: ctxt) { [weak self] context, state in
+                    guard let self else { return .prevent }
+                    switch state {
+                    case .begin:
+                        guard !self.isSettingControllers else { return .prevent }
+                        let (prepare, animate, completion) = self.transitionBlocks(
+                            presentation: presentation,
+                            animated: context.animated,
+                            controllers: context.viewControllers,
+                            context: context.for,
+                            completion: nil
+                        )
+                        prepare()
+                        let animator = Animator()
+                        self.animator = animator
+                        animator.addAnimations(animate)
+                        animator.addCompletion { [weak self] position in
+                            completion(position == .end)
+                            self?.animator?.finishAnimation(at: position == .end ? .end : .start)
+                            self?.animator = nil
+                        }
+                        animator.startAnimation()
+                        animator.pauseAnimation()
+                        
+                    case let .change(progress):
+                        self.animator?.fractionComplete = progress.value
+                        
+                    case let .end(completed, duration):
+                        self.animator?.isReversed = !completed
+                        self.animator?.continueAnimation(duration: duration)
+                    }
+                    return .allow
                 }
-                animator.startAnimation()
-                animator.pauseAnimation()
-                
-			case let .change(progress):
-                self.animator?.fractionComplete = progress.value
-                
-			case let .end(completed, duration):
-                self.animator?.isReversed = !completed
-                self.animator?.continueAnimation(duration: duration)
-			}
-            return .allow
-		}
+        }
 	}
 }
 
@@ -402,7 +435,6 @@ private extension UIStackController {
         containers = containers.filter { set.contains($0.key) }
         wrappers = wrappers.filter { set.contains($0.key) }
         presentations = presentations.filter { set.contains($0.key) }
-//        caches = caches.filter { set.contains($0.key) }
         updateContainers()
     }
         
@@ -423,16 +455,6 @@ private extension UIStackController {
         containers[controller] = container
         content.containers.append(container)
         return container
-    }
-    
-    func cache(for controller: UIViewController) -> UIPresentation.Context.Cache {
-        return cache
-//        if let result = caches[controller] {
-//            return result
-//        }
-//        let cache = UIPresentation.Context.Cache()
-//        caches[controller] = cache
-//        return cache
     }
     
     func updateContainers() {
