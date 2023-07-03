@@ -8,6 +8,8 @@ open class UIStackController: UIViewController {
 	public var presentation: UIPresentation?
 
 	override open var shouldAutomaticallyForwardAppearanceMethods: Bool { false }
+    override open var preferredStatusBarUpdateAnimation: UIStatusBarAnimation { statusBarAnimation }
+    override open var preferredStatusBarStyle: UIStatusBarStyle { statusBarStyle }
 
     private let content = UIStackControllerView()
     private var containers: [UIViewController: UIStackControllerContainerView] = [:]
@@ -16,6 +18,13 @@ open class UIStackController: UIViewController {
     private let cache = UIPresentation.Context.Cache()
     private var queue: [Setting] = []
     private var animator: Animator?
+    private var statusBarAnimation: UIStatusBarAnimation = .fade
+    private var statusBarStyle: UIStatusBarStyle = .default {
+        didSet {
+            guard oldValue != statusBarStyle else { return }
+            setNeedsStatusBarAppearanceUpdate()
+        }
+    }
 
     override public func loadView() {
         view = content
@@ -30,6 +39,10 @@ open class UIStackController: UIViewController {
 	override open func show(_ vc: UIViewController, sender: Any?) {
 		show(vc)
 	}
+    
+    override open func showDetailViewController(_ vc: UIViewController, sender: Any?) {
+        show(vc)
+    }
 
 	override open func targetViewController(forAction action: Selector, sender: Any?) -> UIViewController? {
 		super.targetViewController(forAction: action, sender: sender)
@@ -66,11 +79,14 @@ open class UIStackController: UIViewController {
 
 		let isInsertion = newViewControllers.last.map { !viewControllers.contains($0) } ?? false
 
+        let prsnt = presentation ?? self.presentation(for: isInsertion ? newViewControllers : viewControllers)
+        let isTheSame = newViewControllers.last === viewControllers.last && prsnt.environment.hideBackControllers
+        
 		makeTransition(
 			to: newViewControllers,
 			from: viewControllers,
-			presentation: presentation ?? self.presentation(for: isInsertion ? newViewControllers : viewControllers),
-			animated: animated,
+			presentation: prsnt,
+			animated: animated && !isTheSame,
             completion: completion
         )
 	}
@@ -219,7 +235,8 @@ private extension UIStackController {
             fromViewControllers: fromViewControllers,
             toViewControllers: toViewControllers
         )
-        let context: (UIViewController) -> UIPresentation.Context = { [cache] in
+        
+        let context: (UIViewController) -> UIPresentation.Context = { [weak self, presentations, cache] in
             UIPresentation.Context(
                 controller: $0,
                 container: { [weak self] in self?.container(for: $0) ?? UIStackControllerContainerView() },
@@ -227,10 +244,14 @@ private extension UIStackController {
                 toViewControllers: toViewControllers,
                 views: { [weak self] in self?.wrapper(for: $0) ?? $0.view },
                 animated: animated,
-                animation: presentation.animation,
+                animation: (presentations[$0] ?? presentation).animation,
                 isInteractive: isInteractive,
                 cache: cache,
-                environment: presentation.environment
+                updateStatusBar: { [weak self] in
+                    self?.statusBarAnimation = $1
+                    self?.statusBarStyle = $0
+                },
+                environment: { presentations[$0]?.environment ?? presentation.environment }
             )
         }
         return transitionBlocks(
@@ -321,6 +342,7 @@ private extension UIStackController {
         controllers: UIPresentation.Context.Controllers,
         context: @escaping (UIViewController) -> UIPresentation.Context
     ) {
+        statusBarStyle = controllers.to.last?.preferredStatusBarStyle ?? statusBarStyle
         controllers.to.last?.beginAppearanceTransition(true, animated: animated)
         controllers.from.last?.beginAppearanceTransition(false, animated: animated)
         
@@ -360,6 +382,7 @@ private extension UIStackController {
                 fromViewController.didMove(toParent: nil)
             }
         } else {
+            statusBarStyle = controllers.from.last?.preferredStatusBarStyle ?? statusBarStyle
             for toViewController in controllers.toInsert {
                 toViewController.willMove(toParent: nil)
                 toViewController.removeFromParent()

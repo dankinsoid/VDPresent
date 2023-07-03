@@ -2,6 +2,10 @@ import UIKit
 
 class ViewController: UIViewController {
 
+    override var preferredStatusBarStyle: UIStatusBarStyle {
+        .lightContent
+    }
+    
 	override func viewDidLoad() {
 		super.viewDidLoad()
 		view.backgroundColor = [UIColor.systemBlue, .systemRed, .systemPink, .systemOrange, .systemYellow, .systemGreen].randomElement()
@@ -44,10 +48,10 @@ class ViewController: UIViewController {
 
 	@objc func tapShow(_: Any) {
 		let controller = ViewController()
-        let presentations: [UIPresentation] = [.fullScreen, .push]
+        let presentations = [UIPresentation.fullScreen, .push, .pageSheet]
 //        controller.view.safeAreaLayoutGuide.heightAnchor.constraint(equalToConstant: 200).isActive = true
 //        present(controller, animated: true)
-        controller.show(as: presentations.randomElement()?.with(animation: .default), animated: true)
+        controller.show(as: presentations.randomElement()?.with(animation: .default(1)), animated: true)
 //        navigationController?.pushViewController(controller, animated: true)
 	}
     

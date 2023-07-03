@@ -23,22 +23,20 @@ public extension UIPresentation {
             insideSafeArea: NSDirectionalRectEdge(edge.opposite)
         )
 		return UIPresentation(
-            transition: .default { context in
-                if context.viewControllers.toInsert.contains(context.viewController) {
-                    context.view.clipsToBounds = true
-                    context.view.layer.cornerRadius = cornerRadius
-                    context.view.layer.maskedCorners = .edge(edge.opposite)
-                }
-            } completion: { _, _ in
-            },
+            transition: .default(),
 			interactivity: .swipe(to: edge),
 			animation: .default
 		)
         .environment(
             \.contentTransition,
              .asymmetric(
-                insertion: .move(edge: edge),
-                removal: [.scale(0.98), .move(edge: edge.opposite, offset: .absolute(10))]
+                insertion: [
+                    .move(edge: edge),
+                    .constant(\.clipsToBounds, true),
+                    .constant(\.layer.cornerRadius, cornerRadius),
+                    .constant(\.layer.maskedCorners, .edge(edge.opposite))
+                ],
+                removal: [.scale(0.9)]
              )
         )
         .environment(
@@ -46,7 +44,7 @@ public extension UIPresentation {
              selfSized ? paddingLayout.combine(.alignment(.edge(edge))) : paddingLayout
         )
         .environment(\.backgroundTransition, .backgroundColor(containerColor))
-//        .environment(\.applyTransitionOnBackControllers, true)
+        .environment(\.applyTransitionOnBackControllers, true)
         .environment(\.hideBackControllers, false)
 	}
 }

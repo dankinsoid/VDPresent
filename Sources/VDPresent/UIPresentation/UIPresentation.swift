@@ -74,7 +74,6 @@ public extension UIPresentation {
 		public let animated: Bool
 		public let isInteractive: Bool
 		public let cache: Cache
-        public let environment: UIPresentation.Environment
         public let animation: UIKitAnimation
         public let viewControllers: Controllers
         
@@ -86,9 +85,15 @@ public extension UIPresentation {
             }
         }
         
+        public var environment: UIPresentation.Environment {
+            _environment(viewController)
+        }
+        
         private weak var _controller: UIViewController?
         private let views: (UIViewController) -> UIView
         private let _container: (UIViewController) -> UIStackControllerContainer
+        private let _environment: (UIViewController) -> UIPresentation.Environment
+        private let _updateStatusBar: (UIStatusBarStyle, UIStatusBarAnimation) -> Void
 
 		public init(
             controller: UIViewController,
@@ -100,7 +105,8 @@ public extension UIPresentation {
             animation: UIKitAnimation,
 			isInteractive: Bool,
 			cache: Cache,
-            environment: UIPresentation.Environment
+            updateStatusBar: @escaping (UIStatusBarStyle, UIStatusBarAnimation) -> Void,
+            environment: @escaping (UIViewController) -> UIPresentation.Environment
         ) {
             self._controller = controller
             self._container = container
@@ -112,12 +118,21 @@ public extension UIPresentation {
             self.animated = animated
             self.isInteractive = isInteractive
             self.cache = cache
-            self.environment = environment
+            self._updateStatusBar = updateStatusBar
+            self._environment = environment
             self.animation = animation
+        }
+        
+        public func environment(for controller: UIViewController) -> UIPresentation.Environment {
+            _environment(controller)
         }
         
         public func container(for controller: UIViewController) -> UIStackControllerContainer {
             _container(controller)
+        }
+        
+        public func updateStatusBar(style: UIStatusBarStyle, animation: UIStatusBarAnimation = .fade) {
+            _updateStatusBar(style, animation)
         }
         
         public func view(for controller: UIViewController) -> UIView {
@@ -138,15 +153,6 @@ public extension UIPresentation {
                 to.last.map { !from.contains($0) } ?? false
                     ? .insertion
                     : .removal
-            }
-            public var all: [UIViewController] {
-                guard !from.isEmpty else { return to }
-                guard !to.isEmpty else { return from }
-                let prefix = from.dropLast().filter { !to.contains($0) } + to.dropLast()
-                let suffix = from.suffix(1) + to.suffix(1).filter { $0 !== from.last }
-                return direction == .insertion
-                    ? prefix + suffix
-                    : prefix + suffix.reversed()
             }
             private let _fromViewControllers: [Weak<UIViewController>]
             private let _toViewControllers: [Weak<UIViewController>]
@@ -235,6 +241,20 @@ public extension UIPresentation.Context.Controllers {
 	var toInsert: [UIViewController] {
 		to.filter { !from.contains($0) }
 	}
+    
+    var all: [UIViewController] {
+        guard !from.isEmpty else { return to }
+        guard !to.isEmpty else { return from }
+        let prefix = from.dropLast().filter { !to.contains($0) } + to.dropLast()
+        let suffix = from.suffix(1) + to.suffix(1).filter { $0 !== from.last }
+        return direction == .insertion
+        ? prefix + suffix
+        : prefix + suffix.reversed()
+    }
+    
+    var isTopTheSame: Bool {
+        from.last === to.last
+    }
 }
 
 public extension UIPresentation.Context {

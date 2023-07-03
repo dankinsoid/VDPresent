@@ -110,6 +110,7 @@ public extension UIPresentation.Interactivity {
                     animation: context.animation,
                     isInteractive: true,
                     cache: context.cache,
+                    updateStatusBar: context.updateStatusBar,
                     environment: context.environment
                 )
             }
