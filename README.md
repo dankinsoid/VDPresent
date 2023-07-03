@@ -13,6 +13,7 @@ VDPresent is a powerful, customizable library for managing view controller trans
 - [ ] Self-sizing behavior for modals like bottom sheets. (Coming soon)
 - [ ] Integration with SwiftUI. (Coming soon)
 - [ ] Alternatives to native tab and navigation bars. (Coming soon)
+- [ ] Bootom sheet and popover-like transitions. (Coming soon)
 - [ ] Comprehensive Unit and UI tests. (Coming soon)
 
 ## Requirements
