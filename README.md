@@ -54,7 +54,7 @@ viewController.hide()
 
 ## Contribute
 
-We would love for you to contribute to `YourLibrary`, check the `LICENSE` file for more info.
+We would love for you to contribute to `VDPresent`, check the `LICENSE` file for more info.
  
 ## Installation
 
