@@ -2,7 +2,7 @@
 
 ## Introduction
 
-VDPresent is a powerful, customizable library for managing view controller transitions and hierarchies in iOS applications. It aims to unify and simplify screen transitions by providing a single way to show/hide view controllers through the UIStackController, making it easier to manage custom transition animations and interactions.
+VDPresent is a powerful, customizable library for managing view controller transitions and hierarchies in iOS applications. It aims to unify and simplify screen transitions by providing a single way to show/hide view controllers through the UIStackController hierarchy, making it easier to manage custom transition animations and interactions.
 
 ## Features
 
