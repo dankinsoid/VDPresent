@@ -30,7 +30,7 @@ public extension UIPresentation.Transition {
                 let currentTransition = context.insertionTransitions[view]
                 if needAnimate {
                     context.insertionTransitions[view] = context.environment.contentTransition.insertion
-                } else {
+                } else if context.insertionTransitions[view] != nil {
                     context.insertionTransitions[view] = context.environment.contentTransition.constant(at: .insertion(1))
                 }
                 context.insertionTransitions[view]?.beforeTransitionIfNeeded(view: view, current: currentTransition)

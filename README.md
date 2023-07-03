@@ -1,21 +1,60 @@
 # VDPresent
 
-[![CI Status](https://img.shields.io/travis/dankinsoid/VDPresent.svg?style=flat)](https://travis-ci.org/dankinsoid/VDPresent)
-[![Version](https://img.shields.io/cocoapods/v/VDPresent.svg?style=flat)](https://cocoapods.org/pods/VDPresent)
-[![License](https://img.shields.io/cocoapods/l/VDPresent.svg?style=flat)](https://cocoapods.org/pods/VDPresent)
-[![Platform](https://img.shields.io/cocoapods/p/VDPresent.svg?style=flat)](https://cocoapods.org/pods/VDPresent)
+## Introduction
 
+VDPresent is a powerful, customizable library for managing view controller transitions and hierarchies in iOS applications. It aims to unify and simplify screen transitions by providing a single way to show/hide view controllers through the UIStackController, making it easier to manage custom transition animations and interactions.
 
-## Description
-This repository provides
+## Features
 
-## Example
+- [x] Manage view controllers with a stack-based approach similar to `UINavigationController`.
+- [x] Customize transitions through `UIPresentation` struct.
+- [x] Simplify showing and hiding of view controllers.
+- [x] Common transitions like `UIPresentation.push`, `UIPresentation.fullScreen` out of the box.
+- [ ] Self-sizing behavior for modals like bottom sheets. (Coming soon)
+- [ ] Integration with SwiftUI. (Coming soon)
+- [ ] Alternatives to native tab and navigation bars. (Coming soon)
+- [ ] Comprehensive Unit and UI tests. (Coming soon)
 
-```swift
+## Requirements
 
-```
+- iOS 13.0+
+- Xcode 11+
+
 ## Usage
 
+#### Create a UIStackController
+
+```swift
+let rootViewController = YourInitialViewController()
+let stackController = UIStackController(rootViewController: rootViewController)
+```
+
+#### Show a View Controller
+
+```swift
+// global presentation
+viewController.show(as: .fullScreen(from: .leading, interactive: true))
+
+// local presentation
+stackController.show(viewController, as: .push)
+```
+
+#### Hide a View Controller
+
+```swift
+viewController.hide()
+```
+
+## Upcoming Features
+
+- Self-sizing behavior for modals like bottom sheets.
+- Integration with SwiftUI.
+- Alternatives to standard tab and navigation bars.
+- Comprehensive Unit and UI tests.
+
+## Contribute
+
+We would love for you to contribute to `YourLibrary`, check the `LICENSE` file for more info.
  
 ## Installation
 
@@ -29,7 +68,7 @@ import PackageDescription
 let package = Package(
   name: "SomeProject",
   dependencies: [
-    .package(url: "https://github.com/dankinsoid/VDPresent.git", from: "0.26.0")
+    .package(url: "https://github.com/dankinsoid/VDPresent.git", from: "0.27.0")
   ],
   targets: [
     .target(name: "SomeProject", dependencies: ["VDPresent"])

@@ -3,22 +3,4 @@
    uuid = "7A1D3F05-0576-4C0C-96A5-0114DDDC851A"
    type = "1"
    version = "2.0">
-   <Breakpoints>
-      <BreakpointProxy
-         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
-         <BreakpointContent
-            uuid = "90F5DF1C-6542-4D8E-A2F7-438720E4215D"
-            shouldBeEnabled = "No"
-            ignoreCount = "0"
-            continueAfterRunningActions = "No"
-            filePath = "../Library/Developer/Xcode/DerivedData/VDPresent-gtqzgkihmnohmvecziwoguumiqyc/SourcePackages/checkouts/VDTransition/Sources/VDTransition/UITransition+static.swift"
-            startingColumnNumber = "9223372036854775807"
-            endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "161"
-            endingLineNumber = "161"
-            landmarkName = "move(edge:offset:)"
-            landmarkType = "7">
-         </BreakpointContent>
-      </BreakpointProxy>
-   </Breakpoints>
 </Bucket>

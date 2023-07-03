@@ -25,7 +25,7 @@ public extension UIPresentation {
             \.backgroundTransition,
              containerColor == .clear
                ? .identity
-               : .value(\.backgroundColor, containerColor, default: containerColor.withAlphaComponent(0))
+               : .backgroundColor(containerColor, default: containerColor.withAlphaComponent(0))
         )
     }
     
