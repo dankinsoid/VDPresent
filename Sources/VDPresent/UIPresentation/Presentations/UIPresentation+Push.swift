@@ -13,22 +13,22 @@ public extension UIPresentation {
         backViewControllerOffset offset: RelationValue<CGFloat> = .relative(0.3)
     ) -> UIPresentation {
         UIPresentation(
+            transition: .default(
+                transition: .asymmetric(
+                    insertion: .move(edge: edge),
+                    removal: .move(edge: edge.opposite, offset: offset)
+                ),
+                applyTransitionOnBackControllers: true,
+                contextTransparencyDeep: 0
+            )
+            .withBackground(containerColor),
             interactivity: .swipe(to: edge),
             animation: .default
-        )
-        .environment(
-            \.contentTransition,
-             .asymmetric(
-                insertion: .move(edge: edge),
-                removal: .move(edge: edge.opposite, offset: offset)
-             )
         )
         .environment(
             \.backgroundTransition,
              .value(\.backgroundColor, containerColor, default: containerColor.withAlphaComponent(0))
         )
-        .environment(\.applyTransitionOnBackControllers, true)
-        .environment(\.hideBackControllers, true)
         .environment(\.swipeFromEdge, true)
     }
 }

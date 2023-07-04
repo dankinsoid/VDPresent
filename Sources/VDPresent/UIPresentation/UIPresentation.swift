@@ -8,18 +8,16 @@ public struct UIPresentation {
 	public var transition: Transition
 	public var interactivity: Interactivity?
 	public var animation: UIKitAnimation
-    public var environment: UIPresentation.Environment
+    public var environment: Environment { transition.environment }
 
 	public init(
         transition: Transition = .default(),
 		interactivity: Interactivity? = nil,
-		animation: UIKitAnimation = .default,
-        environment: UIPresentation.Environment = UIPresentation.Environment()
+		animation: UIKitAnimation = .default
 	) {
 		self.transition = transition
 		self.interactivity = interactivity
 		self.animation = animation
-        self.environment = environment
 	}
 
 	public static var `default` = UIPresentation.sheet
@@ -44,7 +42,7 @@ public struct UIPresentation {
     
     public func environment<T>(_ keyPath: WritableKeyPath<UIPresentation.Environment, T>, _ value: T) -> UIPresentation {
         var result = self
-        result.environment[keyPath: keyPath] = value
+        result.transition = transition.environment(keyPath, value)
         return result
     }
     
@@ -53,128 +51,12 @@ public struct UIPresentation {
         _ value: (T) -> T
     ) -> UIPresentation {
         var result = self
-        result.environment[keyPath: keyPath] = value(result.environment[keyPath: keyPath])
+        result.transition = transition.transformEnvironment(keyPath, value)
         return result
     }
 }
 
 public extension UIPresentation {
-
-	struct Context {
-
-        public var viewController: UIViewController {
-            _controller ?? UIViewController()
-        }
-        public var view: UIView {
-            view(for: viewController)
-        }
-        public var container: UIStackControllerContainer {
-            container(for: viewController)
-        }
-		public let animated: Bool
-		public let isInteractive: Bool
-		public let cache: Cache
-        public let animation: UIKitAnimation
-        public let viewControllers: Controllers
-        
-        public var direction: TransitionDirection {
-            if viewControllers.to.last === viewController || !viewControllers.from.contains(viewController) {
-                return .insertion
-            } else {
-                return .removal
-            }
-        }
-        
-        public var environment: UIPresentation.Environment {
-            _environment(viewController)
-        }
-        
-        private weak var _controller: UIViewController?
-        private let views: (UIViewController) -> UIView
-        private let _container: (UIViewController) -> UIStackControllerContainer
-        private let _environment: (UIViewController) -> UIPresentation.Environment
-        private let _updateStatusBar: (UIStatusBarStyle, UIStatusBarAnimation) -> Void
-
-		public init(
-            controller: UIViewController,
-			container: @escaping (UIViewController) -> UIStackControllerContainer,
-			fromViewControllers: [UIViewController],
-			toViewControllers: [UIViewController],
-            views: @escaping (UIViewController) -> UIView,
-			animated: Bool,
-            animation: UIKitAnimation,
-			isInteractive: Bool,
-			cache: Cache,
-            updateStatusBar: @escaping (UIStatusBarStyle, UIStatusBarAnimation) -> Void,
-            environment: @escaping (UIViewController) -> UIPresentation.Environment
-        ) {
-            self._controller = controller
-            self._container = container
-            self.viewControllers = Controllers(
-                fromViewControllers: fromViewControllers,
-                toViewControllers: toViewControllers
-            )
-            self.views = views
-            self.animated = animated
-            self.isInteractive = isInteractive
-            self.cache = cache
-            self._updateStatusBar = updateStatusBar
-            self._environment = environment
-            self.animation = animation
-        }
-        
-        public func environment(for controller: UIViewController) -> UIPresentation.Environment {
-            _environment(controller)
-        }
-        
-        public func container(for controller: UIViewController) -> UIStackControllerContainer {
-            _container(controller)
-        }
-        
-        public func updateStatusBar(style: UIStatusBarStyle, animation: UIStatusBarAnimation = .fade) {
-            _updateStatusBar(style, animation)
-        }
-        
-        public func view(for controller: UIViewController) -> UIView {
-            views(controller)
-        }
-        
-        public func `for`(controller: UIViewController) -> Self {
-            var result = self
-            result._controller = controller
-            return result
-        }
-        
-        public struct Controllers {
-            
-            public var from: [UIViewController] { _fromViewControllers.compactMap(\.value) }
-            public var to: [UIViewController] { _toViewControllers.compactMap(\.value) }
-            public var direction: TransitionDirection {
-                to.last.map { !from.contains($0) } ?? false
-                    ? .insertion
-                    : .removal
-            }
-            private let _fromViewControllers: [Weak<UIViewController>]
-            private let _toViewControllers: [Weak<UIViewController>]
-            
-            public init(
-                fromViewControllers: [UIViewController],
-                toViewControllers: [UIViewController]
-            ) {
-                self._fromViewControllers = fromViewControllers.map { Weak($0) }
-                self._toViewControllers = toViewControllers.map { Weak($0) }
-            }
-            
-            public subscript(_ key: UITransitionContextViewControllerKey) -> [UIViewController] {
-                switch key {
-                case .from: return from
-                case .to: return to
-                default: return []
-                }
-            }
-            
-        }
-	}
 
 	struct Interactivity {
 
@@ -210,18 +92,51 @@ public extension UIPresentation {
 	}
 
 	struct Transition {
-
+        
+        public static var identity: UIPresentation.Transition {
+            UIPresentation.Transition { _, _ in }
+        }
+        
 		private var updater: (Context, State) -> Void
+        public var environment: UIPresentation.Environment
 
 		public init(
-			updater: @escaping (Context, State) -> Void
+			updater: @escaping (Context, State) -> Void,
+            environment: UIPresentation.Environment = UIPresentation.Environment()
 		) {
 			self.updater = updater
+            self.environment = environment
 		}
 
 		public func update(context: Context, state: State) {
 			updater(context, state)
 		}
+        
+        public func environment<T>(_ keyPath: WritableKeyPath<UIPresentation.Environment, T>, _ value: T) -> UIPresentation.Transition {
+            var result = self
+            result.environment[keyPath: keyPath] = value
+            return result
+        }
+        
+        public func transformEnvironment<T>(
+            _ keyPath: WritableKeyPath<UIPresentation.Environment, T>,
+            _ value: (T) -> T
+        ) -> UIPresentation.Transition {
+            var result = self
+            result.environment[keyPath: keyPath] = value(result.environment[keyPath: keyPath])
+            return result
+        }
+        
+        public func with(
+            updater newUpdater: @escaping (Context, State) -> Void
+        ) -> UIPresentation.Transition {
+            var result = self
+            result.updater = { [updater] in
+                updater($0, $1)
+                newUpdater($0, $1)
+            }
+            return result
+        }
 	}
 
 	enum State: Equatable {
@@ -229,46 +144,6 @@ public extension UIPresentation {
 		case begin
         case change(Progress.Edge)
         case end(completed: Bool)
-	}
-}
-
-public extension UIPresentation.Context.Controllers {
-
-	var toRemove: [UIViewController] {
-		from.filter { !to.contains($0) }
-	}
-
-	var toInsert: [UIViewController] {
-		to.filter { !from.contains($0) }
-	}
-    
-    var all: [UIViewController] {
-        guard !from.isEmpty else { return to }
-        guard !to.isEmpty else { return from }
-        let prefix = from.dropLast().filter { !to.contains($0) } + to.dropLast()
-        let suffix = from.suffix(1) + to.suffix(1).filter { $0 !== from.last }
-        return direction == .insertion
-        ? prefix + suffix
-        : prefix + suffix.reversed()
-    }
-    
-    var isTopTheSame: Bool {
-        from.last === to.last
-    }
-}
-
-public extension UIPresentation.Context {
-
-	final class Cache {
-
-		private var values: [PartialKeyPath<UIPresentation.Context>: Any] = [:]
-
-		public subscript<T>(_ keyPath: ReferenceWritableKeyPath<UIPresentation.Context, T>) -> T? {
-			get { values[keyPath] as? T }
-			set { values[keyPath] = newValue }
-		}
-
-		public init() {}
 	}
 }
 

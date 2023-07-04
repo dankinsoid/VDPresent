@@ -11,7 +11,6 @@ final class UIStackControllerView: UIView {
             }
             containers.forEach {
                 addSubview($0)
-                $0.translatesAutoresizingMaskIntoConstraints = false
             }
             layout()
         }

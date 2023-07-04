@@ -35,12 +35,15 @@ public extension UIPresentation {
         overCurrentContext: Bool = false
 	) -> UIPresentation {
 		UIPresentation(
+            transition: .default(
+                transition: transition,
+                layout: .fill,
+                applyTransitionOnBackControllers: false,
+                contextTransparencyDeep: overCurrentContext ? nil : 0
+            )
+            .withBackground(.identity),
 			interactivity: interactivity,
 			animation: .default
 		)
-        .environment(\.contentTransition, transition)
-        .environment(\.contentLayout, .fill)
-        .environment(\.applyTransitionOnBackControllers, false)
-        .environment(\.hideBackControllers, !overCurrentContext)
 	}
 }

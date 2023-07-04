@@ -96,6 +96,7 @@ public extension UIPresentation.Interactivity {
                 return i > 0
             } moveToEdgeContext: { context, controller, edge in
                 UIPresentation.Context(
+                    direction: .removal,
                     controller: controller,
                     container: context.container,
                     fromViewControllers: context.viewControllers.to,

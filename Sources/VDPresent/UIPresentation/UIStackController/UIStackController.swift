@@ -7,7 +7,7 @@ open class UIStackController: UIViewController {
     public private(set) var isSettingControllers = false
 	public var presentation: UIPresentation?
 
-	override open var shouldAutomaticallyForwardAppearanceMethods: Bool { false }
+	override public var shouldAutomaticallyForwardAppearanceMethods: Bool { false }
     override open var preferredStatusBarUpdateAnimation: UIStatusBarAnimation { statusBarAnimation }
     override open var preferredStatusBarStyle: UIStatusBarStyle { statusBarStyle }
 
@@ -51,6 +51,7 @@ open class UIStackController: UIViewController {
 	open func set(
 		viewControllers newViewControllers: [UIViewController],
 		as presentation: UIPresentation? = nil,
+        direction: TransitionDirection? = nil,
 		animated: Bool = true,
 		completion: (() -> Void)? = nil
 	) {
@@ -80,9 +81,10 @@ open class UIStackController: UIViewController {
 		let isInsertion = newViewControllers.last.map { !viewControllers.contains($0) } ?? false
 
         let prsnt = presentation ?? self.presentation(for: isInsertion ? newViewControllers : viewControllers)
-        let isTheSame = newViewControllers.last === viewControllers.last && prsnt.environment.hideBackControllers
+        let isTheSame = newViewControllers.last === viewControllers.last && !prsnt.environment.overCurrentContext
         
 		makeTransition(
+            direction: direction ?? (isInsertion ? .insertion : .removal),
 			to: newViewControllers,
 			from: viewControllers,
 			presentation: prsnt,
@@ -92,7 +94,7 @@ open class UIStackController: UIViewController {
 	}
     
     open func wrap(view: UIView) -> UIView {
-        view
+        UIStackViewWrapper(view)
     }
 }
 
@@ -192,6 +194,7 @@ private extension UIStackController {
 private extension UIStackController {
 
 	func makeTransition(
+        direction: TransitionDirection,
 		to toViewControllers: [UIViewController],
 		from fromViewControllers: [UIViewController],
 		presentation: UIPresentation,
@@ -199,6 +202,7 @@ private extension UIStackController {
 		completion: (() -> Void)?
 	) {
 		let (prepare, animation, completion) = transitionBlocks(
+            direction: direction,
 			to: toViewControllers,
 			from: fromViewControllers,
 			presentation: presentation,
@@ -220,6 +224,7 @@ private extension UIStackController {
 	}
 
     func transitionBlocks(
+        direction: TransitionDirection,
         to toViewControllers: [UIViewController],
         from fromViewControllers: [UIViewController],
         presentation: UIPresentation,
@@ -238,6 +243,7 @@ private extension UIStackController {
         
         let context: (UIViewController) -> UIPresentation.Context = { [weak self, presentations, cache] in
             UIPresentation.Context(
+                direction: direction,
                 controller: $0,
                 container: { [weak self] in self?.container(for: $0) ?? UIStackControllerContainerView() },
                 fromViewControllers: fromViewControllers,
@@ -342,10 +348,11 @@ private extension UIStackController {
         controllers: UIPresentation.Context.Controllers,
         context: @escaping (UIViewController) -> UIPresentation.Context
     ) {
-        statusBarStyle = controllers.to.last?.preferredStatusBarStyle ?? statusBarStyle
-        controllers.to.last?.beginAppearanceTransition(true, animated: animated)
-        controllers.from.last?.beginAppearanceTransition(false, animated: animated)
-        
+        if !controllers.isTopTheSame {
+            statusBarStyle = controllers.to.last?.preferredStatusBarStyle ?? statusBarStyle
+            controllers.to.last?.beginAppearanceTransition(true, animated: animated)
+            controllers.from.last?.beginAppearanceTransition(false, animated: animated)
+        }
         controllers.all.forEach {
             presentations[$0, default: presentation]
                 .transition.update(context: context($0), state: .change(.end))
@@ -374,8 +381,10 @@ private extension UIStackController {
         }
         
         didSetViewControllers()
-        controllers.to.last?.endAppearanceTransition()
-        controllers.from.last?.endAppearanceTransition()
+        if !controllers.isTopTheSame {
+            controllers.to.last?.endAppearanceTransition()
+            controllers.from.last?.endAppearanceTransition()
+        }
         if isCompleted {
             for fromViewController in controllers.toRemove {
                 fromViewController.removeFromParent()
