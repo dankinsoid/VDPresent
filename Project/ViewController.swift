@@ -8,7 +8,7 @@ class ViewController: UIViewController {
     
 	override func viewDidLoad() {
 		super.viewDidLoad()
-		view.backgroundColor = [UIColor.systemBlue, .systemRed, .systemPink, .systemOrange, .systemYellow, .systemGreen].randomElement()
+        view.backgroundColor = [UIColor.systemBlue, .systemRed, .systemPink, .systemOrange, .systemYellow, .systemGreen].randomElement()
 
         let showButton = UIButton(type: .system)
 		view.addSubview(showButton)
@@ -48,10 +48,10 @@ class ViewController: UIViewController {
 
 	@objc func tapShow(_: Any) {
 		let controller = ViewController()
-        let presentations: [UIPresentation] = [.pageSheet]
+        let presentations: [UIPresentation] = [.pageSheet(from: .bottom)]
 //        controller.view.safeAreaLayoutGuide.heightAnchor.constraint(equalToConstant: 200).isActive = true
 //        present(controller, animated: true)
-        controller.show(as: presentations.randomElement()?.with(animation: .default(1)), animated: true)
+        controller.show(as: presentations.randomElement()?.with(animation: .default), animated: true)
 //        navigationController?.pushViewController(controller, animated: true)
 	}
     
