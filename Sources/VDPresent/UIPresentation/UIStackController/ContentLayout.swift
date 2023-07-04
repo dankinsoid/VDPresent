@@ -109,6 +109,13 @@ public struct ContentLayout {
         }
     }
     
+    public static func match(_ view: UIView) -> ContentLayout {
+        .custom { [weak view] this, _, _ in
+            guard let view, this.window != nil, view.window != nil else { return }
+            this.update(frame: view.convert(view.bounds, to: this.superview))
+        }
+    }
+    
     public struct Alignment {
         
         public var vertical: VAlignment

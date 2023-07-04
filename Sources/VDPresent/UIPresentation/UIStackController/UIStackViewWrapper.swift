@@ -1,6 +1,6 @@
 import UIKit
 
-final class UIStackViewWrapper: UIView {
+public final class UIStackViewWrapper: UIView {
     
     let wrapped: UIView
     
@@ -11,24 +11,24 @@ final class UIStackViewWrapper: UIView {
         addSubview(view)
     }
     
-    required init?(coder: NSCoder) {
+    required public init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
     
-    override var intrinsicContentSize: CGSize {
+    override public var intrinsicContentSize: CGSize {
         wrapped.intrinsicContentSize
     }
     
-    override func layoutSubviews() {
+    override public func layoutSubviews() {
         super.layoutSubviews()
         wrapped.update(frame: bounds)
     }
     
-    override func systemLayoutSizeFitting(_ targetSize: CGSize) -> CGSize {
+    override public func systemLayoutSizeFitting(_ targetSize: CGSize) -> CGSize {
         wrapped.systemLayoutSizeFitting(targetSize)
     }
     
-    override func systemLayoutSizeFitting(_ targetSize: CGSize, withHorizontalFittingPriority horizontalFittingPriority: UILayoutPriority, verticalFittingPriority: UILayoutPriority) -> CGSize {
+    override public func systemLayoutSizeFitting(_ targetSize: CGSize, withHorizontalFittingPriority horizontalFittingPriority: UILayoutPriority, verticalFittingPriority: UILayoutPriority) -> CGSize {
         wrapped.systemLayoutSizeFitting(targetSize, withHorizontalFittingPriority: horizontalFittingPriority, verticalFittingPriority: verticalFittingPriority)
     }
 }

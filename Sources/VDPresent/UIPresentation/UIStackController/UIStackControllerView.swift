@@ -2,7 +2,7 @@ import UIKit
 
 final class UIStackControllerView: UIView {
     
-    var containers: [UIStackControllerContainerView] = [] {
+    var containers: [UIStackControllerContainer] = [] {
         didSet {
             oldValue.forEach {
                 if !containers.contains($0) {

@@ -7,7 +7,7 @@ public extension UIPresentation {
         public var viewController: UIViewController {
             _controller ?? UIViewController()
         }
-        public var view: UIView {
+        public var view: UIStackViewWrapper {
             view(for: viewController)
         }
         public var container: UIStackControllerContainer {
@@ -25,7 +25,7 @@ public extension UIPresentation {
         }
         
         private weak var _controller: UIViewController?
-        private let views: (UIViewController) -> UIView
+        private let views: (UIViewController) -> UIStackViewWrapper
         private let _container: (UIViewController) -> UIStackControllerContainer
         private let _environment: (UIViewController) -> UIPresentation.Environment
         private let _updateStatusBar: (UIStatusBarStyle, UIStatusBarAnimation) -> Void
@@ -36,7 +36,7 @@ public extension UIPresentation {
             container: @escaping (UIViewController) -> UIStackControllerContainer,
             fromViewControllers: [UIViewController],
             toViewControllers: [UIViewController],
-            views: @escaping (UIViewController) -> UIView,
+            views: @escaping (UIViewController) -> UIStackViewWrapper,
             animated: Bool,
             animation: UIKitAnimation,
             isInteractive: Bool,
@@ -72,7 +72,7 @@ public extension UIPresentation {
             _updateStatusBar(style, animation)
         }
         
-        public func view(for controller: UIViewController) -> UIView {
+        public func view(for controller: UIViewController) -> UIStackViewWrapper {
             views(controller)
         }
         

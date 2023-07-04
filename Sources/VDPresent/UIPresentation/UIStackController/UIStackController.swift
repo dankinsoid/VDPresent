@@ -12,8 +12,8 @@ open class UIStackController: UIViewController {
     override open var preferredStatusBarStyle: UIStatusBarStyle { statusBarStyle }
 
     private let content = UIStackControllerView()
-    private var containers: [UIViewController: UIStackControllerContainerView] = [:]
-    private var wrappers: [UIViewController: UIView] = [:]
+    private var containers: [UIViewController: UIStackControllerContainer] = [:]
+    private var wrappers: [UIViewController: UIStackViewWrapper] = [:]
     private var presentations: [UIViewController: UIPresentation] = [:]
     private let cache = UIPresentation.Context.Cache()
     private var queue: [Setting] = []
@@ -93,7 +93,7 @@ open class UIStackController: UIViewController {
         )
 	}
     
-    open func wrap(view: UIView) -> UIView {
+    open func wrap(view: UIView) -> UIStackViewWrapper {
         UIStackViewWrapper(view)
     }
 }
@@ -245,10 +245,10 @@ private extension UIStackController {
             UIPresentation.Context(
                 direction: direction,
                 controller: $0,
-                container: { [weak self] in self?.container(for: $0) ?? UIStackControllerContainerView() },
+                container: { [weak self] in self?.container(for: $0) ?? UIStackControllerContainer() },
                 fromViewControllers: fromViewControllers,
                 toViewControllers: toViewControllers,
-                views: { [weak self] in self?.wrapper(for: $0) ?? $0.view },
+                views: { [weak self] in self?.wrapper(for: $0) ?? UIStackViewWrapper($0.view) },
                 animated: animated,
                 animation: (presentations[$0] ?? presentation).animation,
                 isInteractive: isInteractive,
@@ -470,19 +470,16 @@ private extension UIStackController {
         updateContainers()
     }
         
-    func wrapper(for controller: UIViewController) -> UIView {
-        wrappers[controller] ?? controller.view
+    func wrapper(for controller: UIViewController) -> UIStackViewWrapper {
+        wrappers[controller] ?? UIStackViewWrapper(controller.view)
     }
     
     @discardableResult
-    func container(for controller: UIViewController) -> UIStackControllerContainerView {
+    func container(for controller: UIViewController) -> UIStackControllerContainer {
         if let result = containers[controller] {
             return result
         }
-        if let result = wrapper(for: controller) as? UIStackControllerContainerView {
-            return result
-        }
-        let container = UIStackControllerContainerView()
+        let container = UIStackControllerContainer()
         container.backgroundColor = .clear
         containers[controller] = container
         content.containers.append(container)

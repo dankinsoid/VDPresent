@@ -10,7 +10,8 @@ public extension UIPresentation.Transition {
         withBackground(
             color == .clear
                 ? .identity
-                : .backgroundColor(color, default: color.withAlphaComponent(0))
+                : .backgroundColor(color, default: color.withAlphaComponent(0)),
+            layout: layout
         )
     }
     
@@ -21,23 +22,34 @@ public extension UIPresentation.Transition {
         with { context, state in
             switch state {
             case .begin:
-                let transition = context.environment.backgroundTransition
+                let transition = context.environment.backgroundTransition.reversed
                 guard !transition.isIdentity else { return }
                 let backgroundView: UIView
                 if let bgView = context.backgroundView {
                     backgroundView = bgView
                 } else {
                     backgroundView = UIView()
-                    backgroundView.accessibilityIdentifier = backgroundViewID
                     backgroundView.backgroundColor = .clear
                     backgroundView.isUserInteractionEnabled = false
-                    context.container.insertSubview(backgroundView, at: 0, layout: context.environment.backgroundLayout)
+                    context.backgroundView = backgroundView
+                    if context.environment.isOverlay {
+                        if let i = context.viewControllers.to.firstIndex(of: context.viewController), i > 0 {
+                            let vc = context.viewControllers.to[i - 1]
+                            context.container(for: vc).addSubview(backgroundView, layout: .match(context.view(for: vc)))
+                        }
+                    } else {
+                        context.container.insertSubview(backgroundView, at: 0, layout: context.environment.backgroundLayout)
+                    }
                 }
                 let current = context.backgroundTransitions[backgroundView]
                 if context.needAnimate {
-                    context.backgroundTransitions[backgroundView] = transition.reversed
+                    context.backgroundTransitions[backgroundView] = transition
+                } else if context.needHide(.to) {
+                    context.backgroundTransitions[backgroundView] = transition.reversed.insertion
+                } else if context.needHide(.from) {
+                    context.backgroundTransitions[backgroundView] = transition.reversed.removal
                 } else {
-                    context.backgroundTransitions[backgroundView] = transition.constant(at: .insertion(0))
+                    context.backgroundTransitions[backgroundView] = transition.constant(at: .insertion(1))
                 }
                 context.backgroundTransitions[backgroundView]?.beforeTransitionIfNeeded(view: backgroundView, current: current)
                 
@@ -48,17 +60,35 @@ public extension UIPresentation.Transition {
                 
             case let .end(completed):
                 let array = completed
-                ? context.viewControllers.toRemove
-                : context.viewControllers.toInsert
+                    ? context.viewControllers.toRemove
+                    : context.viewControllers.toInsert
                 
                 if array.contains(context.viewController), let view = context.backgroundView {
-                    view.removeFromSuperview()
+                    if let container = view.superview as? UIStackControllerContainer {
+                        container.remove(subview: view)
+                    } else {
+                        view.removeFromSuperview()
+                    }
                     context.backgroundTransitions[view] = nil
+                    context.backgroundView = nil
                 }
             }
         }
         .environment(\.backgroundTransition, transition)
         .environment(\.backgroundLayout, layout)
+        .environment(\.isOverlay, false)
+    }
+    
+    func withOverlay(
+        _ color: UIColor
+    ) -> UIPresentation.Transition {
+        withBackground(color).environment(\.isOverlay, true)
+    }
+    
+    func withOverlay(
+        _ transition: UIViewTransition
+    ) -> UIPresentation.Transition {
+        withBackground(transition).environment(\.isOverlay, true)
     }
 }
 
@@ -75,6 +105,14 @@ public extension UIPresentation.Environment {
     }
 }
 
+extension UIPresentation.Environment {
+    
+    var isOverlay: Bool {
+        get { self[\.isOverlay] ?? false }
+        set { self[\.isOverlay] = newValue }
+    }
+}
+
 extension UIPresentation.Context {
     
     var backgroundTransitions: [Weak<UIView>: UITransition<UIView>] {
@@ -87,9 +125,21 @@ extension UIPresentation.Context {
     }
     
     var backgroundView: UIView? {
-        container.subviews
-            .first(where: { $0.accessibilityIdentifier == backgroundViewID })
+        get { backgroundViews[view]?.value }
+        nonmutating set {
+            if let newValue {
+                backgroundViews[view] = Weak(newValue)
+            } else {
+                backgroundViews[view] = nil
+            }
+        }
     }
 }
 
-private let backgroundViewID = "BackgroundView"
+private extension UIPresentation.Context {
+    
+    var backgroundViews: [Weak<UIView>: Weak<UIView>] {
+        get { cache[\.backgroundViews] ?? [:] }
+        nonmutating set { cache[\.backgroundViews] = newValue }
+    }
+}

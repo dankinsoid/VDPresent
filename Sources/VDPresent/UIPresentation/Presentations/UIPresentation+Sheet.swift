@@ -37,7 +37,7 @@ public extension UIPresentation {
                 applyTransitionOnBackControllers: true,
                 contextTransparencyDeep: selfSized ? nil : 1
             )
-            .withBackground(containerColor),
+            .withBackground(containerColor).environment(\.isOverlay, !selfSized),
 			interactivity: .swipe(to: edge),
 			animation: .default
 		)
