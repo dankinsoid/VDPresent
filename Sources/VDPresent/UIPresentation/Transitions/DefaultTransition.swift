@@ -9,6 +9,7 @@ public extension UIPresentation.Transition {
         applyTransitionOnBackControllers: Bool = false,
         contextTransparencyDeep: Int? = nil,
 		prepare: ((UIPresentation.Context) -> Void)? = nil,
+        animation: ((UIPresentation.Context, Progress.Edge) -> Void)? = nil,
 		completion: ((UIPresentation.Context, Bool) -> Void)? = nil
 	) -> UIPresentation.Transition {
         UIPresentation.Transition { context, state in
@@ -26,7 +27,6 @@ public extension UIPresentation.Transition {
                 if context.container.isHidden, !needHide {
                     context.container.isHidden = false
                 }
-                prepare?(context)
                 
                 let needAnimate = context.needAnimate
                     
@@ -61,6 +61,7 @@ public extension UIPresentation.Transition {
                         }
                     }
                 }
+                prepare?(context)
          
 			case let .change(progress):
                 let view = context.view
@@ -70,6 +71,7 @@ public extension UIPresentation.Transition {
                         $0.value.update(progress: context.direction.at(progress), view: backView)
                     }
                 }
+                animation?(context, progress)
 
 			case let .end(completed):
                 let array = completed
@@ -123,7 +125,7 @@ public extension UIPresentation.Environment {
     }
 }
 
-private extension UIPresentation.Context {
+extension UIPresentation.Context {
     
     var insertionTransitions: [Weak<UIView>: UITransition<UIView>] {
         get {

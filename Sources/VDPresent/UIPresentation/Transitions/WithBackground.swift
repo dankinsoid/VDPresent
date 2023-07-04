@@ -35,7 +35,7 @@ public extension UIPresentation.Transition {
                     if context.environment.isOverlay {
                         if let i = context.viewControllers.to.firstIndex(of: context.viewController), i > 0 {
                             let vc = context.viewControllers.to[i - 1]
-                            context.container(for: vc).addSubview(backgroundView, layout: .match(context.view(for: vc)))
+                            context.view(for: vc).addSubview(backgroundView, layout: context.environment.backgroundLayout)
                         }
                     } else {
                         context.container.insertSubview(backgroundView, at: 0, layout: context.environment.backgroundLayout)
@@ -64,11 +64,7 @@ public extension UIPresentation.Transition {
                     : context.viewControllers.toInsert
                 
                 if array.contains(context.viewController), let view = context.backgroundView {
-                    if let container = view.superview as? UIStackControllerContainer {
-                        container.remove(subview: view)
-                    } else {
-                        view.removeFromSuperview()
-                    }
+                    view.removeFromSuperview()
                     context.backgroundTransitions[view] = nil
                     context.backgroundView = nil
                 }

@@ -185,7 +185,7 @@ private extension UIStackController {
 		for viewControllers: [UIViewController]
 	) -> UIPresentation {
         if UIWindow.root?.rootViewController === self, viewControllers.count < 2 {
-            return .fullScreen
+            return .fullScreen(from: .bottom, containerColor: .clear)
         }
         return viewControllers.last.flatMap { presentations[$0] ?? $0.defaultPresentation } ?? presentation ?? .default
 	}
@@ -262,6 +262,7 @@ private extension UIStackController {
         }
         return transitionBlocks(
             presentation: presentation,
+            direction: direction,
             animated: animated,
             controllers: controllers,
             context: context,
@@ -271,6 +272,7 @@ private extension UIStackController {
     
     func transitionBlocks(
         presentation: UIPresentation,
+        direction: TransitionDirection,
         animated: Bool,
         controllers: UIPresentation.Context.Controllers,
         context: @escaping (UIViewController) -> UIPresentation.Context,
@@ -281,16 +283,17 @@ private extension UIStackController {
         completion: (Bool) -> Void
     ) {
 		let prepare: () -> Void = { [weak self] in
-            self?.prepareBlock(presentation: presentation, controllers: controllers, context: context)
+            self?.prepareBlock(direction: direction, presentation: presentation, controllers: controllers, context: context)
 		}
 
 		let animation: () -> Void = { [weak self] in
-            self?.animationBlock(presentation: presentation, animated: animated, controllers: controllers, context: context)
+            self?.animationBlock(presentation: presentation, direction: direction, animated: animated, controllers: controllers, context: context)
 		}
 
 		let completion: (Bool) -> Void = { [weak self] in
             self?.completionBlock(
                 presentation: presentation,
+                direction: direction,
                 controllers: controllers,
                 context: context,
                 isCompleted: $0,
@@ -302,6 +305,7 @@ private extension UIStackController {
 	}
     
     func prepareBlock(
+        direction: TransitionDirection,
         presentation: UIPresentation,
         controllers: UIPresentation.Context.Controllers,
         context: @escaping (UIViewController) -> UIPresentation.Context
@@ -319,7 +323,7 @@ private extension UIStackController {
             }
         }
         
-        let allControllers = controllers.all
+        let allControllers = controllers.all(direction)
         allControllers.suffix(2).map(container).forEach(content.bringSubviewToFront)
         
         allControllers.forEach {
@@ -344,6 +348,7 @@ private extension UIStackController {
     
     func animationBlock(
         presentation: UIPresentation,
+        direction: TransitionDirection,
         animated: Bool,
         controllers: UIPresentation.Context.Controllers,
         context: @escaping (UIViewController) -> UIPresentation.Context
@@ -353,7 +358,7 @@ private extension UIStackController {
             controllers.to.last?.beginAppearanceTransition(true, animated: animated)
             controllers.from.last?.beginAppearanceTransition(false, animated: animated)
         }
-        controllers.all.forEach {
+        controllers.all(direction).forEach {
             presentations[$0, default: presentation]
                 .transition.update(context: context($0), state: .change(.end))
         }
@@ -361,6 +366,7 @@ private extension UIStackController {
     
     func completionBlock(
         presentation: UIPresentation,
+        direction: TransitionDirection,
         controllers: UIPresentation.Context.Controllers,
         context: @escaping (UIViewController) -> UIPresentation.Context,
         isCompleted: Bool,
@@ -375,7 +381,7 @@ private extension UIStackController {
             )
         }
         
-        controllers.all.forEach {
+        controllers.all(direction).forEach {
             presentations[$0, default: presentation]
                 .transition.update(context: context($0), state: .end(completed: isCompleted))
         }
@@ -430,6 +436,7 @@ private extension UIStackController {
                         guard !self.isSettingControllers else { return .prevent }
                         let (prepare, animate, completion) = self.transitionBlocks(
                             presentation: presentation,
+                            direction: context.direction,
                             animated: context.animated,
                             controllers: context.viewControllers,
                             context: context.for,

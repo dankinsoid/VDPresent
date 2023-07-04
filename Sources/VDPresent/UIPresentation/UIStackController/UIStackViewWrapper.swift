@@ -1,6 +1,6 @@
 import UIKit
 
-public final class UIStackViewWrapper: UIView {
+public final class UIStackViewWrapper: UIStackControllerContainer {
     
     let wrapped: UIView
     
@@ -17,11 +17,6 @@ public final class UIStackViewWrapper: UIView {
     
     override public var intrinsicContentSize: CGSize {
         wrapped.intrinsicContentSize
-    }
-    
-    override public func layoutSubviews() {
-        super.layoutSubviews()
-        wrapped.update(frame: bounds)
     }
     
     override public func systemLayoutSizeFitting(_ targetSize: CGSize) -> CGSize {

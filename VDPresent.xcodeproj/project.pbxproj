@@ -545,7 +545,7 @@
 			repositoryURL = "https://github.com/dankinsoid/VDTransition.git";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 1.23.0;
+				minimumVersion = 1.24.0;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */

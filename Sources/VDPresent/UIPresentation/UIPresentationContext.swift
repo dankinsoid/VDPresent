@@ -90,11 +90,6 @@ extension UIPresentation.Context {
         
         public var from: [UIViewController] { _fromViewControllers.compactMap(\.value) }
         public var to: [UIViewController] { _toViewControllers.compactMap(\.value) }
-        public var direction: TransitionDirection {
-            to.last.map { !from.contains($0) } ?? false
-                ? .insertion
-                : .removal
-        }
         private let _fromViewControllers: [Weak<UIViewController>]
         private let _toViewControllers: [Weak<UIViewController>]
         
@@ -127,7 +122,7 @@ public extension UIPresentation.Context.Controllers {
         to.filter { !from.contains($0) }
     }
     
-    var all: [UIViewController] {
+    func all(_ direction: TransitionDirection) -> [UIViewController] {
         guard !from.isEmpty else { return to }
         guard !to.isEmpty else { return from }
         let prefix = from.dropLast().filter { !to.contains($0) } + to.dropLast()
@@ -168,11 +163,11 @@ extension UIPresentation.Context {
     }
     
     var isTopController: Bool {
-        viewControllers.top.contains(viewController)
+        topViewControllers.contains(viewController)
     }
     
     var isSecondController: Bool {
-        viewControllers.second.contains(viewController)
+        secondViewControllers.contains(viewController)
     }
     
     func needHide(_ key: UITransitionContextViewControllerKey) -> Bool {
@@ -191,25 +186,38 @@ extension UIPresentation.Context {
     }
 }
 
-extension UIPresentation.Context.Controllers {
+extension UIPresentation.Context {
     
-    var changing: [UIViewController] {
-        direction == .insertion ? toInsert : toRemove
+    var changingViewControllers: [UIViewController] {
+        direction == .insertion ? viewControllers.toInsert : viewControllers.toRemove
     }
+    
+    var topViewControllers: [UIViewController] {
+        direction == .insertion
+        ? Array(viewControllers.to.suffix(1))
+        : Array(viewControllers.from.suffix(1))
+    }
+    
+    var secondViewControllers: [UIViewController] {
+        direction == .insertion
+        ? Array(viewControllers.from.suffix(1))
+        : Array(viewControllers.to.suffix(1))
+    }
+    
+    var allViewControllers: [UIViewController] {
+        guard !viewControllers.from.isEmpty else { return viewControllers.to }
+        guard !viewControllers.to.isEmpty else { return viewControllers.from }
+        let prefix = viewControllers.from.dropLast().filter { !viewControllers.to.contains($0) } + viewControllers.to.dropLast()
+        let suffix = viewControllers.from.suffix(1) + viewControllers.to.suffix(1).filter { $0 !== viewControllers.from.last }
+        return direction == .insertion
+        ? prefix + suffix
+        : prefix + suffix.reversed()
+    }
+}
+
+extension UIPresentation.Context.Controllers {
     
     var remaining: [UIViewController] {
         to.filter(from.contains)
-    }
-    
-    var top: [UIViewController] {
-        direction == .insertion
-        ? Array(to.suffix(1))
-        : Array(from.suffix(1))
-    }
-    
-    var second: [UIViewController] {
-        direction == .insertion
-        ? Array(from.suffix(1))
-        : Array(to.suffix(1))
     }
 }
