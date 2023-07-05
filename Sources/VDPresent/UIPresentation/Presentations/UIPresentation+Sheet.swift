@@ -222,18 +222,6 @@ private extension UITransition<UIView> {
     }
 }
 
-extension UIPresentation.Context {
-    
-    var pageSheetTransitions: [Weak<UIView>: [Weak<UIView>: UITransition<UIView>]] {
-        get {
-            cache[\.pageSheetTransitions] ?? [:]
-        }
-        nonmutating set {
-            cache[\.pageSheetTransitions] = newValue
-        }
-    }
-}
-
 private struct PageSheetModifier: TransitionModifier {
     
     weak var target: UIView?
