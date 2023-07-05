@@ -47,12 +47,7 @@ public extension UIPresentation {
     ) -> UIPresentation {
         UIPresentation(
             transition: .default(
-                transition: [
-                    .move(edge: edge),
-                    .constant(\.clipsToBounds, true),
-                    .constant(\.layer.cornerRadius, cornerRadius),
-                    .constant(\.layer.maskedCorners, .edge(edge.opposite))
-                ],
+                transition: .identity,
                 layout: .padding(
                     NSDirectionalEdgeInsets(
                         [
@@ -63,45 +58,28 @@ public extension UIPresentation {
                     ),
                     insideSafeArea: NSDirectionalRectEdge(edge.opposite)
                 ),
-                applyTransitionOnBackControllers: false,
+                applyTransitionOnBackControllers: true,
                 contextTransparencyDeep: 1
-            ) { context in
-                guard context.isTopController else {
-                    return
-                }
-                let vcs = context.direction == .insertion
-                    ? Array(context.viewControllers.from.suffix(2))
-                    : Array(context.viewControllers.to.suffix(2))
-                let view = context.view
-                vcs.reversed().enumerated().forEach {
-                    let backView = context.view(for: $0.element)
-                    context.removalTransitions[view]?[backView] = nil
-                    let currentTransition = context.pageSheetTransitions[view]?[backView]
-                    if context.viewControllers.remaining.contains($0.element) {
-                        context.pageSheetTransitions[view, default: [:]][backView] = .transform(
-                            to: view,
-                            edge: edge.opposite,
-                            cornerRadius: cornerRadius,
-                            up: $0.offset == 0
-                        ).reversed
-                    }
-                    context.pageSheetTransitions[view]?[backView]?.beforeTransitionIfNeeded(view: backView, current: currentTransition)
-                }
-            } animation: { context, edge in
-                let view = context.view
-                context.pageSheetTransitions[view]?.forEach {
-                    if let backView = $0.key.value {
-                        $0.value.update(progress: context.direction.at(edge), view: backView)
-                    }
-                }
-            } completion: { context, completed in
-                let array = completed
-                    ? context.viewControllers.toRemove
-                    : context.viewControllers.toInsert
-                if array.contains(context.viewController) {
-                    context.pageSheetTransitions[context.view] = nil
-                }
-            }
+            )
+            .environment(
+                \.contentTransition,
+                 { i, context in
+                         .asymmetric(
+                            insertion: [
+                                .move(edge: edge),
+                                .constant(\.clipsToBounds, true),
+                                .constant(\.layer.cornerRadius, cornerRadius),
+                                .constant(\.layer.maskedCorners, .edge(edge.opposite))
+                            ],
+                            removal: .transform(
+                                to: context.view,
+                                edge: edge.opposite,
+                                cornerRadius: cornerRadius,
+                                up: i == 1
+                            )
+                         )
+                 }
+            )
             .withBackground(containerColor)
             .environment(\.isOverlay, true),
             interactivity: .swipe(to: edge),

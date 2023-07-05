@@ -32,9 +32,9 @@ public extension UIPresentation.Transition {
                     
                 let currentTransition = context.insertionTransitions[view]
                 if needAnimate {
-                    context.insertionTransitions[view] = context.environment.contentTransition.insertion
+                    context.insertionTransitions[view] = context.environment.contentTransition(0, context).insertion
                 } else if context.insertionTransitions[view] != nil {
-                    context.insertionTransitions[view] = context.environment.contentTransition.constant(at: .insertion(1))
+                    context.insertionTransitions[view] = context.environment.contentTransition(0, context).constant(at: .insertion(1))
                 }
                 context.insertionTransitions[view]?.beforeTransitionIfNeeded(view: view, current: currentTransition)
                 
@@ -44,20 +44,29 @@ public extension UIPresentation.Transition {
                         : context.viewControllers.remaining
                     array
                         .filter { $0 !== context.viewController && !context.view(for: $0).isHidden }
-                        .suffix(1)
-                        .forEach {
-                            let backView = context.view(for: $0)
-                            let currentTransition = context.removalTransitions[view]?[backView]
-                            if context.viewControllers.remaining.contains($0) || !context.environment.overCurrentContext {
-                                context.removalTransitions[view, default: [:]][backView] = context.environment.contentTransition.removal.reversed
+                        .suffix((context.environment.contextTransparencyDeep ?? 0) + 1)
+                        .reversed()
+                        .enumerated()
+                        .forEach { (index, vc) in
+                            let backView = context.view(for: vc)
+                            let currentTransition = context.removalTransitions[view]?[backView]?.0
+                            if context.viewControllers.remaining.contains(vc) || !context.environment.overCurrentContext {
+                                context.removalTransitions[view, default: [:]][backView] = (
+                                    context.environment.contentTransition(index + 1, context).removal.reversed,
+                                    index + 1
+                                )
                             }
-                            context.removalTransitions[view]?[backView]?.beforeTransitionIfNeeded(view: backView, current: currentTransition)
+                            context.removalTransitions[view]?[backView]?.0.beforeTransitionIfNeeded(view: backView, current: currentTransition)
                         }
                 } else {
                     context.removalTransitions[view]?.forEach {
                         if let backView = $0.key.value {
-                            context.removalTransitions[view, default: [:]][backView] = context.environment.contentTransition.constant(at: .removal(1))
-                            context.removalTransitions[view]?[backView]?.beforeTransitionIfNeeded(view: backView, current: $0.value)
+                            context.removalTransitions[view, default: [:]][backView] = (
+                                context.environment.contentTransition($0.value.1, context).constant(at: .removal(1)),
+                                $0.value.1
+                            )
+                            context.removalTransitions[view]?[backView]?.0
+                                .beforeTransitionIfNeeded(view: backView, current: $0.value.0)
                         }
                     }
                 }
@@ -68,7 +77,7 @@ public extension UIPresentation.Transition {
                 context.insertionTransitions[view]?.update(progress: context.direction.at(progress), view: view)
                 context.removalTransitions[view]?.forEach {
                     if let backView = $0.key.value {
-                        $0.value.update(progress: context.direction.at(progress), view: backView)
+                        $0.value.0.update(progress: context.direction.at(progress), view: backView)
                     }
                 }
                 animation?(context, progress)
@@ -90,7 +99,7 @@ public extension UIPresentation.Transition {
                 completion?(context, completed)
 			}
 		}
-        .environment(\.contentTransition, transition)
+        .environment(\.contentTransition, { _, _ in transition })
         .environment(\.contentLayout, layout)
         .environment(\.applyTransitionOnBackControllers, applyTransitionOnBackControllers)
         .environment(\.contextTransparencyDeep, contextTransparencyDeep)
@@ -99,8 +108,8 @@ public extension UIPresentation.Transition {
 
 public extension UIPresentation.Environment {
     
-    var contentTransition: UITransition<UIView> {
-        get { self[\.contentTransition] ?? .identity }
+    var contentTransition: (Int, UIPresentation.Context) -> UITransition<UIView> {
+        get { self[\.contentTransition] ?? { _, _ in .identity } }
         set { self[\.contentTransition] = newValue }
     }
     
@@ -136,7 +145,7 @@ extension UIPresentation.Context {
         }
     }
     
-    var removalTransitions: [Weak<UIView>: [Weak<UIView>: UITransition<UIView>]] {
+    var removalTransitions: [Weak<UIView>: [Weak<UIView>: (UITransition<UIView>, Int)]] {
         get {
             cache[\.removalTransitions] ?? [:]
         }

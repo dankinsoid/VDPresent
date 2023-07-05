@@ -13,7 +13,7 @@ public extension UIPresentation {
     
     static func fullScreen(
         from edge: Edge,
-        containerColor: UIColor = .pageSheetBackground,
+        containerColor: UIColor = .black.withAlphaComponent(0.1),
         interactive: Bool = false,
         overCurrentContext: Bool = false
     ) -> UIPresentation {
