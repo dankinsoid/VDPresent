@@ -10,8 +10,16 @@
 		830F1F4B2A4C761D00B67365 /* SwipeGestureRecognizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 830F1F4A2A4C761D00B67365 /* SwipeGestureRecognizer.swift */; };
 		830F1F4D2A4CAC8600B67365 /* Weak.swift in Sources */ = {isa = PBXBuildFile; fileRef = 830F1F4C2A4CAC8600B67365 /* Weak.swift */; };
 		830F1F4F2A4D8CBE00B67365 /* ContentLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 830F1F4E2A4D8CBE00B67365 /* ContentLayout.swift */; };
+		831C6E7B2A75A94400223971 /* CAAnimationTransaction.swift in Sources */ = {isa = PBXBuildFile; fileRef = 831C6E7A2A75A94400223971 /* CAAnimationTransaction.swift */; };
+		833A9A852A56EE9E000C649F /* UIStackControllerDataSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 833A9A842A56EE9E000C649F /* UIStackControllerDataSource.swift */; };
+		833A9A872A5701A7000C649F /* UIPresentation+Curl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 833A9A862A5701A7000C649F /* UIPresentation+Curl.swift */; };
+		833A9AC32A643C8F000C649F /* UIViewAnimateTransition.swift in Sources */ = {isa = PBXBuildFile; fileRef = 833A9AC22A643C8F000C649F /* UIViewAnimateTransition.swift */; };
 		833D119F2A4AE5810072468F /* UIStackControllerContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 833D119E2A4AE5810072468F /* UIStackControllerContainer.swift */; };
 		833D11A12A4C1E1B0072468F /* UIStackControllerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 833D11A02A4C1E1B0072468F /* UIStackControllerView.swift */; };
+		835C92512A55BCFB00872645 /* UITransition+Ext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 835C92502A55BCFB00872645 /* UITransition+Ext.swift */; };
+		835C92532A55BD0D00872645 /* UIScreen+Ext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 835C92522A55BD0D00872645 /* UIScreen+Ext.swift */; };
+		835C92552A55BD2A00872645 /* CGFloat+Ext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 835C92542A55BD2A00872645 /* CGFloat+Ext.swift */; };
+		835C92572A55BD5C00872645 /* UIPresentation+PageSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 835C92562A55BD5C00872645 /* UIPresentation+PageSheet.swift */; };
 		83602D2E2A531AE800A03AE2 /* WithBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83602D2D2A531AE800A03AE2 /* WithBackground.swift */; };
 		83602D302A531B6E00A03AE2 /* UIPresentationContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83602D2F2A531B6E00A03AE2 /* UIPresentationContext.swift */; };
 		83602D322A531C0100A03AE2 /* Dictionary+Ext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83602D312A531C0100A03AE2 /* Dictionary+Ext.swift */; };
@@ -47,8 +55,16 @@
 		830F1F4A2A4C761D00B67365 /* SwipeGestureRecognizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwipeGestureRecognizer.swift; sourceTree = "<group>"; };
 		830F1F4C2A4CAC8600B67365 /* Weak.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Weak.swift; sourceTree = "<group>"; };
 		830F1F4E2A4D8CBE00B67365 /* ContentLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentLayout.swift; sourceTree = "<group>"; };
+		831C6E7A2A75A94400223971 /* CAAnimationTransaction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CAAnimationTransaction.swift; sourceTree = "<group>"; };
+		833A9A842A56EE9E000C649F /* UIStackControllerDataSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIStackControllerDataSource.swift; sourceTree = "<group>"; };
+		833A9A862A5701A7000C649F /* UIPresentation+Curl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UIPresentation+Curl.swift"; sourceTree = "<group>"; };
+		833A9AC22A643C8F000C649F /* UIViewAnimateTransition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIViewAnimateTransition.swift; sourceTree = "<group>"; };
 		833D119E2A4AE5810072468F /* UIStackControllerContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIStackControllerContainer.swift; sourceTree = "<group>"; };
 		833D11A02A4C1E1B0072468F /* UIStackControllerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIStackControllerView.swift; sourceTree = "<group>"; };
+		835C92502A55BCFB00872645 /* UITransition+Ext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UITransition+Ext.swift"; sourceTree = "<group>"; };
+		835C92522A55BD0D00872645 /* UIScreen+Ext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UIScreen+Ext.swift"; sourceTree = "<group>"; };
+		835C92542A55BD2A00872645 /* CGFloat+Ext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CGFloat+Ext.swift"; sourceTree = "<group>"; };
+		835C92562A55BD5C00872645 /* UIPresentation+PageSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UIPresentation+PageSheet.swift"; sourceTree = "<group>"; };
 		83602D2D2A531AE800A03AE2 /* WithBackground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WithBackground.swift; sourceTree = "<group>"; };
 		83602D2F2A531B6E00A03AE2 /* UIPresentationContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIPresentationContext.swift; sourceTree = "<group>"; };
 		83602D312A531C0100A03AE2 /* Dictionary+Ext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Dictionary+Ext.swift"; sourceTree = "<group>"; };
@@ -101,6 +117,7 @@
 				833D11A02A4C1E1B0072468F /* UIStackControllerView.swift */,
 				830F1F4E2A4D8CBE00B67365 /* ContentLayout.swift */,
 				83602D332A5320DE00A03AE2 /* UIStackViewWrapper.swift */,
+				833A9A842A56EE9E000C649F /* UIStackControllerDataSource.swift */,
 			);
 			path = UIStackController;
 			sourceTree = "<group>";
@@ -110,6 +127,8 @@
 			children = (
 				83F74E33296AEBCE00C5E3D4 /* DefaultTransition.swift */,
 				83602D2D2A531AE800A03AE2 /* WithBackground.swift */,
+				833A9AC22A643C8F000C649F /* UIViewAnimateTransition.swift */,
+				831C6E7A2A75A94400223971 /* CAAnimationTransaction.swift */,
 			);
 			path = Transitions;
 			sourceTree = "<group>";
@@ -173,6 +192,9 @@
 				83F74E28296AEBCE00C5E3D4 /* UIViewController+Ext.swift */,
 				83F74E29296AEBCE00C5E3D4 /* UIView+Ext.swift */,
 				83602D312A531C0100A03AE2 /* Dictionary+Ext.swift */,
+				835C92502A55BCFB00872645 /* UITransition+Ext.swift */,
+				835C92522A55BD0D00872645 /* UIScreen+Ext.swift */,
+				835C92542A55BD2A00872645 /* CGFloat+Ext.swift */,
 			);
 			path = Extensions;
 			sourceTree = "<group>";
@@ -218,6 +240,8 @@
 				83F74E32296AEBCE00C5E3D4 /* UIPresentation+Push.swift */,
 				83F74E34296AEBCE00C5E3D4 /* UIPresentation+Sheet.swift */,
 				83F74E63296AEEA700C5E3D4 /* UIPresentation+FullScreen.swift */,
+				835C92562A55BD5C00872645 /* UIPresentation+PageSheet.swift */,
+				833A9A862A5701A7000C649F /* UIPresentation+Curl.swift */,
 			);
 			path = Presentations;
 			sourceTree = "<group>";
@@ -312,19 +336,27 @@
 				83F74E38296AEBCE00C5E3D4 /* CACornerMask+Ext.swift in Sources */,
 				83F74E44296AEBCE00C5E3D4 /* UIPresentation.swift in Sources */,
 				83602D322A531C0100A03AE2 /* Dictionary+Ext.swift in Sources */,
+				835C92572A55BD5C00872645 /* UIPresentation+PageSheet.swift in Sources */,
 				83F74E45296AEBCE00C5E3D4 /* UIStackController.swift in Sources */,
 				83F74E37296AEBCE00C5E3D4 /* TransitionContainerTapRecognizer.swift in Sources */,
 				830F1F4B2A4C761D00B67365 /* SwipeGestureRecognizer.swift in Sources */,
 				83F74E47296AEBCE00C5E3D4 /* DefaultTransition.swift in Sources */,
+				835C92552A55BD2A00872645 /* CGFloat+Ext.swift in Sources */,
 				83602D302A531B6E00A03AE2 /* UIPresentationContext.swift in Sources */,
+				835C92532A55BD0D00872645 /* UIScreen+Ext.swift in Sources */,
+				833A9A872A5701A7000C649F /* UIPresentation+Curl.swift in Sources */,
 				83F74E43296AEBCE00C5E3D4 /* UIPresentation+Swipe.swift in Sources */,
 				83F8071F296CA8E000AA7AB5 /* FadeLayer.swift in Sources */,
 				83602D342A5320DE00A03AE2 /* UIStackViewWrapper.swift in Sources */,
+				833A9A852A56EE9E000C649F /* UIStackControllerDataSource.swift in Sources */,
+				835C92512A55BCFB00872645 /* UITransition+Ext.swift in Sources */,
 				83602D2E2A531AE800A03AE2 /* WithBackground.swift in Sources */,
 				83F74E46296AEBCE00C5E3D4 /* UIPresentation+Push.swift in Sources */,
 				83F74E3B296AEBCE00C5E3D4 /* NSDirectionalRectEdge+Ext.swift in Sources */,
 				83F74E64296AEEA700C5E3D4 /* UIPresentation+FullScreen.swift in Sources */,
 				83F74E3D296AEBCE00C5E3D4 /* KeyPath+Ext.swift in Sources */,
+				831C6E7B2A75A94400223971 /* CAAnimationTransaction.swift in Sources */,
+				833A9AC32A643C8F000C649F /* UIViewAnimateTransition.swift in Sources */,
 				83F74E57296AEC4300C5E3D4 /* AppDelegate.swift in Sources */,
 				833D11A12A4C1E1B0072468F /* UIStackControllerView.swift in Sources */,
 				83F74E36296AEBCE00C5E3D4 /* UIViewController+show.swift in Sources */,

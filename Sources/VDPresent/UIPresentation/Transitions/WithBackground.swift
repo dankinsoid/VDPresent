@@ -1,7 +1,7 @@
 import UIKit
 import VDTransition
 
-public extension UIPresentation.Transition {
+extension UIPresentation.Transition {
     
     func withBackground(
         _ color: UIColor,
@@ -19,60 +19,9 @@ public extension UIPresentation.Transition {
         _ transition: UIViewTransition,
         layout: ContentLayout = .fill
     ) -> UIPresentation.Transition {
-        with { context, state in
-            switch state {
-            case .begin:
-                let transition = context.environment.backgroundTransition.reversed
-                guard !transition.isIdentity else { return }
-                let backgroundView: UIView
-                if let bgView = context.backgroundView {
-                    backgroundView = bgView
-                } else {
-                    backgroundView = UIView()
-                    backgroundView.backgroundColor = .clear
-                    backgroundView.isUserInteractionEnabled = false
-                    context.backgroundView = backgroundView
-                    if context.environment.isOverlay {
-                        if let i = context.viewControllers.to.firstIndex(of: context.viewController), i > 0 {
-                            let vc = context.viewControllers.to[i - 1]
-                            context.view(for: vc).addSubview(backgroundView, layout: context.environment.backgroundLayout)
-                        }
-                    } else {
-                        context.container.insertSubview(backgroundView, at: 0, layout: context.environment.backgroundLayout)
-                    }
-                }
-                let current = context.backgroundTransitions[backgroundView]
-                if context.needAnimate {
-                    context.backgroundTransitions[backgroundView] = transition
-                } else if context.needHide(.to) {
-                    context.backgroundTransitions[backgroundView] = transition.reversed.insertion
-                } else if context.needHide(.from) {
-                    context.backgroundTransitions[backgroundView] = transition.reversed.removal
-                } else {
-                    context.backgroundTransitions[backgroundView] = transition.constant(at: .insertion(1))
-                }
-                context.backgroundTransitions[backgroundView]?.beforeTransitionIfNeeded(view: backgroundView, current: current)
-                
-            case let .change(edge):
-                if let view = context.backgroundView {
-                    context.backgroundTransitions[view]?.update(progress: context.direction.at(edge), view: view)
-                }
-                
-            case let .end(completed):
-                let array = completed
-                    ? context.viewControllers.toRemove
-                    : context.viewControllers.toInsert
-                
-                if array.contains(context.viewController), let view = context.backgroundView {
-                    view.removeFromSuperview()
-                    context.backgroundTransitions[view] = nil
-                    context.backgroundView = nil
-                }
-            }
-        }
-        .environment(\.backgroundTransition, transition)
-        .environment(\.backgroundLayout, layout)
-        .environment(\.isOverlay, false)
+        environment(\.backgroundTransition, transition)
+            .environment(\.backgroundLayout, layout)
+            .environment(\.isOverlay, false)
     }
     
     func withOverlay(

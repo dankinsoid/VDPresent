@@ -9,14 +9,13 @@ public extension UIPresentation {
     
     static func push(
         to edge: Edge = .trailing,
-        containerColor: UIColor = .black.withAlphaComponent(0.1),
-        backViewControllerOffset offset: RelationValue<CGFloat> = .relative(0.3)
+        containerColor: UIColor = .black.withAlphaComponent(0.1)
     ) -> UIPresentation {
         UIPresentation(
             transition: .default(
                 transition: .asymmetric(
                     insertion: .move(edge: edge),
-                    removal: .move(edge: edge.opposite, offset: offset)
+                    removal: .move(edge: edge.opposite, offset: .relative(0.3))
                 ),
                 applyTransitionOnBackControllers: true,
                 contextTransparencyDeep: 0

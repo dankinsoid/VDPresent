@@ -1,19 +1,21 @@
 import Foundation
 
-struct Weak<T: AnyObject>: Hashable {
+final class Weak<T: AnyObject & Hashable>: Hashable {
     
-    weak var value: T?
+    let id: ObjectIdentifier
+    private(set) weak var value: T?
+    var hashValue: Int { id.hashValue }
     
-    init(_ value: T?) {
+    init(_ value: T) {
         self.value = value
+        self.id = ObjectIdentifier(value)
     }
     
     func hash(into hasher: inout Hasher) {
-        let id = value.map { ObjectIdentifier($0) } ?? ObjectIdentifier(Self.self)
-        id.hash(into: &hasher)
+        hasher.combine(id)
     }
     
     static func == (lhs: Weak<T>, rhs: Weak<T>) -> Bool {
-        lhs.value === rhs.value
+        lhs.id == rhs.id
     }
 }

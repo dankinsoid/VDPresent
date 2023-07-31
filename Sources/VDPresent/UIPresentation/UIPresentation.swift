@@ -94,23 +94,37 @@ public extension UIPresentation {
 	struct Transition {
         
         public static var identity: UIPresentation.Transition {
-            UIPresentation.Transition { _, _ in }
+            UIPresentation.Transition(prepare: { _ in }, animate: { _, _ in }, completion: { _, _ in })
         }
         
-		private var updater: (Context, State) -> Void
+        private var _prepare: (Context) -> Void
+		private var _animate: (Context, @escaping (State) -> Void) -> Void
+        private var _completion: (Context, Bool) -> Void
         public var environment: UIPresentation.Environment
 
 		public init(
-			updater: @escaping (Context, State) -> Void,
-            environment: UIPresentation.Environment = UIPresentation.Environment()
+            environment: UIPresentation.Environment = UIPresentation.Environment(),
+            prepare: @escaping (Context) -> Void,
+            animate: @escaping (Context, @escaping (State) -> Void) -> Void,
+            completion: @escaping (Context, Bool) -> Void
 		) {
-			self.updater = updater
+			self._prepare = prepare
+            self._animate = animate
+            self._completion = completion
             self.environment = environment
 		}
 
-		public func update(context: Context, state: State) {
-			updater(context, state)
+        public func prepare(context: Context) {
+            _prepare(context)
+        }
+        
+		public func animate(context: Context, update: @escaping (State) -> Void) {
+			_animate(context, update)
 		}
+        
+        public func completion(context: Context, completed: Bool) {
+            _completion(context, completed)
+        }
         
         public func environment<T>(_ keyPath: WritableKeyPath<UIPresentation.Environment, T>, _ value: T) -> UIPresentation.Transition {
             var result = self
@@ -127,22 +141,24 @@ public extension UIPresentation {
             return result
         }
         
-        public func with(
-            updater newUpdater: @escaping (Context, State) -> Void
-        ) -> UIPresentation.Transition {
-            var result = self
-            result.updater = { [updater] in
-                updater($0, $1)
-                newUpdater($0, $1)
-            }
-            return result
-        }
+//        public func with(
+//            updater newUpdater: @escaping (Context, State) -> Void
+//        ) -> UIPresentation.Transition {
+//            var result = self
+//            result._prepare = { [_prepare] context, update in
+//                _prepare(context) {
+//                    update($0)
+//                    newUpdater(context, $0)
+//                }
+//            }
+//            return result
+//        }
 	}
 
-	enum State: Equatable {
+	enum State {
 
-		case begin
-        case change(Progress.Edge)
+        case begin
+		case prepareInteractive((Interactivity.State) -> Void)
         case end(completed: Bool)
 	}
 }

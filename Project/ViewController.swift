@@ -45,17 +45,22 @@ class ViewController: UIViewController {
 	override func viewDidDisappear(_ animated: Bool) {
 		super.viewDidDisappear(animated)
 	}
-
+    
 	@objc func tapShow(_: Any) {
 		let controller = ViewController()
         let presentations: [UIPresentation] = [
-            .pageSheet(from: .bottom),
-            .fullScreen,
-            .push
+            .fullScreen
         ]
+//        UIView.transition(with: view, duration: 1) { [self] in
+//            let tr = CATransition.curlPage(from: .leading, isLTR: true)
+////            tr.duration = UIView.inheritedAnimationDuration
+//            view.layer.add(tr, forKey: "dd")
+//        }
+//        UIView.animate(with: .default(1)) { [self] in
+//        }
 //        controller.view.safeAreaLayoutGuide.heightAnchor.constraint(equalToConstant: 200).isActive = true
 //        present(controller, animated: true)
-        controller.show(as: presentations.randomElement()?.with(animation: .default), animated: true)
+        controller.show(as: presentations.randomElement()?.with(animation: .default(1)), animated: true)
 //        navigationController?.pushViewController(controller, animated: true)
 	}
     
