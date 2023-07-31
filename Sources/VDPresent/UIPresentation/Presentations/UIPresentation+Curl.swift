@@ -13,14 +13,6 @@ public extension UIPresentation {
     ) -> UIPresentation {
         UIPresentation(
             transition: .caAnimation { context in
-                let view = context.view
-                if !context.viewControllers.from.contains(context.viewController) {
-                    context.container
-                        .addSubview(
-                            view,
-                            layout: context.environment.contentLayout
-                        )
-                }
                 guard context.isTopController else { return nil }
                 return CATransition.curlPage(
                     from: edge,
@@ -49,6 +41,7 @@ extension CATransition {
     ) -> CATransition {
         let transition = CATransition()
         transition.type = CATransitionType(rawValue: direction == .insertion ? "pageCurl" : "pageUnCurl")
+//        let edge = direction == .insertion ? edge : edge.opposite
         switch edge {
         case .top:
             transition.subtype = .fromTop

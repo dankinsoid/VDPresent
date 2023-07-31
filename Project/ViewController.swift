@@ -49,7 +49,7 @@ class ViewController: UIViewController {
 	@objc func tapShow(_: Any) {
 		let controller = ViewController()
         let presentations: [UIPresentation] = [
-            .fullScreen
+            .pageSheet, .fullScreen, .push
         ]
 //        UIView.transition(with: view, duration: 1) { [self] in
 //            let tr = CATransition.curlPage(from: .leading, isLTR: true)

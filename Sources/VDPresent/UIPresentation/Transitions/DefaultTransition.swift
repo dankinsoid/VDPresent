@@ -14,13 +14,6 @@ public extension UIPresentation.Transition {
 	) -> UIPresentation.Transition {
         .uiViewAnimate { context in
             let view = context.view
-            if !context.viewControllers.from.contains(context.viewController) {
-                context.container
-                    .addSubview(
-                        view,
-                        layout: context.environment.contentLayout
-                    )
-            }
             let needHide = context.needHide(.to)
             if !needHide {
                 context.container.isHidden = false

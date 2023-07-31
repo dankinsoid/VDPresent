@@ -6,7 +6,14 @@ extension UIPresentation.Transition {
         animation: @escaping (UIPresentation.Context) -> CAAnimation?,
         completion: @escaping (UIPresentation.Context, Bool) -> Void = { _, _ in }
     ) -> UIPresentation.Transition {
-        UIPresentation.Transition { _ in
+        UIPresentation.Transition { context in
+            if !context.viewControllers.from.contains(context.viewController) {
+                context.container
+                    .addSubview(
+                        context.view,
+                        layout: context.environment.contentLayout
+                    )
+            }
         } animate: { context, update in
             guard let caAnimation = animation(context) else {
                 update(.begin)

@@ -8,6 +8,13 @@ extension UIPresentation.Transition {
         completion: @escaping (UIPresentation.Context, Bool) -> Void = { _, _ in }
     ) -> UIPresentation.Transition {
         UIPresentation.Transition { context in
+            if !context.viewControllers.from.contains(context.viewController) {
+                context.container
+                    .addSubview(
+                        context.view,
+                        layout: context.environment.contentLayout
+                    )
+            }
             prepare(context)
         } animate: { context, update in
             let animate: () -> Void = {
