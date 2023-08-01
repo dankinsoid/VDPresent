@@ -13,6 +13,7 @@
 		831C6E7B2A75A94400223971 /* CAAnimationTransaction.swift in Sources */ = {isa = PBXBuildFile; fileRef = 831C6E7A2A75A94400223971 /* CAAnimationTransaction.swift */; };
 		831C6E7D2A790E9B00223971 /* UIStackViewDataSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 831C6E7C2A790E9B00223971 /* UIStackViewDataSource.swift */; };
 		831C6E7F2A7910E200223971 /* UIStackController+Ext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 831C6E7E2A7910E200223971 /* UIStackController+Ext.swift */; };
+		831C6E822A79B7C400223971 /* Stack.swift in Sources */ = {isa = PBXBuildFile; fileRef = 831C6E812A79B7C400223971 /* Stack.swift */; };
 		833A9A852A56EE9E000C649F /* UIStackControllerDataSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 833A9A842A56EE9E000C649F /* UIStackControllerDataSource.swift */; };
 		833A9A872A5701A7000C649F /* UIPresentation+Curl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 833A9A862A5701A7000C649F /* UIPresentation+Curl.swift */; };
 		833A9AC32A643C8F000C649F /* UIViewAnimateTransition.swift in Sources */ = {isa = PBXBuildFile; fileRef = 833A9AC22A643C8F000C649F /* UIViewAnimateTransition.swift */; };
@@ -60,6 +61,7 @@
 		831C6E7A2A75A94400223971 /* CAAnimationTransaction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CAAnimationTransaction.swift; sourceTree = "<group>"; };
 		831C6E7C2A790E9B00223971 /* UIStackViewDataSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIStackViewDataSource.swift; sourceTree = "<group>"; };
 		831C6E7E2A7910E200223971 /* UIStackController+Ext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UIStackController+Ext.swift"; sourceTree = "<group>"; };
+		831C6E812A79B7C400223971 /* Stack.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Stack.swift; sourceTree = "<group>"; };
 		833A9A842A56EE9E000C649F /* UIStackControllerDataSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIStackControllerDataSource.swift; sourceTree = "<group>"; };
 		833A9A862A5701A7000C649F /* UIPresentation+Curl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UIPresentation+Curl.swift"; sourceTree = "<group>"; };
 		833A9AC22A643C8F000C649F /* UIViewAnimateTransition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIViewAnimateTransition.swift; sourceTree = "<group>"; };
@@ -113,6 +115,14 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		831C6E802A79B7B400223971 /* SwiftUI */ = {
+			isa = PBXGroup;
+			children = (
+				831C6E812A79B7C400223971 /* Stack.swift */,
+			);
+			path = SwiftUI;
+			sourceTree = "<group>";
+		};
 		833D119D2A4AE5640072468F /* UIStackController */ = {
 			isa = PBXGroup;
 			children = (
@@ -208,6 +218,7 @@
 		83F74E2E296AEBCE00C5E3D4 /* UIPresentation */ = {
 			isa = PBXGroup;
 			children = (
+				831C6E802A79B7B400223971 /* SwiftUI */,
 				83602D2C2A531AD800A03AE2 /* Transitions */,
 				833D119D2A4AE5640072468F /* UIStackController */,
 				83F74E62296AEE7D00C5E3D4 /* Presentations */,
@@ -344,6 +355,7 @@
 				83F74E44296AEBCE00C5E3D4 /* UIPresentation.swift in Sources */,
 				83602D322A531C0100A03AE2 /* Dictionary+Ext.swift in Sources */,
 				835C92572A55BD5C00872645 /* UIPresentation+PageSheet.swift in Sources */,
+				831C6E822A79B7C400223971 /* Stack.swift in Sources */,
 				83F74E45296AEBCE00C5E3D4 /* UIStackController.swift in Sources */,
 				83F74E37296AEBCE00C5E3D4 /* TransitionContainerTapRecognizer.swift in Sources */,
 				830F1F4B2A4C761D00B67365 /* SwipeGestureRecognizer.swift in Sources */,

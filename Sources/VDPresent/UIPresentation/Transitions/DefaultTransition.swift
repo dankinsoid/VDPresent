@@ -28,18 +28,16 @@ public extension UIPresentation.Transition {
             }
             context.insertionTransitions[view]?.beforeTransitionIfNeeded(view: view, current: currentTransition)
             
-            if context.isTopController {
-                let array = context.environment.overCurrentContext(context)
-                  ? context.viewControllers.from
-                  : context.viewControllers.remaining
-                array
+            isTopIf: if context.isTopController {
+                guard context.environment.overCurrentContext(context) else { break isTopIf }
+                context.viewControllers.from
                     .filter { $0 !== context.viewController && !context.for($0).view.isHidden }
                     .reversed()
                     .enumerated()
                     .forEach { (index, vc) in
                         let backView = context.for(vc).view
                         let currentTransition = context.removalTransitions[view]?[backView]?.0
-                        if context.viewControllers.remaining.contains(vc) || !context.environment.overCurrentContext(context) {
+                        if context.viewControllers.remaining.contains(vc) {
                             context.removalTransitions[view, default: [:]][backView] = (
                                 context.environment.moveToBackTransition(index + 1, context).reversed,
                                 index + 1

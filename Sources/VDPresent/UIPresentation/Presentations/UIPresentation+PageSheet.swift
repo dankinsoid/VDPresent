@@ -43,7 +43,7 @@ public extension UIPresentation {
                 )
             }
             .environment(\.overCurrentContext) { context in
-                context.viewControllers.to.last === context.viewController
+                context.viewControllers.to.last === context.viewController || context.isTopController
             }
             .withBackground(containerColor)
             .environment(\.isOverlay, true),

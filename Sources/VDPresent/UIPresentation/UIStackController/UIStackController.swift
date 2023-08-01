@@ -183,7 +183,7 @@ private extension UIStackController {
         }
         
         let allControllers = controllers.all(direction)
-        allControllers.suffix(2).map(container).forEach(content.bringSubviewToFront)
+        allControllers.map(container).forEach(content.bringSubviewToFront)
         
         for toViewController in controllers.to where toViewController.parent == nil {
             toViewController.willMove(toParent: self)
