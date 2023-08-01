@@ -44,15 +44,21 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
             guard !wasBegun else {
                 return
             }
-            setAxisIfNeeded()
-            if update(.begin, edge ?? .leading) == .allow {
-                wasBegun = true
-            } else {
-                stop()
-            }
+            begin()
             
         case .changed:
             guard wasBegun else { return }
+            if
+                let edge,
+                !startFromEdges,
+                edges.contains(NSDirectionalRectEdge(edge.opposite)),
+                shouldStart(edge.opposite),
+                percent < 0
+            {
+                finish(completed: false, immediately: true)
+                self.edge = edge.opposite
+                begin()
+            }
             let percent = abs(max(0, min(1, percent)))
             update(percent: percent)
             
@@ -69,6 +75,15 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
         }
     }
     
+    private func begin() {
+        setAxisIfNeeded()
+        if update(.begin, edge ?? .leading) == .allow {
+            wasBegun = true
+        } else {
+            stop()
+        }
+    }
+    
     private func update(percent: Double) {
         guard percent != lastPercent else { return }
         lastPercent = percent
@@ -77,8 +92,8 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
         }
     }
     
-    private func finish(completed: Bool) {
-        _ = update(.end(completed: completed, after: fullDuration), edge ?? .leading)
+    private func finish(completed: Bool, immediately: Bool = false) {
+        _ = update(.end(completed: completed, after: immediately ? 0 : fullDuration), edge ?? .leading)
         stop()
     }
     

@@ -21,3 +21,13 @@ extension UITransition<UIView> {
         ]
     }
 }
+
+extension TransitionDirection {
+    
+    var reversed: TransitionDirection {
+        switch self {
+        case .insertion: return .removal
+        case .removal: return .insertion
+        }
+    }
+}

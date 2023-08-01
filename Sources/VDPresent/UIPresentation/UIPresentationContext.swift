@@ -8,17 +8,17 @@ public extension UIPresentation {
             _controller ?? UIViewController()
         }
         public var view: UIStackViewWrapper {
-            view(for: viewController)
+            views(viewController)
         }
         public var container: UIStackControllerContainer {
-            container(for: viewController)
+            _container(viewController)
         }
-        public let animated: Bool
-        public let isInteractive: Bool
-        public let cache: Cache
-        public let animation: UIKitAnimation
-        public let viewControllers: Controllers
-        public let direction: TransitionDirection
+        public var animated: Bool
+        public var isInteractive: Bool
+        public var cache: Cache
+        public var animation: UIKitAnimation
+        public var viewControllers: Controllers
+        public var direction: TransitionDirection
         
         public var environment: UIPresentation.Environment {
             _environment(viewController)
@@ -60,23 +60,11 @@ public extension UIPresentation {
             self.animation = animation
         }
         
-        public func environment(for controller: UIViewController) -> UIPresentation.Environment {
-            _environment(controller)
-        }
-        
-        public func container(for controller: UIViewController) -> UIStackControllerContainer {
-            _container(controller)
-        }
-        
         public func updateStatusBar(style: UIStatusBarStyle, animation: UIStatusBarAnimation = .fade) {
             _updateStatusBar(style, animation)
         }
         
-        public func view(for controller: UIViewController) -> UIStackViewWrapper {
-            views(controller)
-        }
-        
-        public func `for`(controller: UIViewController) -> Self {
+        public func `for`(_ controller: UIViewController) -> Self {
             var result = self
             result._controller = controller
             return result
@@ -88,10 +76,16 @@ extension UIPresentation.Context {
     
     public struct Controllers {
         
-        public var from: [UIViewController] { _fromViewControllers.compactMap(\.value) }
-        public var to: [UIViewController] { _toViewControllers.compactMap(\.value) }
-        private let _fromViewControllers: [Weak<UIViewController>]
-        private let _toViewControllers: [Weak<UIViewController>]
+        public var from: [UIViewController] {
+            get { _fromViewControllers.compactMap(\.value) }
+            set { _fromViewControllers = newValue.map { Weak($0) } }
+        }
+        public var to: [UIViewController] {
+            get { _toViewControllers.compactMap(\.value) }
+            set {  _toViewControllers = newValue.map { Weak($0) } }
+        }
+        private var _fromViewControllers: [Weak<UIViewController>]
+        private var _toViewControllers: [Weak<UIViewController>]
         
         public init(
             fromViewControllers: [UIViewController],
@@ -108,7 +102,6 @@ extension UIPresentation.Context {
             default: return []
             }
         }
-        
     }
 }
 
@@ -170,11 +163,15 @@ extension UIPresentation.Context {
         secondViewControllers.contains(viewController)
     }
     
-    func needHide(_ key: UITransitionContextViewControllerKey) -> Bool {
-        let all = viewControllers[key]
-        guard let j = all.firstIndex(of: viewController) else { return false }
+    var needHide: Bool {
+        let all = viewControllers[.to]
+        guard let j = all.firstIndex(of: viewController) else { return true }
         for (index, vc) in all.enumerated().reversed() {
-            if let i = environment(for: vc).contextTransparencyDeep, index - i > j {
+            if index == j {
+                return false
+            }
+            let context = self.for(vc)
+            if !context.environment.overCurrentContext(context) {
                 return true
             }
         }
@@ -182,7 +179,7 @@ extension UIPresentation.Context {
     }
     
     var needAnimate: Bool {
-        isTopController && !viewControllers.isTopTheSame || isChangingController && !needHide(.to)
+        isTopController && !viewControllers.isTopTheSame || isChangingController && !needHide
     }
 }
 
@@ -212,6 +209,23 @@ extension UIPresentation.Context {
         return direction == .insertion
         ? prefix + suffix
         : prefix + suffix.reversed()
+    }
+    
+    public var reversed: UIPresentation.Context {
+        UIPresentation.Context(
+            direction: direction.reversed,
+            controller: viewController,
+            container: _container,
+            fromViewControllers: viewControllers.to,
+            toViewControllers: viewControllers.from,
+            views: views,
+            animated: animated,
+            animation: animation,
+            isInteractive: isInteractive,
+            cache: cache,
+            updateStatusBar: updateStatusBar,
+            environment: _environment
+        )
     }
 }
 

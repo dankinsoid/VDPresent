@@ -38,8 +38,7 @@ public extension UIPresentation {
             transition: .default(
                 transition: transition,
                 layout: .fill,
-                applyTransitionOnBackControllers: false,
-                contextTransparencyDeep: overCurrentContext ? nil : 0
+                overCurrentContext: overCurrentContext
             )
             .withBackground(.identity),
 			interactivity: interactivity,

@@ -8,15 +8,19 @@ public extension UIPresentation.Interactivity {
     
     @_disfavoredOverload
     static func swipe(
-        to edge: Edge,
-        configuration: SwipeConfiguration = .default
+        to edge: Edge
     ) -> UIPresentation.Interactivity {
-        .swipe(to: NSDirectionalRectEdge(edge), configuration: configuration)
+        .swipe(to: NSDirectionalRectEdge(edge))
+    }
+    
+    static func swipe(
+        to edges: NSDirectionalRectEdge
+    ) -> UIPresentation.Interactivity {
+        swipe(configuration: .default(edges: edges))
     }
     
 	static func swipe(
-		to edges: NSDirectionalRectEdge,
-        configuration: SwipeConfiguration = .default
+        configuration: SwipeConfiguration
 	) -> UIPresentation.Interactivity {
 		UIPresentation.Interactivity { context, observer in
             let controller = context.viewController
@@ -34,7 +38,7 @@ public extension UIPresentation.Interactivity {
             
             let swipeRecognizer = swipeRec ?? SwipeGestureRecognizer()
             swipeRecognizer.isEnabled = true
-            swipeRecognizer.edges = edges
+            swipeRecognizer.edges = configuration.edges
             swipeRecognizer.startFromEdges = context.environment.swipeFromEdge
             swipeRecognizer.fullDuration = context.animation.duration
             swipeRecognizer.shouldStart = { [weak controller] edge in
@@ -61,13 +65,16 @@ public extension UIPresentation.Interactivity {
     
     struct SwipeConfiguration {
         
+        public let edges: NSDirectionalRectEdge
         private let _shouldStart: (UIPresentation.Context, UIViewController, Edge) -> Bool
         private let _moveToEdgeContext: (UIPresentation.Context, UIViewController, Edge) -> UIPresentation.Context
         
         public init(
+            edges: NSDirectionalRectEdge,
             shouldStart: @escaping (UIPresentation.Context, UIViewController, Edge) -> Bool,
             moveToEdgeContext: @escaping (UIPresentation.Context, UIViewController, Edge) -> UIPresentation.Context
         ) {
+            self.edges = edges
             self._shouldStart = shouldStart
             self._moveToEdgeContext = moveToEdgeContext
         }
@@ -88,9 +95,14 @@ public extension UIPresentation.Interactivity {
             _moveToEdgeContext(context, controller, edge)
         }
         
-        public static var `default`: SwipeConfiguration {
-            SwipeConfiguration { context, controller, edge in
-                guard let i = context.viewControllers.to.firstIndex(where: controller.isDescendant) else {
+        public static func `default`(
+            edges: NSDirectionalRectEdge
+        ) -> SwipeConfiguration {
+            SwipeConfiguration(edges: edges) { context, controller, edge in
+                guard
+                    edges.contains(NSDirectionalRectEdge(edge)),
+                    let i = context.viewControllers.to.firstIndex(where: controller.isDescendant)
+                else {
                     return false
                 }
                 return i > 0
@@ -98,7 +110,7 @@ public extension UIPresentation.Interactivity {
                 UIPresentation.Context(
                     direction: .removal,
                     controller: controller,
-                    container: context.container,
+                    container: { context.for($0).container },
                     fromViewControllers: context.viewControllers.to,
                     toViewControllers: Array(
                         context.viewControllers.from.prefix(
@@ -106,13 +118,15 @@ public extension UIPresentation.Interactivity {
                                 ?? context.viewControllers.to.count - 1
                         )
                     ),
-                    views: context.view,
+                    views: { context.for($0).view },
                     animated: true,
                     animation: context.animation,
                     isInteractive: true,
                     cache: context.cache,
                     updateStatusBar: context.updateStatusBar,
-                    environment: context.environment
+                    environment: {
+                        context.for($0).environment.with(\.currentSwipeEdge, edge)
+                    }
                 )
             }
         }
@@ -124,5 +138,10 @@ public extension UIPresentation.Environment {
     var swipeFromEdge: Bool {
         get { self[\.swipeFromEdge] ?? false }
         set { self[\.swipeFromEdge] = newValue }
+    }
+    
+    var currentSwipeEdge: Edge? {
+        get { self[\.currentSwipeEdge] ?? nil }
+        set { self[\.currentSwipeEdge] = newValue }
     }
 }

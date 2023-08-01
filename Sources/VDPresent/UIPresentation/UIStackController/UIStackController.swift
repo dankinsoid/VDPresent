@@ -47,6 +47,11 @@ open class UIStackController: UIViewController {
 	override open func targetViewController(forAction action: Selector, sender: Any?) -> UIViewController? {
 		super.targetViewController(forAction: action, sender: sender)
 	}
+    
+    @available(iOS 15.0, *)
+    override open func contentScrollView(for edge: NSDirectionalRectEdge) -> UIScrollView? {
+        topViewController?.contentScrollView(for: edge)
+    }
 
 	open func set(
 		viewControllers newViewControllers: [UIViewController],
@@ -60,6 +65,7 @@ open class UIStackController: UIViewController {
                 Setting(
                     viewControllers: newViewControllers,
                     presentation: presentation,
+                    direction: direction,
                     animated: animated,
                     completion: completion
                 )
@@ -81,14 +87,13 @@ open class UIStackController: UIViewController {
 		let isInsertion = newViewControllers.last.map { !viewControllers.contains($0) } ?? false
 
         let prsnt = presentation ?? self.presentation(for: isInsertion ? newViewControllers : viewControllers)
-        let isTheSame = newViewControllers.last === viewControllers.last && !prsnt.environment.overCurrentContext
         
 		transition(
             direction: direction ?? (isInsertion ? .insertion : .removal),
 			to: newViewControllers,
 			from: viewControllers,
 			presentation: prsnt,
-			animated: animated && !isTheSame,
+			animated: animated,
             isInteractive: false,
             completion: completion
         )
@@ -97,87 +102,6 @@ open class UIStackController: UIViewController {
     open func wrap(view: UIView) -> UIStackViewWrapper {
         UIStackViewWrapper(view)
     }
-}
-
-public extension UIStackController {
-
-	func show(
-		_ viewController: UIViewController,
-		as presentation: UIPresentation? = nil,
-		animated: Bool = true,
-		completion: (() -> Void)? = nil
-	) {
-        if let i = viewControllers.firstIndex(where: viewController.isDescendant) {
-            if let child = viewController.stackController, child !== self {
-                child.show(as: presentation, animated: animated, completion: completion)
-            } else {
-                set(
-                    viewControllers: Array(viewControllers.prefix(through: i)),
-                    as: presentation,
-                    animated: animated,
-                    completion: completion
-                )
-            }
-		} else {
-			set(
-				viewControllers: viewControllers + [viewController],
-				as: presentation,
-				animated: animated,
-				completion: completion
-			)
-		}
-	}
-    
-    func hideTop(
-        _ count: Int = 1,
-        as presentation: UIPresentation? = nil,
-        animated: Bool = true,
-        completion: (() -> Void)? = nil
-    ) {
-        set(
-            viewControllers: Array(viewControllers.dropLast(count)),
-            as: presentation,
-            animated: animated,
-            completion: completion
-        )
-    }
-}
-
-public extension UIStackController {
-
-	static var root: UIStackController? {
-		UIWindow.key?.rootViewController?
-			.selfAndAllPresented.compactMap { $0 as? UIStackController }.first
-	}
-
-	static var top: UIStackController? {
-		UIWindow.key?.rootViewController?
-			.selfAndAllPresented.compactMap { $0 as? UIStackController }.last?.topStackControllerOrSelf
-	}
-
-	var topStackController: UIStackController? {
-		let lastPresentation = viewControllers.last?.selfAndAllChildren.compactMap { $0 as? UIStackController }.last
-		let top = lastPresentation?.topStackController ?? lastPresentation
-		guard presentedViewController == nil else {
-			return allPresented.compactMap { $0 as? UIStackController }.last?.topStackController ?? top
-		}
-		return top
-	}
-
-	var topStackControllerOrSelf: UIStackController {
-        topStackController ?? self
-	}
-
-	var topViewController: UIViewController? {
-		get { viewControllers.last }
-		set {
-			if let newValue {
-				show(newValue)
-            } else {
-                hideTop(viewControllers.count)
-            }
-		}
-	}
 }
 
 private extension UIStackController {
@@ -357,6 +281,7 @@ private extension UIStackController {
             set(
                 viewControllers: next.viewControllers,
                 as: next.presentation,
+                direction: next.direction,
                 animated: next.animated,
                 completion: next.completion
             )
@@ -436,8 +361,10 @@ private extension UIStackController {
 private extension UIStackController {
     
     struct Setting {
+        
         var viewControllers: [UIViewController]
         var presentation: UIPresentation?
+        var direction: TransitionDirection?
         var animated: Bool
         var completion: (() -> Void)?
     }

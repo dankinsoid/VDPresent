@@ -49,7 +49,7 @@ class ViewController: UIViewController {
 	@objc func tapShow(_: Any) {
 		let controller = ViewController()
         let presentations: [UIPresentation] = [
-            .pageSheet, .fullScreen, .push
+            .pageSheet(from: .top)
         ]
 //        UIView.transition(with: view, duration: 1) { [self] in
 //            let tr = CATransition.curlPage(from: .leading, isLTR: true)
@@ -60,7 +60,11 @@ class ViewController: UIViewController {
 //        }
 //        controller.view.safeAreaLayoutGuide.heightAnchor.constraint(equalToConstant: 200).isActive = true
 //        present(controller, animated: true)
-        controller.show(as: presentations.randomElement()?.with(animation: .default(1)), animated: true)
+//        stackController?.set(
+//            viewControllers: [controller],
+//            as: .push.with(animation: .default(1))
+//        )
+        controller.show(as: presentations.randomElement()?.with(animation: .default), animated: true)
 //        navigationController?.pushViewController(controller, animated: true)
 	}
     

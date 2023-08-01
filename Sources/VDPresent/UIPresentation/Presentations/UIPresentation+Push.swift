@@ -13,12 +13,9 @@ public extension UIPresentation {
     ) -> UIPresentation {
         UIPresentation(
             transition: .default(
-                transition: .asymmetric(
-                    insertion: .move(edge: edge),
-                    removal: .move(edge: edge.opposite, offset: .relative(0.3))
-                ),
-                applyTransitionOnBackControllers: true,
-                contextTransparencyDeep: 0
+                transition: .move(edge: edge),
+                moveToBackTransition: .move(edge: edge.opposite, offset: .relative(0.3)),
+                overCurrentContext: false
             )
             .withBackground(containerColor),
             interactivity: .swipe(to: edge),

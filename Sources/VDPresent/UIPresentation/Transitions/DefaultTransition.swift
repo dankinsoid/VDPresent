@@ -5,17 +5,16 @@ public extension UIPresentation.Transition {
 
 	static func `default`(
         transition: UIViewTransition = .identity,
+        moveToBackTransition: UIViewTransition = .identity,
         layout: ContentLayout = .fill,
-        applyTransitionOnBackControllers: Bool = false,
-        contextTransparencyDeep: Int? = nil,
+        overCurrentContext: Bool = false,
 		prepare: ((UIPresentation.Context) -> Void)? = nil,
         animation: ((UIPresentation.Context, Progress) -> Void)? = nil,
 		completion: ((UIPresentation.Context, Bool) -> Void)? = nil
 	) -> UIPresentation.Transition {
         .uiViewAnimate { context in
             let view = context.view
-            let needHide = context.needHide(.to)
-            if !needHide {
+            if context.isTopController || !context.needHide {
                 context.container.isHidden = false
             }
             
@@ -23,26 +22,26 @@ public extension UIPresentation.Transition {
             
             let currentTransition = context.insertionTransitions[view]
             if needAnimate {
-                context.insertionTransitions[view] = context.environment.contentTransition(0, context).insertion
+                context.insertionTransitions[view] = context.environment.contentTransition(context)
             } else if context.insertionTransitions[view] != nil {
-                context.insertionTransitions[view] = context.environment.contentTransition(0, context).constant(at: .insertion(1))
+                context.insertionTransitions[view] = context.environment.contentTransition(context).constant(at: .insertion(1))
             }
             context.insertionTransitions[view]?.beforeTransitionIfNeeded(view: view, current: currentTransition)
             
-            if context.isTopController, context.environment.applyTransitionOnBackControllers {
-                let array = context.environment.overCurrentContext
-                ? context.viewControllers.from
-                : context.viewControllers.remaining
+            if context.isTopController {
+                let array = context.environment.overCurrentContext(context)
+                  ? context.viewControllers.from
+                  : context.viewControllers.remaining
                 array
-                    .filter { $0 !== context.viewController && !context.view(for: $0).isHidden }
+                    .filter { $0 !== context.viewController && !context.for($0).view.isHidden }
                     .reversed()
                     .enumerated()
                     .forEach { (index, vc) in
-                        let backView = context.view(for: vc)
+                        let backView = context.for(vc).view
                         let currentTransition = context.removalTransitions[view]?[backView]?.0
-                        if context.viewControllers.remaining.contains(vc) || !context.environment.overCurrentContext {
+                        if context.viewControllers.remaining.contains(vc) || !context.environment.overCurrentContext(context) {
                             context.removalTransitions[view, default: [:]][backView] = (
-                                context.environment.contentTransition(index + 1, context).removal.reversed,
+                                context.environment.moveToBackTransition(index + 1, context).reversed,
                                 index + 1
                             )
                         }
@@ -52,7 +51,7 @@ public extension UIPresentation.Transition {
                 context.removalTransitions[view]?.forEach {
                     if let backView = $0.key.value {
                         context.removalTransitions[view, default: [:]][backView] = (
-                            context.environment.contentTransition($0.value.1, context).constant(at: .removal(1)),
+                            context.environment.moveToBackTransition($0.value.1, context).constant(at: .removal(1)),
                             $0.value.1
                         )
                         context.removalTransitions[view]?[backView]?.0
@@ -69,38 +68,42 @@ public extension UIPresentation.Transition {
                 context.updateStatusBar(style: context.viewController.preferredStatusBarStyle)
             }
         } completion: { context, completed in
-            let array = completed
-              ? context.viewControllers.toRemove
-              : context.viewControllers.toInsert
-            if array.contains(context.viewController) {
-                let view = context.view
-                context.insertionTransitions[view]?.setInitialState(view: view)
-                context.insertionTransitions[view] = nil
-                context.removalTransitions[view]?.forEach {
+            let finalContext = completed ? context : context.reversed
+            let array = finalContext.viewControllers.toRemove
+            if array.contains(finalContext.viewController) {
+                let view = finalContext.view
+                finalContext.insertionTransitions[view]?.setInitialState(view: view)
+                finalContext.insertionTransitions[view] = nil
+                finalContext.removalTransitions[view]?.forEach {
                     if let backView = $0.key.value {
                         $0.value.0.setInitialState(view: backView)
                     }
                 }
-                context.removalTransitions[view] = nil
+                finalContext.removalTransitions[view] = nil
             }
-            if context.needHide(completed ? .to : .from) {
-                context.container.isHidden = true
+            if finalContext.needHide {
+                finalContext.container.isHidden = true
             }
-            completeBackground(context: context, completed: completed)
+            completeBackground(context: finalContext)
             completion?(context, completed)
         }
-        .environment(\.contentTransition, { _, _ in transition })
+        .environment(\.contentTransition, { _ in transition })
+        .environment(\.moveToBackTransition, { _, _ in moveToBackTransition })
         .environment(\.contentLayout, layout)
-        .environment(\.applyTransitionOnBackControllers, applyTransitionOnBackControllers)
-        .environment(\.contextTransparencyDeep, contextTransparencyDeep)
+        .environment(\.overCurrentContext) { _ in overCurrentContext }
 	}
 }
 
 public extension UIPresentation.Environment {
     
-    var contentTransition: (Int, UIPresentation.Context) -> UITransition<UIView> {
-        get { self[\.contentTransition] ?? { _, _ in .identity } }
+    var contentTransition: (UIPresentation.Context) -> UITransition<UIView> {
+        get { self[\.contentTransition] ?? { _ in .identity } }
         set { self[\.contentTransition] = newValue }
+    }
+    
+    var moveToBackTransition: (Int, UIPresentation.Context) -> UITransition<UIView> {
+        get { self[\.moveToBackTransition] ?? { _, _ in .identity } }
+        set { self[\.moveToBackTransition] = newValue }
     }
     
     var contentLayout: ContentLayout {
@@ -108,19 +111,9 @@ public extension UIPresentation.Environment {
         set { self[\.contentLayout] = newValue }
     }
     
-    var applyTransitionOnBackControllers: Bool {
-        get { self[\.applyTransitionOnBackControllers] ?? false }
-        set { self[\.applyTransitionOnBackControllers] = newValue }
-    }
-    
-    var contextTransparencyDeep: Int? {
-        get { self[\.contextTransparencyDeep] ?? nil }
-        set { self[\.contextTransparencyDeep] = newValue }
-    }
-    
-    var overCurrentContext: Bool {
-        get { contextTransparencyDeep ?? 1 > 0 }
-        set { contextTransparencyDeep = newValue ? nil : 0 }
+    var overCurrentContext: (UIPresentation.Context) -> Bool {
+        get { self[\.overCurrentContext] ?? { _ in false } }
+        set { self[\.overCurrentContext] = newValue }
     }
 }
 
@@ -181,7 +174,7 @@ private extension UIPresentation.Transition {
             if context.environment.isOverlay {
                 if let i = context.viewControllers.to.firstIndex(of: context.viewController), i > 0 {
                     let vc = context.viewControllers.to[i - 1]
-                    context.view(for: vc).addSubview(backgroundView, layout: context.environment.backgroundLayout)
+                    context.for(vc).view.addSubview(backgroundView, layout: context.environment.backgroundLayout)
                 }
             } else {
                 context.container.insertSubview(backgroundView, at: 0, layout: context.environment.backgroundLayout)
@@ -190,10 +183,6 @@ private extension UIPresentation.Transition {
         let current = context.backgroundTransitions[backgroundView]
         if context.needAnimate {
             context.backgroundTransitions[backgroundView] = transition
-            //                } else if context.needHide(.to) {
-            //                    context.backgroundTransitions[backgroundView] = transition.reversed.insertion
-            //                } else if context.needHide(.from) {
-            //                    context.backgroundTransitions[backgroundView] = transition.reversed.removal
         } else {
             context.backgroundTransitions[backgroundView] = transition.constant(at: .insertion(1))
         }
@@ -201,12 +190,9 @@ private extension UIPresentation.Transition {
     }
     
     static func completeBackground(
-        context: UIPresentation.Context,
-        completed: Bool
+        context: UIPresentation.Context
     ) {
-        let array = completed
-        ? context.viewControllers.toRemove
-        : context.viewControllers.toInsert
+        let array = context.viewControllers.toRemove
         
         if array.contains(context.viewController), let view = context.backgroundView {
             view.removeFromSuperview()

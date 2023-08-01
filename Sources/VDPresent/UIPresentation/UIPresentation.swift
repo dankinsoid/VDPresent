@@ -175,5 +175,11 @@ public extension UIPresentation {
         }
         
         public init() {}
+        
+        public func with<T>(_ keyPath: WritableKeyPath<UIPresentation.Environment, T>, _ value: T?) -> UIPresentation.Environment {
+            var result = self
+            result[keyPath] = value
+            return result
+        }
     }
 }

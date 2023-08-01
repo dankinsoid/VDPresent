@@ -15,7 +15,6 @@ public extension UIPresentation {
     ) -> UIPresentation {
         UIPresentation(
             transition: .default(
-                transition: .identity,
                 layout: .padding(
                     NSDirectionalEdgeInsets(
                         [
@@ -25,29 +24,27 @@ public extension UIPresentation {
                         ]
                     ),
                     insideSafeArea: NSDirectionalRectEdge(edge.opposite)
-                ),
-                applyTransitionOnBackControllers: true,
-                contextTransparencyDeep: 1
+                )
             )
-            .environment(
-                \.contentTransition,
-                 { i, context in
-                         .asymmetric(
-                            insertion: [
-                                .move(edge: edge),
-                                .constant(\.clipsToBounds, true),
-                                .constant(\.layer.cornerRadius, cornerRadius),
-                                .constant(\.layer.maskedCorners, .edge(edge.opposite))
-                            ],
-                            removal: .transform(
-                                to: context.view,
-                                edge: edge.opposite,
-                                cornerRadius: cornerRadius,
-                                up: i == 1
-                            )
-                         )
-                 }
-            )
+            .environment(\.contentTransition) { context in
+                [
+                    .move(edge: edge),
+                    .constant(\.clipsToBounds, true),
+                    .constant(\.layer.cornerRadius, cornerRadius),
+                    .constant(\.layer.maskedCorners, .edge(edge.opposite))
+                ]
+            }
+            .environment(\.moveToBackTransition) { i, context in
+                .transform(
+                    to: context.view,
+                    edge: edge.opposite,
+                    cornerRadius: cornerRadius,
+                    up: i == 1
+                )
+            }
+            .environment(\.overCurrentContext) { context in
+                context.viewControllers.to.last === context.viewController
+            }
             .withBackground(containerColor)
             .environment(\.isOverlay, true),
             interactivity: .swipe(to: edge),

@@ -26,8 +26,7 @@ public extension UIPresentation {
                     insideSafeArea: NSDirectionalRectEdge(edge.opposite)
                 )
                 .combine(.alignment(.edge(edge))),
-                applyTransitionOnBackControllers: true,
-                contextTransparencyDeep: nil
+                overCurrentContext: true
             )
             .withBackground(containerColor),
 			interactivity: .swipe(to: edge),
