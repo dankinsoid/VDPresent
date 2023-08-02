@@ -8,7 +8,14 @@ class ViewController: UIViewController {
     
 	override func viewDidLoad() {
 		super.viewDidLoad()
-        view.backgroundColor = [UIColor.systemBlue, .systemRed, .systemPink, .systemOrange, .systemYellow, .systemGreen].randomElement()
+        view.backgroundColor = [
+            UIColor.systemBlue,
+            .systemRed,
+            .systemPink,
+            .systemOrange,
+            .systemYellow,
+            .systemGreen
+        ].randomElement()
 
         let showButton = UIButton(type: .system)
 		view.addSubview(showButton)
@@ -16,8 +23,8 @@ class ViewController: UIViewController {
         showButton.addTarget(self, action: #selector(tapShow), for: .touchUpInside)
         showButton.setTitleColor(.white, for: .normal)
         showButton.setTitle("Show", for: .normal)
-        showButton.centerXAnchor.constraint(equalTo: view.safeAreaLayoutGuide.centerXAnchor).isActive = true
-        showButton.centerYAnchor.constraint(equalTo: view.safeAreaLayoutGuide.centerYAnchor).isActive = true
+        showButton.centerXAnchor.constraint(equalTo: view.centerXAnchor).isActive = true
+        showButton.centerYAnchor.constraint(equalTo: view.centerYAnchor).isActive = true
         
         let hideButton = UIButton(type: .system)
 
@@ -26,7 +33,7 @@ class ViewController: UIViewController {
         hideButton.addTarget(self, action: #selector(tapHide), for: .touchUpInside)
         hideButton.setTitleColor(.white, for: .normal)
         hideButton.setTitle("Hide", for: .normal)
-        hideButton.centerXAnchor.constraint(equalTo: view.safeAreaLayoutGuide.centerXAnchor).isActive = true
+        hideButton.centerXAnchor.constraint(equalTo: view.centerXAnchor).isActive = true
         hideButton.topAnchor.constraint(equalTo: showButton.bottomAnchor).isActive = true
 	}
 
@@ -48,24 +55,13 @@ class ViewController: UIViewController {
     
 	@objc func tapShow(_: Any) {
 		let controller = ViewController()
+        controller.view.safeAreaLayoutGuide.heightAnchor
+            .constraint(equalToConstant: 500).isActive = true
+        
         let presentations: [UIPresentation] = [
-            .pageSheet
+            .sheet
         ]
-//        UIView.transition(with: view, duration: 1) { [self] in
-//            let tr = CATransition.curlPage(from: .leading, isLTR: true)
-////            tr.duration = UIView.inheritedAnimationDuration
-//            view.layer.add(tr, forKey: "dd")
-//        }
-//        UIView.animate(with: .default(1)) { [self] in
-//        }
-//        controller.view.safeAreaLayoutGuide.heightAnchor.constraint(equalToConstant: 200).isActive = true
-//        present(controller, animated: true)
-//        stackController?.set(
-//            viewControllers: [controller],
-//            as: .push.with(animation: .default(1))
-//        )
         controller.show(as: presentations.randomElement()?.with(animation: .default), animated: true)
-//        navigationController?.pushViewController(controller, animated: true)
 	}
     
     @objc func tapHide(_: Any) {

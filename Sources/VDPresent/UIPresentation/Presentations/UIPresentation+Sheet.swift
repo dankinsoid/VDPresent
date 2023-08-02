@@ -21,11 +21,18 @@ public extension UIPresentation {
                     .constant(\.layer.cornerRadius, cornerRadius),
                     .constant(\.layer.maskedCorners, .edge(edge.opposite))
                 ],
-                layout: .padding(
-                    NSDirectionalEdgeInsets([edge.opposite: minOffset]),
-                    insideSafeArea: NSDirectionalRectEdge(edge.opposite)
-                )
-                .combine(.alignment(.edge(edge))),
+                layout: .constraints { view, superview in
+                    var result = view.pinEdges(
+                        NSDirectionalRectEdge(Edge.allCases.filter { $0 != edge.opposite }),
+                        to: superview
+                    )
+                    result += view.pinEdges(
+                        NSDirectionalRectEdge(edge.opposite),
+                        to: superview.safeAreaLayoutGuide,
+                        relation: .greaterThanOrEqual
+                    )
+                    return result
+                },
                 overCurrentContext: true
             )
             .withBackground(containerColor),

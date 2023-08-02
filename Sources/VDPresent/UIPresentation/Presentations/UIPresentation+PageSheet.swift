@@ -19,8 +19,8 @@ public extension UIPresentation {
                     NSDirectionalEdgeInsets(
                         [
                             edge.opposite: edge == .leading || edge == .trailing
-                            ? minOffset + UIScreen.main.displayCornerRadius / 2
-                            : minOffset
+                                ? minOffset + UIScreen.main.displayCornerRadius / 2
+                                : minOffset
                         ]
                     ),
                     insideSafeArea: NSDirectionalRectEdge(edge.opposite)

@@ -11,6 +11,9 @@ final class UIStackControllerView: UIView {
             }
             containers.forEach {
                 addSubview($0)
+                if !oldValue.contains($0) {
+                    $0.pinEdges(to: self)
+                }
             }
             layout()
         }

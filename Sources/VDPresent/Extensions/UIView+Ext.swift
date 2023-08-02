@@ -41,21 +41,58 @@ extension Constraintable {
 		_ edges: NSDirectionalRectEdge = .all,
 		to view: Constraintable,
 		padding: CGFloat = 0,
+        relation: NSLayoutConstraint.Relation = .equal,
 		priority: UILayoutPriority = .required
 	) -> [NSLayoutConstraint] {
 		asUIView?.translatesAutoresizingMaskIntoConstraints = false
 		var array: [NSLayoutConstraint] = []
 		if edges.contains(.leading) {
-			array.append(leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: padding))
+            switch relation {
+            case .lessThanOrEqual:
+                array.append(leadingAnchor.constraint(lessThanOrEqualTo: view.leadingAnchor, constant: padding))
+            case .equal:
+                array.append(leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: padding))
+            case .greaterThanOrEqual:
+                array.append(leadingAnchor.constraint(greaterThanOrEqualTo: view.leadingAnchor, constant: padding))
+            @unknown default:
+                break
+            }
 		}
 		if edges.contains(.trailing) {
-			array.append(trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -padding))
+            switch relation {
+            case .lessThanOrEqual:
+                array.append(trailingAnchor.constraint(greaterThanOrEqualTo: view.trailingAnchor, constant: -padding))
+            case .equal:
+                array.append(trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -padding))
+            case .greaterThanOrEqual:
+                array.append(trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -padding))
+            @unknown default:
+                break
+            }
 		}
 		if edges.contains(.top) {
-			array.append(topAnchor.constraint(equalTo: view.topAnchor, constant: padding))
+            switch relation {
+            case .lessThanOrEqual:
+                array.append(topAnchor.constraint(lessThanOrEqualTo: view.topAnchor, constant: padding))
+            case .equal:
+                array.append(topAnchor.constraint(equalTo: view.topAnchor, constant: padding))
+            case .greaterThanOrEqual:
+                array.append(topAnchor.constraint(greaterThanOrEqualTo: view.topAnchor, constant: padding))
+            @unknown default:
+                break
+            }
 		}
 		if edges.contains(.bottom) {
-			array.append(bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -padding))
+            switch relation {
+            case .lessThanOrEqual:
+                array.append(bottomAnchor.constraint(greaterThanOrEqualTo: view.bottomAnchor, constant: -padding))
+            case .equal:
+                array.append(bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -padding))
+            case .greaterThanOrEqual:
+                array.append(bottomAnchor.constraint(lessThanOrEqualTo: view.bottomAnchor, constant: -padding))
+            @unknown default:
+                break
+            }
 		}
 		array.forEach {
 			$0.priority = priority

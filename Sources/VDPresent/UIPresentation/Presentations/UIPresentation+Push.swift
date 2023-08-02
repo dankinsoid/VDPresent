@@ -8,7 +8,7 @@ public extension UIPresentation {
     }
     
     static func push(
-        to edge: Edge = .trailing,
+        from edge: Edge = .trailing,
         containerColor: UIColor = .black.withAlphaComponent(0.1)
     ) -> UIPresentation {
         UIPresentation(

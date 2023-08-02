@@ -9,6 +9,7 @@ public final class UIStackViewWrapper: UIStackControllerContainer {
         super.init(frame: view.bounds)
         clipsToBounds = view.clipsToBounds
         addSubview(view)
+        view.pinEdges(to: self)
     }
     
     required public init?(coder: NSCoder) {
@@ -23,7 +24,15 @@ public final class UIStackViewWrapper: UIStackControllerContainer {
         wrapped.systemLayoutSizeFitting(targetSize)
     }
     
-    override public func systemLayoutSizeFitting(_ targetSize: CGSize, withHorizontalFittingPriority horizontalFittingPriority: UILayoutPriority, verticalFittingPriority: UILayoutPriority) -> CGSize {
-        wrapped.systemLayoutSizeFitting(targetSize, withHorizontalFittingPriority: horizontalFittingPriority, verticalFittingPriority: verticalFittingPriority)
+    override public func systemLayoutSizeFitting(
+        _ targetSize: CGSize,
+        withHorizontalFittingPriority horizontalFittingPriority: UILayoutPriority,
+        verticalFittingPriority: UILayoutPriority
+    ) -> CGSize {
+        wrapped.systemLayoutSizeFitting(
+            targetSize,
+            withHorizontalFittingPriority: horizontalFittingPriority,
+            verticalFittingPriority: verticalFittingPriority
+        )
     }
 }

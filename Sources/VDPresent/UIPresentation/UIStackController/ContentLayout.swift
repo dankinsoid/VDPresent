@@ -2,119 +2,160 @@ import SwiftUI
 
 public struct ContentLayout {
     
-    private let _layout: (UIView, CGSize, UIEdgeInsets) -> Void
+    private let _constraints: (_ view: UIView, _ superview: UIView) -> [NSLayoutConstraint]
+//    case layoutSubviews((UIView, CGSize, UIEdgeInsets) -> Void)
+//
+//    public func layout(_ view: UIView, in size: CGSize, safeArea: UIEdgeInsets) {
+//        switch self {
+//        case let .layoutSubviews(_layout):
+//            _layout(view, size, safeArea)
+//        default:
+//            break
+//        }
+//    }
     
-    public func layout(_ view: UIView, in size: CGSize, safeArea: UIEdgeInsets) {
-        _layout(view, size, safeArea)
+    public func constraints(_ view: UIView, in superview: UIView) {
+        view.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate(
+            _constraints(view, superview)
+        )
     }
     
     public func combine(_ next: ContentLayout) -> ContentLayout {
-        .custom { view, size, insets in
-            layout(view, in: size, safeArea: insets)
-            next.layout(
-                view,
-                in: view.bounds.size,
-                safeArea: UIEdgeInsets(
-                    top: max(0, insets.top - view.frame.minY),
-                    left: max(0, insets.left - view.frame.minX),
-                    bottom: max(0, insets.bottom - (size.height - view.frame.maxY)),
-                    right: max(0, insets.right - (size.width - view.frame.maxX))
-                )
-            )
+        .constraints { view, superview in
+            _constraints(view, superview) + next._constraints(view, superview)
         }
     }
     
-    public static func custom(_ layout: @escaping (UIView, CGSize, UIEdgeInsets) -> Void) -> ContentLayout {
-        self.init(_layout: layout)
+    public static func constraints(
+        _ constraints: @escaping (_ view: UIView, _ superview: UIView) -> [NSLayoutConstraint]
+    ) -> ContentLayout {
+        self.init(_constraints: constraints)
     }
     
     public static var fill: ContentLayout {
-        .padding()
+//        .layoutSubviews { view, size, _ in
+//            view.update(frame: CGRect(origin: .zero, size: size))
+//        }
+        .constraints { view, superview in
+            [
+                view.leadingAnchor.constraint(equalTo: superview.leadingAnchor),
+                view.trailingAnchor.constraint(equalTo: superview.trailingAnchor),
+                view.topAnchor.constraint(equalTo: superview.topAnchor),
+                view.bottomAnchor.constraint(equalTo: superview.bottomAnchor)
+            ]
+        }
     }
     
     public static func padding(
         _ edges: NSDirectionalEdgeInsets,
         insideSafeArea: NSDirectionalRectEdge = []
     ) -> ContentLayout {
-        .padding(
-            top: edges.top,
-            leading: edges.leading,
-            bottom: edges.bottom,
-            trailing: edges.trailing,
-            insideSafeArea: insideSafeArea
-        )
-    }
-    
-    public static func padding(
-        top: CGFloat = 0,
-        leading: CGFloat = 0,
-        bottom: CGFloat = 0,
-        trailing: CGFloat = 0,
-        insideSafeArea: NSDirectionalRectEdge = []
-    ) -> ContentLayout {
-        .custom { view, size, insets in
-            let isLtr = view.effectiveUserInterfaceLayoutDirection == .leftToRight
-            var insets = insets
-            if !insideSafeArea.contains(.top) {
-                insets.top = 0
-            }
-            if !insideSafeArea.contains(.bottom) {
-                insets.bottom = 0
-            }
-            if !insideSafeArea.contains(.leading) {
-                if isLtr { insets.left = 0 } else { insets.right = 0 }
-            }
-            if !insideSafeArea.contains(.trailing) {
-                if isLtr { insets.right = 0 } else { insets.left = 0 }
-            }
-            view.update(
-                frame: CGRect(
-                    x: (isLtr ? leading : trailing) + insets.left,
-                    y: top + insets.top,
-                    width: max(0, size.width - (leading + trailing + insets.left + insets.right)),
-                    height: max(size.height - (top + bottom + insets.top + insets.bottom), 0)
+        .constraints { view, superview in
+            var result: [NSLayoutConstraint] = []
+            if insideSafeArea.contains(.leading) {
+                result.append(
+                    view.leadingAnchor.constraint(equalTo: superview.safeAreaLayoutGuide.leadingAnchor, constant: edges.leading)
                 )
-            )
+            } else {
+                result.append(
+                    view.leadingAnchor.constraint(equalTo: superview.leadingAnchor, constant: edges.leading)
+                )
+            }
+            if insideSafeArea.contains(.trailing) {
+                result.append(
+                    view.trailingAnchor.constraint(equalTo: superview.safeAreaLayoutGuide.trailingAnchor, constant: -edges.trailing)
+                )
+            } else {
+                result.append(
+                    view.trailingAnchor.constraint(equalTo: superview.trailingAnchor, constant: -edges.trailing)
+                )
+            }
+            if insideSafeArea.contains(.top) {
+                result.append(
+                    view.topAnchor.constraint(equalTo: superview.safeAreaLayoutGuide.topAnchor, constant: edges.top)
+                )
+            } else {
+                result.append(
+                    view.topAnchor.constraint(equalTo: superview.topAnchor, constant: edges.top)
+                )
+            }
+            if insideSafeArea.contains(.bottom) {
+                result.append(
+                    view.bottomAnchor.constraint(equalTo: superview.safeAreaLayoutGuide.bottomAnchor, constant: -edges.bottom)
+                )
+            } else {
+                result.append(
+                    view.bottomAnchor.constraint(equalTo: superview.bottomAnchor, constant: -edges.bottom)
+                )
+            }
+            return result
         }
     }
     
     public static func alignment(
         _ alignment: Alignment
     ) -> ContentLayout {
-        .custom { view, size, _ in
-            var targetSize: CGSize
-            if alignment.horizontal == .fill, alignment.vertical == .fill {
-                targetSize = size
-            } else if alignment.horizontal == .fill {
-                targetSize = CGSize(width: size.width, height: UIView.layoutFittingExpandedSize.height)
-            } else if alignment.vertical == .fill {
-                targetSize = CGSize(width: UIView.layoutFittingExpandedSize.width, height: size.height)
-            } else {
-                targetSize = UIView.layoutFittingExpandedSize
+        .constraints { view, superview in
+            var result: [NSLayoutConstraint] = []
+            switch alignment.horizontal {
+            case .trailing:
+                result.append(view.trailingAnchor.constraint(equalTo: superview.trailingAnchor))
+            case .leading:
+                result.append(view.leadingAnchor.constraint(equalTo: superview.leadingAnchor))
+            case .center:
+                result.append(view.centerXAnchor.constraint(equalTo: superview.centerXAnchor))
+            case .fill:
+                result.append(view.leadingAnchor.constraint(equalTo: superview.leadingAnchor))
+                result.append(view.trailingAnchor.constraint(equalTo: superview.trailingAnchor))
             }
-            targetSize = view.systemLayoutSizeFitting(
-                targetSize,
-                withHorizontalFittingPriority: alignment.horizontal == .fill ? .required : .fittingSizeLevel,
-                verticalFittingPriority: alignment.vertical == .fill ? .required : .fittingSizeLevel
-            )
-            if alignment.horizontal == .fill {
-                targetSize.width = size.width
+            switch alignment.vertical {
+            case .top:
+                result.append(view.topAnchor.constraint(equalTo: superview.topAnchor))
+            case .bottom:
+                result.append(view.bottomAnchor.constraint(equalTo: superview.bottomAnchor))
+            case .center:
+                result.append(view.centerYAnchor.constraint(equalTo: superview.centerYAnchor))
+            case .fill:
+                result.append(view.topAnchor.constraint(equalTo: superview.topAnchor))
+                result.append(view.bottomAnchor.constraint(equalTo: superview.bottomAnchor))
             }
-            if alignment.vertical == .fill {
-                targetSize.height = size.height
-            }
-            view.update(
-                frame: view.frame(of: targetSize, in: size, alignment: alignment)
-            )
+            return result
         }
+//        .layoutSubviews { view, size, _ in
+//            var targetSize: CGSize
+//            if alignment.horizontal == .fill, alignment.vertical == .fill {
+//                targetSize = size
+//            } else if alignment.horizontal == .fill {
+//                targetSize = CGSize(width: size.width, height: UIView.layoutFittingExpandedSize.height)
+//            } else if alignment.vertical == .fill {
+//                targetSize = CGSize(width: UIView.layoutFittingExpandedSize.width, height: size.height)
+//            } else {
+//                targetSize = UIView.layoutFittingExpandedSize
+//            }
+//            targetSize = view.systemLayoutSizeFitting(
+//                targetSize,
+//                withHorizontalFittingPriority: alignment.horizontal == .fill ? .required : .defaultLow,
+//                verticalFittingPriority: alignment.vertical == .fill ? .required : .defaultLow
+//            )
+//            if alignment.horizontal == .fill {
+//                targetSize.width = size.width
+//            }
+//            if alignment.vertical == .fill {
+//                targetSize.height = size.height
+//            }
+//            view.update(
+//                frame: view.frame(of: targetSize, in: size, alignment: alignment)
+//            )
+//        }
     }
     
-    public static func match(_ view: UIView) -> ContentLayout {
-        .custom { [weak view] this, _, _ in
-            guard let view, this.window != nil, view.window != nil else { return }
-            this.update(frame: view.convert(view.bounds, to: this.superview))
-        }
-    }
+//    public static func match(_ view: UIView) -> ContentLayout {
+//        .layoutSubviews { [weak view] this, _, _ in
+//            guard let view, this.window != nil, view.window != nil else { return }
+//            this.update(frame: view.convert(view.bounds, to: this.superview))
+//        }
+//    }
     
     public struct Alignment {
         
