@@ -31,6 +31,11 @@ public extension UIPresentation {
                         to: superview.safeAreaLayoutGuide,
                         relation: .greaterThanOrEqual
                     )
+                    result += view.pinEdges(
+                        NSDirectionalRectEdge(edge.opposite),
+                        to: superview.safeAreaLayoutGuide,
+                        priority: .defaultLow
+                    )
                     return result
                 },
                 overCurrentContext: true

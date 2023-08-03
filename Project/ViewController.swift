@@ -55,11 +55,11 @@ class ViewController: UIViewController {
     
 	@objc func tapShow(_: Any) {
 		let controller = ViewController()
-        controller.view.safeAreaLayoutGuide.heightAnchor
-            .constraint(equalToConstant: 500).isActive = true
+//        controller.view.safeAreaLayoutGuide.heightAnchor
+//            .constraint(equalToConstant: 500).isActive = true
         
         let presentations: [UIPresentation] = [
-            .sheet
+            .sheet, .pageSheet, .push, .fullScreen
         ]
         controller.show(as: presentations.randomElement()?.with(animation: .default), animated: true)
 	}
