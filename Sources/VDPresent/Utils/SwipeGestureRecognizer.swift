@@ -10,6 +10,7 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
     var direction: TransitionDirection = .removal
     var fullDuration: Double = UIKitAnimation.defaultDuration
     weak var target: UIView?
+    
     private var edge: Edge?
     private var axis: NSLayoutConstraint.Axis {
         switch edge {

@@ -5,8 +5,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/dankinsoid/VDTransition.git",
       "state" : {
-        "revision" : "7eba2587b4e8ed4fbb97a5b521412f09338ee122",
-        "version" : "1.13.0"
+        "revision" : "c75e2f9d916817e1085a2715e0c212b24c141f32",
+        "version" : "1.24.0"
       }
     }
   ],

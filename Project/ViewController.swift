@@ -18,23 +18,25 @@ class ViewController: UIViewController {
         ].randomElement()
 
         let showButton = UIButton(type: .system)
-		view.addSubview(showButton)
-        showButton.translatesAutoresizingMaskIntoConstraints = false
         showButton.addTarget(self, action: #selector(tapShow), for: .touchUpInside)
         showButton.setTitleColor(.white, for: .normal)
         showButton.setTitle("Show", for: .normal)
-        showButton.centerXAnchor.constraint(equalTo: view.centerXAnchor).isActive = true
-        showButton.centerYAnchor.constraint(equalTo: view.centerYAnchor).isActive = true
         
         let hideButton = UIButton(type: .system)
-
-        view.addSubview(hideButton)
-        hideButton.translatesAutoresizingMaskIntoConstraints = false
         hideButton.addTarget(self, action: #selector(tapHide), for: .touchUpInside)
         hideButton.setTitleColor(.white, for: .normal)
         hideButton.setTitle("Hide", for: .normal)
-        hideButton.centerXAnchor.constraint(equalTo: view.centerXAnchor).isActive = true
-        hideButton.topAnchor.constraint(equalTo: showButton.bottomAnchor).isActive = true
+        
+        let stackView = UIStackView()
+        view.addSubview(stackView)
+        stackView.axis = .vertical
+        stackView.spacing = 10
+        stackView.translatesAutoresizingMaskIntoConstraints = false
+        stackView.centerXAnchor.constraint(equalTo: view.centerXAnchor).isActive = true
+        stackView.centerYAnchor.constraint(equalTo: view.centerYAnchor).isActive = true
+        
+        stackView.addArrangedSubview(showButton)
+        stackView.addArrangedSubview(hideButton)
 	}
 
 	override func viewWillAppear(_ animated: Bool) {
