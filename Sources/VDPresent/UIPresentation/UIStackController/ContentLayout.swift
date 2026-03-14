@@ -1,5 +1,17 @@
 import SwiftUI
 
+/// Describes how a child view should be positioned and sized inside its superview using Auto Layout constraints.
+///
+/// `ContentLayout` is a value type that wraps a constraint-producing closure. You compose layouts using
+/// the built-in factories (``fill``, ``padding(_:insideSafeArea:)``, ``alignment(_:)``) or supply
+/// your own via ``constraints(_:)``. Multiple layouts can be merged with ``combine(_:)``.
+///
+/// Usage:
+/// ```swift
+/// layout.constraints(childView, in: containerView)
+/// ```
+/// This sets `translatesAutoresizingMaskIntoConstraints = false` on the child and activates the
+/// produced constraints.
 public struct ContentLayout {
     
     private let _constraints: (_ view: UIView, _ superview: UIView) -> [NSLayoutConstraint]
@@ -14,6 +26,12 @@ public struct ContentLayout {
 //        }
 //    }
     
+    /// Applies this layout to `view` inside `superview`.
+    ///
+    /// Sets `translatesAutoresizingMaskIntoConstraints = false` and activates the generated constraints.
+    /// - Parameters:
+    ///   - view: The view to position.
+    ///   - superview: The container view that owns the layout anchors.
     public func constraints(_ view: UIView, in superview: UIView) {
         view.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate(
@@ -21,18 +39,26 @@ public struct ContentLayout {
         )
     }
     
+    /// Returns a new layout that applies both `self` and `next` constraints.
+    /// - Parameter next: The layout whose constraints are appended after the receiver's.
+    /// - Returns: A merged `ContentLayout`.
     public func combine(_ next: ContentLayout) -> ContentLayout {
         .constraints { view, superview in
             _constraints(view, superview) + next._constraints(view, superview)
         }
     }
     
+    /// Creates a layout from an arbitrary constraint-producing closure.
+    /// - Parameter constraints: Closure that receives the child view and its superview and returns
+    ///   the constraints to activate. The closure is called lazily each time ``constraints(_:in:)`` is invoked.
+    /// - Returns: A `ContentLayout` backed by the provided closure.
     public static func constraints(
         _ constraints: @escaping (_ view: UIView, _ superview: UIView) -> [NSLayoutConstraint]
     ) -> ContentLayout {
         self.init(_constraints: constraints)
     }
     
+    /// A layout that pins all four edges of the view to its superview (zero insets).
     public static var fill: ContentLayout {
 //        .layoutSubviews { view, size, _ in
 //            view.update(frame: CGRect(origin: .zero, size: size))
@@ -47,6 +73,12 @@ public struct ContentLayout {
         }
     }
     
+    /// A layout that pins each edge with an inset, optionally relative to the safe-area layout guide.
+    /// - Parameters:
+    ///   - edges: Insets to apply on each side (directional, so `leading`/`trailing` follow the layout direction).
+    ///   - insideSafeArea: The set of edges that should be anchored to `safeAreaLayoutGuide` instead of the
+    ///     superview's raw edges. Defaults to `[]` (no safe-area anchoring).
+    /// - Returns: A `ContentLayout` that produces four edge constraints.
     public static func padding(
         _ edges: NSDirectionalEdgeInsets,
         insideSafeArea: NSDirectionalRectEdge = []
@@ -93,6 +125,12 @@ public struct ContentLayout {
         }
     }
     
+    /// A layout that positions the view according to the specified alignment within its superview.
+    ///
+    /// For `.fill` on an axis the view is pinned to both edges; for point alignments (`.top`, `.center`, etc.)
+    /// only the relevant anchor is constrained, leaving the view free to size itself on that axis.
+    /// - Parameter alignment: The desired horizontal and vertical alignment.
+    /// - Returns: A `ContentLayout` with the corresponding anchor constraints.
     public static func alignment(
         _ alignment: Alignment
     ) -> ContentLayout {
@@ -157,6 +195,7 @@ public struct ContentLayout {
 //        }
 //    }
     
+    /// Combined horizontal and vertical alignment descriptor used by ``alignment(_:)``.
     public struct Alignment {
         
         public var vertical: VAlignment
@@ -197,6 +236,7 @@ public struct ContentLayout {
         }
     }
     
+    /// Vertical positioning options for ``Alignment``.
     public enum VAlignment {
         
         case top
@@ -205,6 +245,7 @@ public struct ContentLayout {
         case fill
     }
     
+    /// Horizontal positioning options for ``Alignment``.
     public enum HAlignment {
         
         case trailing

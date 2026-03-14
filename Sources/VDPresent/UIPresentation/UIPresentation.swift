@@ -11,7 +11,7 @@ public struct UIPresentation {
     public var environment: Environment { transition.environment }
 
 	public init(
-        transition: Transition = .default(),
+        transition: Transition = .base(),
 		interactivity: Interactivity? = nil,
 		animation: UIKitAnimation = .default
 	) {

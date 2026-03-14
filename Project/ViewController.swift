@@ -1,4 +1,4 @@
-import UIKit
+import SwiftUI
 
 class ViewController: UIViewController {
 
@@ -69,4 +69,20 @@ class ViewController: UIViewController {
     @objc func tapHide(_: Any) {
         hide(animated: true)
     }
+}
+
+struct ViewControllerPreview: UIViewControllerRepresentable {
+	
+	func makeUIViewController(context: Context) -> some UIViewController {
+		ViewController()
+	}
+	
+	func updateUIViewController(_ uiViewController: UIViewControllerType, context: Context) {
+		
+	}
+}
+
+#Preview {
+	ViewControllerPreview()
+		.edgesIgnoringSafeArea(.all)
 }

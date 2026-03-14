@@ -14,32 +14,33 @@ public extension UIPresentation {
         containerColor: UIColor = .black.withAlphaComponent(0.1)
 	) -> UIPresentation {
         UIPresentation(
-            transition: .default(
-                transition: [
+            transition: .base()
+            .environment(\.contentTransition) { _ in
+                [
                     .move(edge: edge),
                     .constant(\.clipsToBounds, true),
                     .constant(\.layer.cornerRadius, cornerRadius),
                     .constant(\.layer.maskedCorners, .edge(edge.opposite))
-                ],
-                layout: .constraints { view, superview in
-                    var result = view.pinEdges(
-                        NSDirectionalRectEdge(Edge.allCases.filter { $0 != edge.opposite }),
-                        to: superview
-                    )
-                    result += view.pinEdges(
-                        NSDirectionalRectEdge(edge.opposite),
-                        to: superview.safeAreaLayoutGuide,
-                        relation: .greaterThanOrEqual
-                    )
-                    result += view.pinEdges(
-                        NSDirectionalRectEdge(edge.opposite),
-                        to: superview.safeAreaLayoutGuide,
-                        priority: .defaultLow
-                    )
-                    return result
-                },
-                overCurrentContext: true
-            )
+                ]
+            }
+            .environment(\.contentLayout, .constraints { view, superview in
+                var result = view.pinEdges(
+                    NSDirectionalRectEdge(Edge.allCases.filter { $0 != edge.opposite }),
+                    to: superview
+                )
+                result += view.pinEdges(
+                    NSDirectionalRectEdge(edge.opposite),
+                    to: superview.safeAreaLayoutGuide,
+                    relation: .greaterThanOrEqual
+                )
+                result += view.pinEdges(
+                    NSDirectionalRectEdge(edge.opposite),
+                    to: superview.safeAreaLayoutGuide,
+                    priority: .defaultLow
+                )
+                return result
+            })
+            .environment(\.overCurrentContext) { _ in true }
             .withBackground(containerColor),
 			interactivity: .swipe(to: edge),
 			animation: .default

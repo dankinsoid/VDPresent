@@ -35,11 +35,9 @@ public extension UIPresentation {
         overCurrentContext: Bool = false
 	) -> UIPresentation {
 		UIPresentation(
-            transition: .default(
-                transition: transition,
-                layout: .fill,
-                overCurrentContext: overCurrentContext
-            )
+            transition: .base()
+            .environment(\.contentTransition) { _ in transition }
+            .environment(\.overCurrentContext) { _ in overCurrentContext }
             .withBackground(.identity),
 			interactivity: interactivity,
 			animation: .default

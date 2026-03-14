@@ -14,18 +14,17 @@ public extension UIPresentation {
         containerColor: UIColor = .pageSheetBackground
     ) -> UIPresentation {
         UIPresentation(
-            transition: .default(
-                layout: .padding(
-                    NSDirectionalEdgeInsets(
-                        [
-                            edge.opposite: edge == .leading || edge == .trailing
-                                ? minOffset + UIScreen.main.displayCornerRadius / 2
-                                : minOffset
-                        ]
-                    ),
-                    insideSafeArea: NSDirectionalRectEdge(edge.opposite)
-                )
-            )
+            transition: .base()
+            .environment(\.contentLayout, .padding(
+                NSDirectionalEdgeInsets(
+                    [
+                        edge.opposite: edge == .leading || edge == .trailing
+                            ? minOffset + UIScreen.main.displayCornerRadius / 2
+                            : minOffset
+                    ]
+                ),
+                insideSafeArea: NSDirectionalRectEdge(edge.opposite)
+            ))
             .environment(\.contentTransition) { context in
                 [
                     .move(edge: edge),

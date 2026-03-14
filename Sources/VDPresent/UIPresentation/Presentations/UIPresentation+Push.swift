@@ -12,11 +12,9 @@ public extension UIPresentation {
         containerColor: UIColor = .black.withAlphaComponent(0.1)
     ) -> UIPresentation {
         UIPresentation(
-            transition: .default(
-                transition: .move(edge: edge),
-                moveToBackTransition: .move(edge: edge.opposite, offset: .relative(0.3)),
-                overCurrentContext: false
-            )
+            transition: .base()
+            .environment(\.contentTransition) { _ in .move(edge: edge) }
+            .environment(\.moveToBackTransition) { _, _ in .move(edge: edge.opposite, offset: .relative(0.3)) }
             .withBackground(containerColor),
             interactivity: .swipe(to: edge),
             animation: .default

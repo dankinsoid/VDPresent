@@ -1,6 +1,90 @@
 import UIKit
 import VDTransition
 
+/// A container view controller that manages a stack of child view controllers
+/// with fully customizable animated and interactive transitions.
+///
+/// `UIStackController` is the backbone of the VDPresent navigation model. It owns
+/// an ordered array of child controllers (`viewControllers`) and drives animated
+/// transitions between states via `UIPresentation` descriptors. Each push/pop
+/// is modelled as replacing the current stack with a new one, so arbitrary
+/// inserts, removals, and reorders are all first-class operations.
+///
+/// ## Basic usage — direct API
+///
+/// ```swift
+/// let stack = UIStackController()
+/// window.rootViewController = stack
+///
+/// // Push
+/// stack.show(HomeViewController())
+///
+/// // Push with a custom presentation
+/// stack.show(DetailViewController(), as: .sheet)
+///
+/// // Pop one level
+/// stack.hide()
+///
+/// // Replace the entire stack
+/// stack.set(viewControllers: [RootViewController(), ListViewController()])
+/// ```
+///
+/// ## Global API — `UIViewController` extensions
+///
+/// Alongside explicit stack management, VDPresent provides a global
+/// `show()`/`hide()` API on `UIViewController` for screens that are not
+/// permanently embedded in a navigation hierarchy — alerts, toasts, contextual
+/// overlays, or any screen that needs to be reachable from anywhere without a
+/// reference to a specific stack.
+///
+/// These extensions automatically locate the nearest suitable
+/// `UIStackController` (or create a temporary one) so the caller doesn't need
+/// to know where in the hierarchy it lives:
+///
+/// ```swift
+/// // Show from anywhere — VDPresent resolves the right stack automatically.
+/// myViewController.show()
+/// myViewController.show(as: .pageSheet)
+/// myViewController.show(as: .push, animated: true) {
+///     print("presented")
+/// }
+///
+/// // Hide (pop) the receiver from its stack, wherever it is.
+/// myViewController.hide()
+///
+/// // Toggle visibility via the `isShown` property.
+/// myViewController.isShown = true   // calls show() if not already visible
+/// myViewController.isShown = false  // calls hide() if currently visible
+///
+/// // Set a per-controller default so show() always uses it without arguments.
+/// myViewController.defaultPresentation = .push
+/// myViewController.show()           // uses .push automatically
+/// ```
+///
+/// ## Finding the stack from within a child
+///
+/// ```swift
+/// // Walk up the parent chain to the owning UIStackController.
+/// viewController.stackController        // nearest ancestor stack, or nil
+/// UIStackController.root                // first stack reachable from the key window
+/// UIStackController.top                 // deepest (frontmost) stack
+/// ```
+///
+/// ## Interactive transitions
+///
+/// Assign a `UIPresentation` with an `interactivity` descriptor to get gesture-
+/// driven transitions for free:
+///
+/// ```swift
+/// stack.show(DetailViewController(), as: .sheet)
+/// // The sheet presentation ships with an edge-pan recogniser out of the box.
+/// ```
+///
+/// ## Subclassing
+///
+/// Override `wrap(view:)` to customise how child views are embedded before
+/// transitions animate them (e.g. to add drop-shadows or rounded corners at
+/// the wrapper level rather than in each child).
 open class UIStackController: UIViewController {
 
 	public private(set) var viewControllers: [UIViewController] = []
