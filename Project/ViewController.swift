@@ -26,6 +26,29 @@ struct DemoItem {
     }
 }
 
+// MARK: - TableHeaderView
+
+/// A UIView subclass for use as tableHeaderView that avoids AutoLayout constraint conflicts.
+/// UIKit assigns tableHeaderView width=0 on the first layout pass, which breaks any
+/// UIStackView with isLayoutMarginsRelativeArrangement. This view overrides its frame
+/// to always span the full table width so child AutoLayout constraints resolve correctly.
+// @ai-generated(solo)
+private final class TableHeaderView: UIView {
+
+    private let fixedHeight: CGFloat
+
+    init(height: CGFloat) {
+        self.fixedHeight = height
+        super.init(frame: CGRect(x: 0, y: 0, width: 320, height: height))
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
+
+    override var intrinsicContentSize: CGSize {
+        CGSize(width: UIView.noIntrinsicMetric, height: fixedHeight)
+    }
+}
+
 // MARK: - MainMenuViewController
 
 // @ai-generated(solo)
@@ -120,6 +143,7 @@ final class MainMenuViewController: UITableViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        view.accessibilityIdentifier = "Menu"
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
         tableView.tableHeaderView = makeHeader()
     }
@@ -176,13 +200,22 @@ final class MainMenuViewController: UITableViewController {
         subtitleLabel.textColor = .secondaryLabel
         subtitleLabel.textAlignment = .center
 
-        let stack = UIStackView(arrangedSubviews: [titleLabel, subtitleLabel])
-        stack.axis = .vertical
-        stack.spacing = 6
-        stack.layoutMargins = UIEdgeInsets(top: 36, left: 20, bottom: 28, right: 20)
-        stack.isLayoutMarginsRelativeArrangement = true
-        stack.frame = CGRect(x: 0, y: 0, width: 0, height: 114)
-        return stack
+        // tableHeaderView does not support AutoLayout directly — UIKit assigns it width=0
+        // on the first pass before the table knows its own width, causing constraint conflicts.
+        // Use a plain UIView with frame-based layout as the header container instead.
+        let container = TableHeaderView(height: 114)
+        [titleLabel, subtitleLabel].forEach { label in
+            label.translatesAutoresizingMaskIntoConstraints = false
+            container.addSubview(label)
+        }
+        NSLayoutConstraint.activate([
+            titleLabel.topAnchor.constraint(equalTo: container.topAnchor, constant: 36),
+            titleLabel.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+
+            subtitleLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 6),
+            subtitleLabel.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+        ])
+        return container
     }
 }
 
@@ -387,6 +420,7 @@ final class DemoViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        view.accessibilityIdentifier = item.title
         view.backgroundColor = .systemBackground
         setupLayout()
     }
@@ -463,6 +497,7 @@ final class DemoViewController: UIViewController {
     }
 
     @objc private func didTapDismiss() {
+        print("🟢 [Dismiss] tapped on \(view.accessibilityIdentifier ?? "?")")
         hide(animated: true)
     }
 }
@@ -499,6 +534,7 @@ final class StackStepViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        view.accessibilityIdentifier = stepTitle
         view.backgroundColor = .systemBackground
         setupLayout()
     }
@@ -571,7 +607,9 @@ final class StackStepViewController: UIViewController {
 
     @objc private func didTapButton(_ sender: UIButton) {
         guard sender.tag < actions.count else { return }
-        actions[sender.tag].handler(self)
+        let action = actions[sender.tag]
+        print("🟢 [\(action.title)] tapped on \(view.accessibilityIdentifier ?? "?")")
+        action.handler(self)
     }
 
     private func makeCodeBlock(_ code: String) -> UIView {

@@ -254,6 +254,7 @@ private extension UIStackController {
 		completion: (() -> Void)?
 	) {
 		isSettingControllers = true
+		viewControllers = controllers.to
 		for toViewController in controllers.toInsert {
 			if wrappers[toViewController] == nil {
 				wrappers[toViewController] = wrap(view: toViewController.view)

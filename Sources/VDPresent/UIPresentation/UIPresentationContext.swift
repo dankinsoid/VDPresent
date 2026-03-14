@@ -201,16 +201,6 @@ extension UIPresentation.Context {
         : Array(viewControllers.to.suffix(1))
     }
     
-    var allViewControllers: [UIViewController] {
-        guard !viewControllers.from.isEmpty else { return viewControllers.to }
-        guard !viewControllers.to.isEmpty else { return viewControllers.from }
-        let prefix = viewControllers.from.dropLast().filter { !viewControllers.to.contains($0) } + viewControllers.to.dropLast()
-        let suffix = viewControllers.from.suffix(1) + viewControllers.to.suffix(1).filter { $0 !== viewControllers.from.last }
-        return direction == .insertion
-        ? prefix + suffix
-        : prefix + suffix.reversed()
-    }
-    
     public var reversed: UIPresentation.Context {
         UIPresentation.Context(
             direction: direction.reversed,
