@@ -275,6 +275,52 @@ private func stackSectionItems() -> [DemoItem] {
             }
         ),
 
+        // Demo: mixed presentations — each controller in the stack uses a different animation
+        .init(
+            title: "Mixed presentations in one stack",
+            description: "Each controller is shown with its own presentation: sheet → push → pageSheet → pageCurl.",
+            code: "a.show(as: .sheet)\nb.show(as: .push)\nc.show(as: .pageSheet)\nd.show(as: .pageCurl)",
+            presentation: .sheet,
+            tapAction: { _ in
+                let d = StackStepViewController(
+                    stepTitle: "D — .pageCurl",
+                    description: "Shown with .pageCurl on top of C.",
+                    code: "d.show(as: .pageCurl)",
+                    actions: [
+                        .init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
+                    ]
+                )
+                let c = StackStepViewController(
+                    stepTitle: "C — .pageSheet",
+                    description: "Shown with .pageSheet on top of B. Notice B scales behind.",
+                    code: "c.show(as: .pageSheet)",
+                    actions: [
+                        .init(title: "Show D (.pageCurl)", style: .primary, handler: { _ in d.show(as: .pageCurl) }),
+                        .init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
+                    ]
+                )
+                let b = StackStepViewController(
+                    stepTitle: "B — .push",
+                    description: "Shown with .push on top of A. Swipe from right edge to go back.",
+                    code: "b.show(as: .push)",
+                    actions: [
+                        .init(title: "Show C (.pageSheet)", style: .primary, handler: { _ in c.show(as: .pageSheet) }),
+                        .init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
+                    ]
+                )
+                let a = StackStepViewController(
+                    stepTitle: "A — .sheet",
+                    description: "Shown with .sheet. All four controllers live in the same stack.",
+                    code: "a.show(as: .sheet)",
+                    actions: [
+                        .init(title: "Show B (.push)", style: .primary, handler: { _ in b.show(as: .push) }),
+                        .init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
+                    ]
+                )
+                a.show(as: .sheet)
+            }
+        ),
+
         // Demo: set(viewControllers:) — replace arbitrary stack state
         .init(
             title: "set(viewControllers:) — replace stack",
