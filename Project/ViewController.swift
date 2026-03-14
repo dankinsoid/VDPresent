@@ -291,9 +291,30 @@ private func stackSectionItems() -> [DemoItem] {
                             guard let stack = vc.stackController else { return }
                             // Keep the menu (first VC); swap everything else for A, B, C
                             let menu = stack.viewControllers.first.map { [$0] } ?? []
-                            let a = StackStepViewController(stepTitle: "Controller A", description: "Swipe right to go back through the new stack.", code: "", actions: [])
-                            let b = StackStepViewController(stepTitle: "Controller B", description: "Swipe right to go back.", code: "", actions: [])
-                            let c = StackStepViewController(stepTitle: "Controller C", description: "The stack was set to [menu, A, B, C] in one call.", code: "", actions: [])
+                            let a = StackStepViewController(
+                                stepTitle: "Controller A",
+                                description: "Part of the new stack set in one call.",
+                                code: "",
+                                actions: [
+                                    .init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
+                                ]
+                            )
+                            let b = StackStepViewController(
+                                stepTitle: "Controller B",
+                                description: "Part of the new stack set in one call.",
+                                code: "",
+                                actions: [
+                                    .init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
+                                ]
+                            )
+                            let c = StackStepViewController(
+                                stepTitle: "Controller C",
+                                description: "The stack was set to [menu, A, B, C] in one call.",
+                                code: "",
+                                actions: [
+                                    .init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
+                                ]
+                            )
                             stack.set(viewControllers: menu + [a, b, c], as: .push)
                         }),
                     ]
