@@ -113,9 +113,9 @@ public extension UIPresentation.Interactivity {
                     container: { context.for($0).container },
                     fromViewControllers: context.viewControllers.to,
                     toViewControllers: Array(
-                        context.viewControllers.from.prefix(
-                            upTo: context.viewControllers.from.firstIndex(where: controller.isDescendant)
-                                ?? context.viewControllers.from.count - 1
+                        context.viewControllers.to.prefix(
+                            upTo: context.viewControllers.to.firstIndex(where: controller.isDescendant)
+                                ?? context.viewControllers.to.count - 1
                         )
                     ),
                     views: { context.for($0).view },
