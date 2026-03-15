@@ -28,6 +28,7 @@ public extension UIPresentation.Transition {
 	) -> UIPresentation.Transition {
 		UIPresentation.Transition(
 			prepare: { context in
+				guard context.isChangingController else { return }
 				if context.isTopController || !context.needHide {
 					context.container.isHidden = false
 				}
@@ -45,14 +46,27 @@ public extension UIPresentation.Transition {
 				Self.animate(context: context, progress: context.direction.at(.start), animation: additionalAnimation)
 			},
 			animation: { context in
+				context.removalTransitions
+					.flatMap(\.value)
+					.filter { $0.key.value === context.view }
+					.compactMap(\.value)
+					.sorted(by: { $0.2 > $1.2 })
+					.map(\.0)
+					.forEach {
+						$0.update(progress: .insertion(0), view: context.view)
+					}
+
+				guard context.isChangingController else { return }
+
 				Self.animate(context: context, progress: context.direction.at(.end), animation: additionalAnimation)
 				if context.isTopController {
 					context.updateStatusBar(style: context.viewController.preferredStatusBarStyle)
 				}
 			},
 			completion: { context, completed in
+				guard context.isChangingController else { return }
 				let finalContext = completed ? context : context.reversed
-				cleanupTransitions(context: finalContext)
+//				cleanupTransitions(context: finalContext)
 				if finalContext.needHide {
 					finalContext.container.isHidden = true
 				}
@@ -93,19 +107,32 @@ public extension UIPresentation.Environment {
 }
 
 extension UIPresentation.Context {
-	
+
 	/// Per-context cache of insertion transitions, keyed by the presented view.
 	/// Populated in prepare, consumed in animate, cleared in cleanup.
 	var insertionTransitions: [Weak<UIView>: UITransition<UIView>] {
 		get { cache[\.insertionTransitions] ?? [:] }
 		nonmutating set { cache[\.insertionTransitions] = newValue }
 	}
-	
+
 	/// Per-context cache of move-to-back transitions for views beneath the presented VC.
 	/// Outer key: presented view. Inner key: back view. Value: (transition, depth index).
-	var removalTransitions: [Weak<UIView>: [Weak<UIView>: (UITransition<UIView>, Int)]] {
+	var removalTransitions: [Weak<UIView>: [Weak<UIView>: (UITransition<UIView>, Int, Date)]] {
 		get { cache[\.removalTransitions] ?? [:] }
 		nonmutating set { cache[\.removalTransitions] = newValue }
+	}
+}
+
+struct ViewTransitions {
+
+	var itself: UITransition<UIView>?
+	var sideEffects: [SideEffect]
+
+	struct SideEffect {
+
+		var source: Weak<UIView>
+		var transition: UITransition<UIView>
+		var depthIndex: Int
 	}
 }
 
@@ -147,7 +174,8 @@ private extension UIPresentation.Transition {
                 let currentTransition = context.removalTransitions[view]?[backView]?.0
                 context.removalTransitions[view, default: [:]][backView] = (
                     context.environment.moveToBackTransition(index + 1, context).reversed,
-                    index + 1
+                    index + 1,
+										context.removalTransitions[view]?[backView]?.2 ?? Date()
                 )
                 context.removalTransitions[view]?[backView]?.0
                     .beforeTransitionIfNeeded(view: backView, current: currentTransition)
@@ -173,7 +201,8 @@ private extension UIPresentation.Transition {
                 #endif
                 context.removalTransitions[view, default: [:]][backView] = (
                     context.environment.moveToBackTransition($0.value.1, context).constant(at: .removal(1)),
-                    $0.value.1
+                    $0.value.1,
+										Date()
                 )
                 context.removalTransitions[view]?[backView]?.0
                     .beforeTransitionIfNeeded(view: backView, current: $0.value.0)
@@ -223,6 +252,7 @@ private extension UIPresentation.Transition {
 			#if VDPRESENT_LOG
 			print("⚡ animate  vc=\(viewId(context.viewController)), \(before) → \(fmt(view))  @\(progress)")
 			#endif
+//			guard context.viewControllers.to.contains(context.viewController) else { return }
 			context.removalTransitions[view]?.forEach {
 				if let backView = $0.key.value {
 					#if VDPRESENT_LOG

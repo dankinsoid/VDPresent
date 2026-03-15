@@ -122,7 +122,7 @@ public extension UIPresentation.Context.Controllers {
 		case .animation:
 			return from.reversed().filter { !to.contains($0) } + to
 		case .zIndex:
-			let prefix = from.dropLast().filter { !to.contains($0) } + to.dropLast()
+			let prefix = from.dropLast().filter { !to.contains($0) } + to.filter { !from.contains($0) }.dropLast()
 			let suffix = from.suffix(1) + to.suffix(1).filter { $0 !== from.last }
 			return direction == .insertion
 			? prefix + suffix
