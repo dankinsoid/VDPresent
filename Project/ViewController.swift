@@ -85,12 +85,6 @@ final class MainMenuViewController: UITableViewController {
                 code: "controller.show(as: .fullScreen)",
                 presentation: .fullScreen
             ),
-            .init(
-                title: ".pageCurl",
-                description: "Page curl animation driven by CoreAnimation.",
-                code: "controller.show(as: .pageCurl)",
-                presentation: .pageCurl
-            ),
         ]),
         .init(title: "Edges", items: [
             .init(
@@ -311,14 +305,14 @@ private func stackSectionItems() -> [DemoItem] {
         // Demo: mixed presentations — each controller in the stack uses a different animation
         .init(
             title: "Mixed presentations in one stack",
-            description: "Each controller is shown with its own presentation: sheet → push → pageSheet → pageCurl.",
-            code: "a.show(as: .sheet)\nb.show(as: .push)\nc.show(as: .pageSheet)\nd.show(as: .pageCurl)",
+            description: "Each controller is shown with its own presentation: sheet → push → pageSheet → fullScreen.",
+            code: "a.show(as: .sheet)\nb.show(as: .push)\nc.show(as: .pageSheet)\nd.show(as: .fullScreen)",
             presentation: .sheet,
             tapAction: { _ in
                 let d = StackStepViewController(
-                    stepTitle: "D — .pageCurl",
-                    description: "Shown with .pageCurl on top of C.",
-                    code: "d.show(as: .pageCurl)",
+                    stepTitle: "D — .fullScreen",
+                    description: "Shown with .fullScreen on top of C.",
+                    code: "d.show(as: .fullScreen)",
                     actions: [
                         .init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
                     ]
@@ -328,7 +322,7 @@ private func stackSectionItems() -> [DemoItem] {
                     description: "Shown with .pageSheet on top of B. Notice B scales behind.",
                     code: "c.show(as: .pageSheet)",
                     actions: [
-                        .init(title: "Show D (.pageCurl)", style: .primary, handler: { _ in d.show(as: .pageCurl) }),
+                        .init(title: "Show D (.fullScreen)", style: .primary, handler: { _ in d.show(as: .fullScreen) }),
                         .init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
                     ]
                 )

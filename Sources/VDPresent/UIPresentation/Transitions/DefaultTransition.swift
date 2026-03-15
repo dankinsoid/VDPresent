@@ -26,36 +26,40 @@ public extension UIPresentation.Transition {
 		additionalAnimation: ((UIPresentation.Context, Progress) -> Void)? = nil,
 		completion: ((UIPresentation.Context, Bool) -> Void)? = nil
 	) -> UIPresentation.Transition {
-		.uiViewAnimate { context in
-			if context.isTopController || !context.needHide {
-				context.container.isHidden = false
+		UIPresentation.Transition(
+			prepare: { context in
+				if context.isTopController || !context.needHide {
+					context.container.isHidden = false
+				}
+				prepareInsertionTransition(context: context)
+				if context.isTopController {
+					// This VC is becoming top — animate visible views beneath it moving to back.
+					prepareBackViewTransitions(context: context)
+				} else {
+					// This VC is not top — freeze existing back-view transitions at their final
+					// state so they don't re-animate during nested layout passes.
+					freezeBackViewTransitions(context: context)
+				}
+				prepareBackground(context: context)
+				additionalPrepare?(context)
+				Self.animate(context: context, progress: context.direction.at(.start), animation: additionalAnimation)
+			},
+			animation: { context in
+				Self.animate(context: context, progress: context.direction.at(.end), animation: additionalAnimation)
+				if context.isTopController {
+					context.updateStatusBar(style: context.viewController.preferredStatusBarStyle)
+				}
+			},
+			completion: { context, completed in
+				let finalContext = completed ? context : context.reversed
+				cleanupTransitions(context: finalContext)
+				if finalContext.needHide {
+					finalContext.container.isHidden = true
+				}
+				completeBackground(context: finalContext)
+				completion?(context, completed)
 			}
-			prepareInsertionTransition(context: context)
-			if context.isTopController {
-				// This VC is becoming top — animate visible views beneath it moving to back.
-				prepareBackViewTransitions(context: context)
-			} else {
-				// This VC is not top — freeze existing back-view transitions at their final
-				// state so they don't re-animate during nested layout passes.
-				freezeBackViewTransitions(context: context)
-			}
-			prepareBackground(context: context)
-			additionalPrepare?(context)
-			Self.animate(context: context, progress: context.direction.at(.start), animation: additionalAnimation)
-		} animation: { context in
-			Self.animate(context: context, progress: context.direction.at(.end), animation: additionalAnimation)
-			if context.isTopController {
-				context.updateStatusBar(style: context.viewController.preferredStatusBarStyle)
-			}
-		} completion: { context, completed in
-			let finalContext = completed ? context : context.reversed
-			cleanupTransitions(context: finalContext)
-			if finalContext.needHide {
-				finalContext.container.isHidden = true
-			}
-			completeBackground(context: finalContext)
-			completion?(context, completed)
-		}
+		)
 	}
 }
 
@@ -89,20 +93,20 @@ public extension UIPresentation.Environment {
 }
 
 extension UIPresentation.Context {
-
-    /// Per-context cache of insertion transitions, keyed by the presented view.
-    /// Populated in prepare, consumed in animate, cleared in cleanup.
-    var insertionTransitions: [Weak<UIView>: UITransition<UIView>] {
-        get { cache[\.insertionTransitions] ?? [:] }
-        nonmutating set { cache[\.insertionTransitions] = newValue }
-    }
-
-    /// Per-context cache of move-to-back transitions for views beneath the presented VC.
-    /// Outer key: presented view. Inner key: back view. Value: (transition, depth index).
-    var removalTransitions: [Weak<UIView>: [Weak<UIView>: (UITransition<UIView>, Int)]] {
-        get { cache[\.removalTransitions] ?? [:] }
-        nonmutating set { cache[\.removalTransitions] = newValue }
-    }
+	
+	/// Per-context cache of insertion transitions, keyed by the presented view.
+	/// Populated in prepare, consumed in animate, cleared in cleanup.
+	var insertionTransitions: [Weak<UIView>: UITransition<UIView>] {
+		get { cache[\.insertionTransitions] ?? [:] }
+		nonmutating set { cache[\.insertionTransitions] = newValue }
+	}
+	
+	/// Per-context cache of move-to-back transitions for views beneath the presented VC.
+	/// Outer key: presented view. Inner key: back view. Value: (transition, depth index).
+	var removalTransitions: [Weak<UIView>: [Weak<UIView>: (UITransition<UIView>, Int)]] {
+		get { cache[\.removalTransitions] ?? [:] }
+		nonmutating set { cache[\.removalTransitions] = newValue }
+	}
 }
 
 private extension UIPresentation.Transition {
@@ -126,12 +130,16 @@ private extension UIPresentation.Transition {
     /// Views are enumerated in reverse so depth index 1 is the immediate predecessor.
     static func prepareBackViewTransitions(context: UIPresentation.Context) {
         let view = context.view
+        let from = context.viewControllers.from.map(viewId).joined(separator: ",")
+        let to   = context.viewControllers.to.map(viewId).joined(separator: ",")
+        print("🔵 prepareBack  vc=\(viewId(context.viewController))  dir=\(context.direction)  [\(from)]→[\(to)]")
         context.viewControllers.from
             .filter { $0 !== context.viewController && !context.for($0).view.isHidden }
             .reversed()
             .enumerated()
             .forEach { (index, vc) in
                 let backView = context.for(vc).view
+                let before = fmt(backView)
                 let currentTransition = context.removalTransitions[view]?[backView]?.0
                 context.removalTransitions[view, default: [:]][backView] = (
                     context.environment.moveToBackTransition(index + 1, context).reversed,
@@ -139,6 +147,7 @@ private extension UIPresentation.Transition {
                 )
                 context.removalTransitions[view]?[backView]?.0
                     .beforeTransitionIfNeeded(view: backView, current: currentTransition)
+                print("   back[\(index+1)] \(viewId(vc))  \(before) → \(fmt(backView))")
             }
     }
 
@@ -147,14 +156,18 @@ private extension UIPresentation.Transition {
     /// and must not re-animate if a nested VC triggers another layout pass.
     static func freezeBackViewTransitions(context: UIPresentation.Context) {
         let view = context.view
+        guard !(context.removalTransitions[view]?.isEmpty ?? true) else { return }
+        print("🟡 freeze  vc=\(viewId(context.viewController))")
         context.removalTransitions[view]?.forEach {
             if let backView = $0.key.value {
+                let before = fmt(backView)
                 context.removalTransitions[view, default: [:]][backView] = (
                     context.environment.moveToBackTransition($0.value.1, context).constant(at: .removal(1)),
                     $0.value.1
                 )
                 context.removalTransitions[view]?[backView]?.0
                     .beforeTransitionIfNeeded(view: backView, current: $0.value.0)
+                print("   \(viewName(backView))  \(before) → \(fmt(backView))")
             }
         }
     }
@@ -164,11 +177,14 @@ private extension UIPresentation.Transition {
     static func cleanupTransitions(context: UIPresentation.Context) {
         guard context.viewControllers.toRemove.contains(context.viewController) else { return }
         let view = context.view
+        print("🔴 cleanup  vc=\(viewId(context.viewController))")
         context.insertionTransitions[view]?.setInitialState(view: view)
         context.insertionTransitions[view] = nil
         context.removalTransitions[view]?.forEach {
             if let backView = $0.key.value {
+                let before = fmt(backView)
                 $0.value.0.setInitialState(view: backView)
+                print("   setInitialState \(viewName(backView))  \(before) → \(fmt(backView))")
             }
         }
         context.removalTransitions[view] = nil
@@ -182,10 +198,17 @@ private extension UIPresentation.Transition {
         animation: ((UIPresentation.Context, Progress) -> Void)?
     ) {
         let view = context.view
+			let before = fmt(view)
         context.insertionTransitions[view]?.update(progress: progress, view: view)
+				print("⚡ animate  vc=\(viewId(context.viewController)), \(before) → \(fmt(view))  @\(progress)")
         context.removalTransitions[view]?.forEach {
             if let backView = $0.key.value {
+							let before = fmt(backView)
                 $0.value.0.update(progress: progress, view: backView)
+                // Only log at start/end to avoid flooding during interactive gestures
+                if progress.value == 0 || progress.value == 1 {
+                    print("⚡ animate  vc=\(viewId(context.viewController)) : \(viewName(backView)), \(before) → \(fmt(backView))  @\(progress)")
+                }
             }
         }
         if let view = context.backgroundView {
@@ -193,7 +216,29 @@ private extension UIPresentation.Transition {
         }
         animation?(context, progress)
     }
-    
+
+    // MARK: - Debug helpers
+
+    private static func viewId(_ vc: UIViewController) -> String {
+        vc.view.accessibilityIdentifier ?? String(describing: type(of: vc))
+    }
+
+    private static func viewName(_ view: UIView) -> String {
+        (view as? UIStackViewWrapper)?.wrapped.accessibilityIdentifier
+            ?? view.accessibilityIdentifier
+            ?? String(describing: type(of: view))
+    }
+
+    /// Short readable representation of a view's current transform offset.
+    private static func fmt(_ view: UIView) -> String {
+        let tx = view.affineTransform.tx
+        let ty = view.affineTransform.ty
+        if tx == 0 && ty == 0 { return "center" }
+        if ty == 0 { return "tx=\(Int(tx))" }
+        if tx == 0 { return "ty=\(Int(ty))" }
+        return "tx=\(Int(tx)) ty=\(Int(ty))"
+    }
+
     /// Creates or reuses the background/overlay view and registers its transition.
     /// No-ops when `backgroundTransition` is `.identity` — no view is created in that case.
     static func prepareBackground(

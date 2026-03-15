@@ -266,58 +266,61 @@ private extension UIStackController {
 				presentations[toViewController] = presentation
 			}
 		}
-
-		let allControllers = controllers.all(direction)
-		allControllers.map(container).forEach(content.bringSubviewToFront)
-
+		
+		controllers.all(direction, order: .zIndex).map(container).forEach(content.bringSubviewToFront)
+		let allControllers = controllers.all(direction, order: .animation)
+		
 		for toViewController in controllers.to where toViewController.parent == nil {
 			toViewController.willMove(toParent: self)
 			self.addChild(toViewController)
 			toViewController.didMove(toParent: self)
 		}
-
+		
 		controllers.toRemove.forEach {
 			$0.willMove(toParent: nil)
 		}
-
-		var count = 0
-
+		
 		allControllers.forEach { controller in
 			let currentPresentation = presentations[controller, default: presentation]
-			currentPresentation.transition.prepare(context: context(controller))
+			AnimationDriver.prepare(
+				transition: currentPresentation.transition,
+				context: context(controller)
+			)
 		}
-		allControllers.forEach { controller in
-			let currentPresentation = presentations[controller, default: presentation]
-			currentPresentation.transition
-				.animate(context: context(controller)) { [weak self] state in
-					guard let self else { return }
-					switch state {
-					case .begin:
-						if !controllers.isTopTheSame {
-							if controller === controllers.to.last {
-								controller.beginAppearanceTransition(true, animated: animated)
-							}
-							if controller === controllers.from.last {
-								controller.beginAppearanceTransition(false, animated: animated)
-							}
+		
+		print("[UIStackController] allControllers: \(allControllers.map { $0.view.accessibilityIdentifier ?? "nil" })")
+		AnimationDriver.animate(
+			allControllers.map { controller in
+				(context(controller), presentations[controller, default: presentation].transition)
+			},
+			beginAppearance: {
+				if !controllers.isTopTheSame {
+					for controller in allControllers {
+						if controller === controllers.to.last {
+							controller.beginAppearanceTransition(true, animated: animated)
 						}
-					case let .prepareInteractive(update):
-						self.animators[controller] = update
-					case let .end(completed):
-						count += 1
-						if count == allControllers.count {
-							self.completionBlock(
-								presentation: currentPresentation,
-								direction: direction,
-								controllers: controllers,
-								context: context,
-								isCompleted: completed,
-								completion: completion
-							)
+						if controller === controllers.from.last {
+							controller.beginAppearanceTransition(false, animated: animated)
 						}
 					}
 				}
-		}
+			},
+			prepareInteractive: { [weak self] update in
+				for controller in allControllers {
+					self?.animators[controller] = update
+				}
+			},
+			completion: { [weak self] completed in
+				self?.completionBlock(
+					presentation: presentation,//currentPresentation,
+					direction: direction,
+					controllers: controllers,
+					context: context,
+					isCompleted: completed,
+					completion: completion
+				)
+			}
+		)
 	}
 
 	func completionBlock(
@@ -328,9 +331,9 @@ private extension UIStackController {
 		isCompleted: Bool,
 		completion: (() -> Void)?
 	) {
-		controllers.all(direction).forEach { controller in
+		controllers.all(direction, order: .animation).forEach { controller in
 			let currentPresentation = presentations[controller, default: presentation]
-			currentPresentation.transition.completion(context: context(controller), completed: isCompleted)
+			currentPresentation.transition.completion(context(controller), isCompleted)
 		}
 		viewControllers = isCompleted ? controllers.to : controllers.from
 		if isCompleted {

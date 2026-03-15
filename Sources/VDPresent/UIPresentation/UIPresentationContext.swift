@@ -106,28 +106,39 @@ extension UIPresentation.Context {
 }
 
 public extension UIPresentation.Context.Controllers {
-    
-    var toRemove: [UIViewController] {
-        from.filter { !to.contains($0) }
-    }
-    
-    var toInsert: [UIViewController] {
-        to.filter { !from.contains($0) }
-    }
-    
-    func all(_ direction: TransitionDirection) -> [UIViewController] {
-        guard !from.isEmpty else { return to }
-        guard !to.isEmpty else { return from }
-        let prefix = from.dropLast().filter { !to.contains($0) } + to.dropLast()
-        let suffix = from.suffix(1) + to.suffix(1).filter { $0 !== from.last }
-        return direction == .insertion
-        ? prefix + suffix
-        : prefix + suffix.reversed()
-    }
-    
-    var isTopTheSame: Bool {
-        from.last === to.last
-    }
+	
+	var toRemove: [UIViewController] {
+		from.filter { !to.contains($0) }
+	}
+	
+	var toInsert: [UIViewController] {
+		to.filter { !from.contains($0) }
+	}
+	
+	func all(_ direction: TransitionDirection, order: AllOrder) -> [UIViewController] {
+		guard !from.isEmpty else { return to }
+		guard !to.isEmpty else { return from }
+		switch order {
+		case .animation:
+			return from.reversed().filter { !to.contains($0) } + to
+		case .zIndex:
+			let prefix = from.dropLast().filter { !to.contains($0) } + to.dropLast()
+		 let suffix = from.suffix(1) + to.suffix(1).filter { $0 !== from.last }
+		 return direction == .insertion
+		 ? prefix + suffix
+		 : prefix + suffix.reversed()
+		}
+	}
+	
+	enum AllOrder {
+		
+		case animation
+		case zIndex
+	}
+	
+	var isTopTheSame: Bool {
+		from.last === to.last
+	}
 }
 
 public extension UIPresentation.Context {
