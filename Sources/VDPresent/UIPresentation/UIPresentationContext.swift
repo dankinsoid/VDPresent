@@ -123,13 +123,13 @@ public extension UIPresentation.Context.Controllers {
 			return from.reversed().filter { !to.contains($0) } + to
 		case .zIndex:
 			let prefix = from.dropLast().filter { !to.contains($0) } + to.dropLast()
-		 let suffix = from.suffix(1) + to.suffix(1).filter { $0 !== from.last }
-		 return direction == .insertion
-		 ? prefix + suffix
-		 : prefix + suffix.reversed()
+			let suffix = from.suffix(1) + to.suffix(1).filter { $0 !== from.last }
+			return direction == .insertion
+			? prefix + suffix
+			: prefix + suffix.reversed()
 		}
 	}
-	
+
 	enum AllOrder {
 		
 		case animation

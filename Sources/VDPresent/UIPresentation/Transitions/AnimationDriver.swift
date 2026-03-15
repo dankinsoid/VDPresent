@@ -52,7 +52,9 @@ enum AnimationDriver {
 			completion(true)
 			return
 		}
+		#if VDPRESENT_LOG
 		print("🎬 animating with main duration: \(main.context.animation.duration)s, animated: \(main.context.animated), interactive: \(main.context.isInteractive)")
+		#endif
 		let animate: () -> Void = {
 			beginAppearance()
 			for (context, transition) in items {
@@ -65,8 +67,12 @@ enum AnimationDriver {
 		
 		if main.context.animated {
 			if main.context.isInteractive {
-				let animator = main.context.animator ?? Animator()
+				let animator = main.context.animator ?? Animator(duration: main.context.animation.duration, curve: .linear)
 				main.context.animator = animator
+				// Allow touches during interactive transitions so the UI stays
+				// responsive while the animator runs (especially the reverse
+				// animation after a cancelled gesture).
+				animator.isUserInteractionEnabled = true
 				animator.addAnimations(animate)
 				animator.addCompletion { position in
 					let completed = position == .end

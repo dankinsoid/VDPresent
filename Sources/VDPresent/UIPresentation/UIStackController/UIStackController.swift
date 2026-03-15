@@ -288,7 +288,9 @@ private extension UIStackController {
 			)
 		}
 		
+		#if VDPRESENT_LOG
 		print("[UIStackController] allControllers: \(allControllers.map { $0.view.accessibilityIdentifier ?? "nil" })")
+		#endif
 		AnimationDriver.animate(
 			allControllers.map { controller in
 				(context(controller), presentations[controller, default: presentation].transition)

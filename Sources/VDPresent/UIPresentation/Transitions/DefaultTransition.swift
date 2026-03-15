@@ -130,16 +130,20 @@ private extension UIPresentation.Transition {
     /// Views are enumerated in reverse so depth index 1 is the immediate predecessor.
     static func prepareBackViewTransitions(context: UIPresentation.Context) {
         let view = context.view
+        #if VDPRESENT_LOG
         let from = context.viewControllers.from.map(viewId).joined(separator: ",")
         let to   = context.viewControllers.to.map(viewId).joined(separator: ",")
         print("🔵 prepareBack  vc=\(viewId(context.viewController))  dir=\(context.direction)  [\(from)]→[\(to)]")
+        #endif
         context.viewControllers.from
             .filter { $0 !== context.viewController && !context.for($0).view.isHidden }
             .reversed()
             .enumerated()
             .forEach { (index, vc) in
                 let backView = context.for(vc).view
+                #if VDPRESENT_LOG
                 let before = fmt(backView)
+                #endif
                 let currentTransition = context.removalTransitions[view]?[backView]?.0
                 context.removalTransitions[view, default: [:]][backView] = (
                     context.environment.moveToBackTransition(index + 1, context).reversed,
@@ -147,7 +151,9 @@ private extension UIPresentation.Transition {
                 )
                 context.removalTransitions[view]?[backView]?.0
                     .beforeTransitionIfNeeded(view: backView, current: currentTransition)
+                #if VDPRESENT_LOG
                 print("   back[\(index+1)] \(viewId(vc))  \(before) → \(fmt(backView))")
+                #endif
             }
     }
 
@@ -157,17 +163,23 @@ private extension UIPresentation.Transition {
     static func freezeBackViewTransitions(context: UIPresentation.Context) {
         let view = context.view
         guard !(context.removalTransitions[view]?.isEmpty ?? true) else { return }
+        #if VDPRESENT_LOG
         print("🟡 freeze  vc=\(viewId(context.viewController))")
+        #endif
         context.removalTransitions[view]?.forEach {
             if let backView = $0.key.value {
+                #if VDPRESENT_LOG
                 let before = fmt(backView)
+                #endif
                 context.removalTransitions[view, default: [:]][backView] = (
                     context.environment.moveToBackTransition($0.value.1, context).constant(at: .removal(1)),
                     $0.value.1
                 )
                 context.removalTransitions[view]?[backView]?.0
                     .beforeTransitionIfNeeded(view: backView, current: $0.value.0)
+                #if VDPRESENT_LOG
                 print("   \(viewName(backView))  \(before) → \(fmt(backView))")
+                #endif
             }
         }
     }
@@ -177,14 +189,20 @@ private extension UIPresentation.Transition {
     static func cleanupTransitions(context: UIPresentation.Context) {
         guard context.viewControllers.toRemove.contains(context.viewController) else { return }
         let view = context.view
+        #if VDPRESENT_LOG
         print("🔴 cleanup  vc=\(viewId(context.viewController))")
+        #endif
         context.insertionTransitions[view]?.setInitialState(view: view)
         context.insertionTransitions[view] = nil
         context.removalTransitions[view]?.forEach {
             if let backView = $0.key.value {
+                #if VDPRESENT_LOG
                 let before = fmt(backView)
+                #endif
                 $0.value.0.setInitialState(view: backView)
+                #if VDPRESENT_LOG
                 print("   setInitialState \(viewName(backView))  \(before) → \(fmt(backView))")
+                #endif
             }
         }
         context.removalTransitions[view] = nil
@@ -196,29 +214,38 @@ private extension UIPresentation.Transition {
         context: UIPresentation.Context,
         progress: Progress,
         animation: ((UIPresentation.Context, Progress) -> Void)?
-    ) {
-        let view = context.view
+		) {
+			let view = context.view
+			#if VDPRESENT_LOG
 			let before = fmt(view)
-        context.insertionTransitions[view]?.update(progress: progress, view: view)
-				print("⚡ animate  vc=\(viewId(context.viewController)), \(before) → \(fmt(view))  @\(progress)")
-        context.removalTransitions[view]?.forEach {
-            if let backView = $0.key.value {
-							let before = fmt(backView)
-                $0.value.0.update(progress: progress, view: backView)
-                // Only log at start/end to avoid flooding during interactive gestures
-                if progress.value == 0 || progress.value == 1 {
-                    print("⚡ animate  vc=\(viewId(context.viewController)) : \(viewName(backView)), \(before) → \(fmt(backView))  @\(progress)")
-                }
-            }
-        }
-        if let view = context.backgroundView {
-            context.backgroundTransitions[view]?.update(progress: progress, view: view)
-        }
-        animation?(context, progress)
-    }
+			#endif
+			context.insertionTransitions[view]?.update(progress: progress, view: view)
+			#if VDPRESENT_LOG
+			print("⚡ animate  vc=\(viewId(context.viewController)), \(before) → \(fmt(view))  @\(progress)")
+			#endif
+			context.removalTransitions[view]?.forEach {
+				if let backView = $0.key.value {
+					#if VDPRESENT_LOG
+					let before = fmt(backView)
+					#endif
+					$0.value.0.update(progress: progress, view: backView)
+					#if VDPRESENT_LOG
+					// Only log at start/end to avoid flooding during interactive gestures
+					if progress.value == 0 || progress.value == 1 {
+						print("⚡ animate  vc=\(viewId(context.viewController)) : \(viewName(backView)), \(before) → \(fmt(backView))  @\(progress)")
+					}
+					#endif
+				}
+			}
+			if let view = context.backgroundView {
+				context.backgroundTransitions[view]?.update(progress: progress, view: view)
+			}
+			animation?(context, progress)
+		}
 
     // MARK: - Debug helpers
 
+    #if VDPRESENT_LOG
     private static func viewId(_ vc: UIViewController) -> String {
         vc.view.accessibilityIdentifier ?? String(describing: type(of: vc))
     }
@@ -238,6 +265,7 @@ private extension UIPresentation.Transition {
         if tx == 0 { return "ty=\(Int(ty))" }
         return "tx=\(Int(tx)) ty=\(Int(ty))"
     }
+    #endif
 
     /// Creates or reuses the background/overlay view and registers its transition.
     /// No-ops when `backgroundTransition` is `.identity` — no view is created in that case.
