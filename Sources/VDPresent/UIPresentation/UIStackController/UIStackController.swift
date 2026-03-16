@@ -268,7 +268,10 @@ private extension UIStackController {
 		}
 		
 		controllers.all(direction, order: .zIndex).map(container).forEach(content.bringSubviewToFront)
-		let allControllers = controllers.all(direction, order: .animation)
+		// Use zIndex order so animate phase processes controllers bottom-to-top:
+		// each controller first applies its own effect, then higher controllers
+		// apply moveToBack on views below — no ordering conflicts.
+		let allControllers = controllers.all(direction, order: .zIndex)
 		
 		for toViewController in controllers.to where toViewController.parent == nil {
 			toViewController.willMove(toParent: self)
