@@ -266,32 +266,32 @@ private extension UIStackController {
 				presentations[toViewController] = presentation
 			}
 		}
-		
+
 		// Use zIndex order so animate phase processes controllers bottom-to-top:
 		// each controller first applies its own effect, then higher controllers
 		// apply moveToBack on views below — no ordering conflicts.
 		let allControllers = controllers.all(direction)
-		
+
 		allControllers.map(container).forEach(content.bringSubviewToFront)
-		
+
 		for toViewController in controllers.to where toViewController.parent == nil {
 			toViewController.willMove(toParent: self)
 			self.addChild(toViewController)
 			toViewController.didMove(toParent: self)
 		}
-		
-		controllers.toRemove.forEach {
-			$0.willMove(toParent: nil)
+
+		for item in controllers.toRemove {
+			item.willMove(toParent: nil)
 		}
-		
-		allControllers.forEach { controller in
+
+		for controller in allControllers {
 			let currentPresentation = presentations[controller, default: presentation]
 			AnimationDriver.prepare(
 				transition: currentPresentation.transition,
 				context: context(controller)
 			)
 		}
-		
+
 		#if VDPRESENT_LOG
 		print("[UIStackController] allControllers: \(allControllers.map { $0.view.accessibilityIdentifier ?? "nil" })")
 		#endif
@@ -318,7 +318,7 @@ private extension UIStackController {
 			},
 			completion: { [weak self] completed in
 				self?.completionBlock(
-					presentation: presentation,//currentPresentation,
+					presentation: presentation, // currentPresentation,
 					direction: direction,
 					controllers: controllers,
 					context: context,
@@ -337,7 +337,7 @@ private extension UIStackController {
 		isCompleted: Bool,
 		completion: (() -> Void)?
 	) {
-		controllers.all(direction).forEach { controller in
+		for controller in controllers.all(direction) {
 			let currentPresentation = presentations[controller, default: presentation]
 			currentPresentation.transition.completion(context(controller), isCompleted)
 		}
@@ -387,11 +387,11 @@ private extension UIStackController {
 		controllers: UIPresentation.Context.Controllers,
 		context: @escaping (UIViewController) -> UIPresentation.Context
 	) {
-		controllers.toRemove.forEach {
-			presentations[$0, default: presentation]
-				.interactivity?.uninstall(context: context($0))
+		for item in controllers.toRemove {
+			presentations[item, default: presentation]
+				.interactivity?.uninstall(context: context(item))
 		}
-		controllers.toInsert.forEach { controller in
+		for controller in controllers.toInsert {
 			let ctxt = context(controller)
 			presentations[controller, default: presentation]
 				.interactivity?.install(context: ctxt) { [weak self] context, state in
@@ -411,8 +411,8 @@ private extension UIStackController {
 					default:
 						break
 					}
-					self.animators.forEach {
-						$0.value(state)
+					for animator in self.animators {
+						animator.value(state)
 					}
 					return .allow
 				}

@@ -1,15 +1,15 @@
-import XCTest
-@testable import VDPresent
 import UIKit
+@testable import VDPresent
+import XCTest
 
-// @ai-generated(solo)
+/// @ai-generated(solo)
 final class ControllersAllTests: XCTestCase {
 
 	// MARK: - Helpers
 
 	/// Creates identifiable view controllers for readable assertions.
 	private func vcs(_ count: Int) -> [UIViewController] {
-		(0..<count).map {
+		(0 ..< count).map {
 			let vc = UIViewController()
 			vc.view.accessibilityIdentifier = "\($0)"
 			return vc
@@ -136,7 +136,7 @@ final class ControllersAllTests: XCTestCase {
 	func testDeepCommonPrefix() {
 		let all = vcs(5)
 		let ctrl = controllers(
-			from: Array(all[0...3]),
+			from: Array(all[0 ... 3]),
 			to: all
 		)
 		let result = ctrl.all(.insertion)

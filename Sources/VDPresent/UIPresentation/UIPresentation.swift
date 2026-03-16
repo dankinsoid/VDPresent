@@ -4,12 +4,12 @@ import UIKit
 public typealias Progress = VDTransition.Progress
 
 public struct UIPresentation {
-	
+
 	public var transition: Transition
 	public var interactivity: Interactivity?
 	public var animation: UIKitAnimation
 	public var environment: Environment { transition.environment }
-	
+
 	public init(
 		transition: Transition,
 		interactivity: Interactivity? = nil,
@@ -19,33 +19,33 @@ public struct UIPresentation {
 		self.interactivity = interactivity
 		self.animation = animation
 	}
-	
+
 	public static var `default` = UIPresentation.sheet
-	
+
 	public var nonInteractive: UIPresentation {
 		var result = self
 		result.interactivity = nil
 		return result
 	}
-	
+
 	public func with(animation: UIKitAnimation) -> UIPresentation {
 		var result = self
 		result.animation = animation
 		return result
 	}
-	
+
 	public func with(interactivity: Interactivity?) -> UIPresentation {
 		var result = self
 		result.interactivity = interactivity
 		return result
 	}
-	
+
 	public func environment<T>(_ keyPath: WritableKeyPath<UIPresentation.Environment, T>, _ value: T) -> UIPresentation {
 		var result = self
 		result.transition = transition.environment(keyPath, value)
 		return result
 	}
-	
+
 	public func transformEnvironment<T>(
 		_ keyPath: WritableKeyPath<UIPresentation.Environment, T>,
 		_ value: (T) -> T
@@ -57,12 +57,12 @@ public struct UIPresentation {
 }
 
 public extension UIPresentation {
-	
+
 	struct Interactivity {
-		
+
 		private let installer: (Context, @escaping (Context, State) -> Policy) -> Void
 		private let uninstaller: (Context) -> Void
-		
+
 		public init(
 			installer: @escaping (Context, @escaping (Context, State) -> Policy) -> Void,
 			uninstaller: @escaping (Context) -> Void
@@ -70,27 +70,27 @@ public extension UIPresentation {
 			self.installer = installer
 			self.uninstaller = uninstaller
 		}
-		
+
 		public func install(context: Context, observer: @escaping (Context, State) -> Policy) {
 			installer(context, observer)
 		}
-		
+
 		public func uninstall(context: Context) {
 			uninstaller(context)
 		}
-		
+
 		public enum Policy {
 			case allow, prevent
 		}
-		
+
 		public enum State: Equatable {
-			
+
 			case begin
 			case change(Progress)
 			case end(completed: Bool, after: Double)
 		}
 	}
-	
+
 	/// Describes the visual changes for a single view controller transition.
 	///
 	/// `Transition` is a pure data object — it declares *what* to animate, not *how*.
@@ -151,22 +151,21 @@ public extension UIPresentation {
 			return result
 		}
 	}
-	
 }
 
 public extension UIPresentation {
-	
+
 	struct Environment {
-		
+
 		private var values: [PartialKeyPath<UIPresentation.Environment>: Any] = [:]
-		
+
 		public subscript<T>(_ keyPath: WritableKeyPath<UIPresentation.Environment, T>) -> T? {
 			get { values[keyPath] as? T }
 			set { values[keyPath] = newValue }
 		}
-		
+
 		public init() {}
-		
+
 		public func with<T>(_ keyPath: WritableKeyPath<UIPresentation.Environment, T>, _ value: T?) -> UIPresentation.Environment {
 			var result = self
 			result[keyPath] = value

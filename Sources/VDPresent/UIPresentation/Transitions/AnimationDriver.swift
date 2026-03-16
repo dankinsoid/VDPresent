@@ -7,9 +7,9 @@ import UIKit
 /// This separation lets the same transition description be driven by different
 /// mechanisms (standard animation, interactive gesture, instant snap) without
 /// changing the transition itself.
-// @ai-generated(guided)
+/// @ai-generated(guided)
 enum AnimationDriver {
-	
+
 	/// Runs the prepare phase: adds the view to the container if needed,
 	/// then calls `transition.prepare`.
 	///
@@ -29,7 +29,7 @@ enum AnimationDriver {
 		}
 		transition.prepare(context)
 	}
-	
+
 	/// Runs the animate + completion phases using `UIView.animate`,
 	/// `UIViewPropertyAnimator` (interactive), or instant snap (non-animated).
 	///
@@ -46,7 +46,7 @@ enum AnimationDriver {
 		prepareInteractive: @escaping (@escaping (UIPresentation.Interactivity.State) -> Void) -> Void = { _ in },
 		completion: @escaping (Bool) -> Void
 	) {
-		
+
 		let main = items.max(by: { $0.context.animation.duration < $1.context.animation.duration })
 		guard let main else {
 			completion(true)
@@ -64,7 +64,7 @@ enum AnimationDriver {
 		let complete: (Bool) -> Void = { completed in
 			completion(completed)
 		}
-		
+
 		if main.context.animated {
 			if main.context.isInteractive {
 				let animator = main.context.animator ?? Animator(duration: main.context.animation.duration, curve: .linear)
@@ -90,12 +90,12 @@ enum AnimationDriver {
 							animator.startAnimation()
 							animator.pauseAnimation()
 						}
-						
+
 					case let .change(progress):
 						if animator.fractionComplete != progress.value {
 							animator.fractionComplete = progress.value
 						}
-						
+
 					case let .end(completed, duration):
 						if !main.context.animatorDidContinue {
 							main.context.animatorDidContinue = true
@@ -118,18 +118,18 @@ enum AnimationDriver {
 
 extension UIPresentation.Context {
 
-    var animator: Animator? {
-        get { cache[\.animator] ?? nil }
-        nonmutating set { cache[\.animator] = newValue }
-    }
+	var animator: Animator? {
+		get { cache[\.animator] ?? nil }
+		nonmutating set { cache[\.animator] = newValue }
+	}
 
-    var animatorDidContinue: Bool {
-        get { cache[\.animatorDidContinue] ?? false }
-        nonmutating set { cache[\.animatorDidContinue] = newValue }
-    }
+	var animatorDidContinue: Bool {
+		get { cache[\.animatorDidContinue] ?? false }
+		nonmutating set { cache[\.animatorDidContinue] = newValue }
+	}
 
-    var animatorDidStart: Bool {
-        get { cache[\.animatorDidStart] ?? false }
-        nonmutating set { cache[\.animatorDidStart] = newValue }
-    }
+	var animatorDidStart: Bool {
+		get { cache[\.animatorDidStart] ?? false }
+		nonmutating set { cache[\.animatorDidStart] = newValue }
+	}
 }

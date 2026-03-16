@@ -29,8 +29,8 @@ extension UIViewController {
 	var selfAndAllChildren: [UIViewController] {
 		[self] + allChildren
 	}
-    
-    func isDescendant(of controller: UIViewController) -> Bool {
-        self === controller || parent?.isDescendant(of: controller) == true
-    }
+
+	func isDescendant(of controller: UIViewController) -> Bool {
+		self === controller || parent?.isDescendant(of: controller) == true
+	}
 }

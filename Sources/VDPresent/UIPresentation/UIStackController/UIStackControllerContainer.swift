@@ -28,76 +28,76 @@ import UIKit
 ///   Auto Layout constraints installed by `ContentLayout.constraints(_:in:)`.
 public class UIStackControllerContainer: UIView {
 
-    private var layouts: [UIView: ContentLayout] = [:]
-    
-    public override init(frame: CGRect) {
-        super.init(frame: frame)
-        afterInit()
-    }
-    
-    required public init?(coder: NSCoder) {
-        super.init(coder: coder)
-        afterInit()
-    }
-    
-    /// Adds `view` as a subview and registers the given layout for it.
-    ///
-    /// Prefer this over `addSubview(_:)` so the container knows how to position
-    /// the view. Constraints produced by `layout` are activated immediately.
-    /// - Parameters:
-    ///   - view: The view to add.
-    ///   - layout: Positioning descriptor; e.g. `.fill`, `.padding(…)`, `.alignment(…)`.
-    public func addSubview(_ view: UIView, layout: ContentLayout) {
-        addSubview(view)
-        addedSubview(view, layout: layout)
-    }
-    
-    /// Inserts `view` at the given z-order index and registers the given layout for it.
-    ///
-    /// Equivalent to `addSubview(_:layout:)` but lets you control the subview stacking order.
-    /// - Parameters:
-    ///   - view: The view to insert.
-    ///   - index: Z-order index among the receiver's subviews.
-    ///   - layout: Positioning descriptor applied immediately after insertion.
-    public func insertSubview(_ view: UIView, at index: Int, layout: ContentLayout) {
-        insertSubview(view, at: index)
-        addedSubview(view, layout: layout)
-    }
-    
-    private func addedSubview(_ view: UIView, layout: ContentLayout) {
-        layouts[view] = layout
-        layout.constraints(view, in: self)
-        setNeedsLayout()
-        layoutIfNeeded()
-        self.layout()
-    }
-    
-    /// Removes `subview` from the view hierarchy and clears its registered layout.
-    ///
-    /// Use this instead of `removeFromSuperview()` so the container drops the
-    /// associated `ContentLayout` entry and avoids a stale reference.
-    /// - Parameter subview: A subview previously added via `addSubview(_:layout:)` or
-    ///   `insertSubview(_:at:layout:)`.
-    public func remove(subview: UIView) {
-        subview.removeFromSuperview()
-        layouts[subview] = nil
-    }
-    
-    override public func layoutSubviews() {
-        super.layoutSubviews()
-        layout()
-    }
-    
-    private func layout() {
-//        subviews.forEach {
-//            $0.setNeedsLayout()
-//            $0.layoutIfNeeded() // Need to update safe area
-//            layouts[$0, default: .fill].layout($0, in: bounds.size, safeArea: safeAreaInsets)
-//        }
-    }
-    
-    private func afterInit() {
-        autoresizingMask = []
-        translatesAutoresizingMaskIntoConstraints = false
-    }
+	private var layouts: [UIView: ContentLayout] = [:]
+
+	override public init(frame: CGRect) {
+		super.init(frame: frame)
+		afterInit()
+	}
+
+	public required init?(coder: NSCoder) {
+		super.init(coder: coder)
+		afterInit()
+	}
+
+	/// Adds `view` as a subview and registers the given layout for it.
+	///
+	/// Prefer this over `addSubview(_:)` so the container knows how to position
+	/// the view. Constraints produced by `layout` are activated immediately.
+	/// - Parameters:
+	///   - view: The view to add.
+	///   - layout: Positioning descriptor; e.g. `.fill`, `.padding(…)`, `.alignment(…)`.
+	public func addSubview(_ view: UIView, layout: ContentLayout) {
+		addSubview(view)
+		addedSubview(view, layout: layout)
+	}
+
+	/// Inserts `view` at the given z-order index and registers the given layout for it.
+	///
+	/// Equivalent to `addSubview(_:layout:)` but lets you control the subview stacking order.
+	/// - Parameters:
+	///   - view: The view to insert.
+	///   - index: Z-order index among the receiver's subviews.
+	///   - layout: Positioning descriptor applied immediately after insertion.
+	public func insertSubview(_ view: UIView, at index: Int, layout: ContentLayout) {
+		insertSubview(view, at: index)
+		addedSubview(view, layout: layout)
+	}
+
+	private func addedSubview(_ view: UIView, layout: ContentLayout) {
+		layouts[view] = layout
+		layout.constraints(view, in: self)
+		setNeedsLayout()
+		layoutIfNeeded()
+		self.layout()
+	}
+
+	/// Removes `subview` from the view hierarchy and clears its registered layout.
+	///
+	/// Use this instead of `removeFromSuperview()` so the container drops the
+	/// associated `ContentLayout` entry and avoids a stale reference.
+	/// - Parameter subview: A subview previously added via `addSubview(_:layout:)` or
+	///   `insertSubview(_:at:layout:)`.
+	public func remove(subview: UIView) {
+		subview.removeFromSuperview()
+		layouts[subview] = nil
+	}
+
+	override public func layoutSubviews() {
+		super.layoutSubviews()
+		layout()
+	}
+
+	private func layout() {
+		//        subviews.forEach {
+		//            $0.setNeedsLayout()
+		//            $0.layoutIfNeeded() // Need to update safe area
+		//            layouts[$0, default: .fill].layout($0, in: bounds.size, safeArea: safeAreaInsets)
+		//        }
+	}
+
+	private func afterInit() {
+		autoresizingMask = []
+		translatesAutoresizingMaskIntoConstraints = false
+	}
 }

@@ -2,11 +2,11 @@ import SwiftUI
 import VDTransition
 
 public extension UIPresentation {
-	
+
 	static var sheet: UIPresentation {
 		.sheet()
 	}
-	
+
 	static func sheet(
 		from edge: Edge = .bottom,
 		minOffset: CGFloat = 10,
@@ -20,7 +20,7 @@ public extension UIPresentation {
 						.move(edge: edge),
 						.constant(\.clipsToBounds, true),
 						.constant(\.layer.cornerRadius, cornerRadius),
-						.constant(\.layer.maskedCorners, .edge(edge.opposite))
+						.constant(\.layer.maskedCorners, .edge(edge.opposite)),
 					]
 				}
 				.environment(\.contentLayout, .constraints { view, superview in
