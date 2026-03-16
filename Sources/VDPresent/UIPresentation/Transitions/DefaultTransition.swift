@@ -36,9 +36,22 @@ public extension UIPresentation.Transition {
 		UIPresentation.Transition(
 			transitionID: transitionID,
 			prepare: { context in
-				context.container.isHidden = false
-
-				guard context.isChangingController, !context.isBehindFrozen else { return }
+				if !context.needHide || context.isTopController {
+					context.container.isHidden = false
+				}
+				if context.isBehindFrozen,
+					 context.direction == .removal,
+					 context.viewControllers.toRemove.contains(context.viewController) {
+					// Removal frozen departing: snap to removed state before top animates.
+					// Back effects at removal(1) = identity, so remaining views stay in place.
+					context.container.isHidden = true
+					animateOwn(context: context, progress: .removal(1), animation: additionalAnimation)
+					applyBackEffects(context: context, progress: .removal(1))
+					// Insertion frozen: no prepare — stays at current state (insertion(1)),
+					// moved only by backEffect from the new top controller.
+					return
+				}
+				guard context.isChangingController else { return }
 				prepareInsertionTransition(context: context)
 				prepareBackground(context: context)
 				additionalPrepare?(context)
@@ -53,9 +66,10 @@ public extension UIPresentation.Transition {
 				// This is safe inside UIView.animate — only the final state matters.
 				resetView(context: context)
 
-				// Frozen background controllers act like remaining — stay in place,
-				// moved only via backEffect from controllers above.
-				let ownProgress: Progress = context.isBehindFrozen
+				// Frozen behind-controllers:
+				// - insertion: stay at insertion(1), moved only by backEffect from top
+				// - removal: already snapped to removal(1) in prepare
+				let ownProgress: Progress = context.isBehindFrozen && context.direction == .insertion
 					? .insertion(1)
 					: context.ownDirection.at(.end)
 				animateOwn(context: context, progress: ownProgress, animation: additionalAnimation)
@@ -70,7 +84,7 @@ public extension UIPresentation.Transition {
 			},
 			completion: { context, completed in
 				let finalContext = completed ? context : context.reversed
-				cleanupTransitions(context: finalContext)
+//				cleanupTransitions(context: finalContext)
 				if finalContext.needHide {
 					finalContext.container.isHidden = true
 				}

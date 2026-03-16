@@ -293,6 +293,8 @@ extension UIPresentation.Context {
 		let top = direction == .insertion ? viewControllers.to.last : viewControllers.from.last
 		guard let top else { return true }
 		let topContext = self.for(top)
+		// overCurrentContext top means behind controllers are visible — they must animate, not freeze.
+		if topContext.environment.overCurrentContext(topContext) { return false }
 		switch topContext.environment.behindBehavior {
 		case .freeze:
 			return true
