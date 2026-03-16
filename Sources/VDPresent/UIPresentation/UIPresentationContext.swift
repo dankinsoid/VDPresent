@@ -131,18 +131,26 @@ public extension UIPresentation.Context.Controllers {
 		guard !from.isEmpty else { return to }
 		guard !to.isEmpty else { return from }
 
-		// --- Index maps: controller → position. O(n + m) ---
-		var fromIndex: [ObjectIdentifier: Int] = Dictionary(minimumCapacity: from.count)
-		for (i, vc) in from.enumerated() { fromIndex[ObjectIdentifier(vc)] = i }
-		let toSet = Set(to.map { ObjectIdentifier($0) })
-
 		// --- Common prefix — fast path for push / pop ---
 		var prefixEnd = 0
 		while prefixEnd < from.count && prefixEnd < to.count
 				&& from[prefixEnd] === to[prefixEnd] {
 			prefixEnd += 1
 		}
+
+		// When one array is entirely a prefix of the other no merge is needed.
+		// Push (from ⊂ to): new top is already last in `to`.
+		// Pop-prefix (to ⊂ from): departing controllers append in from-order,
+		// old top is naturally last.
+		if prefixEnd == from.count { return to }
+		if prefixEnd == to.count { return to + from[prefixEnd...] }
+
 		var result = Array(to[..<prefixEnd])
+
+		// --- Index maps: controller → position. O(n + m) ---
+		var fromIndex: [ObjectIdentifier: Int] = Dictionary(minimumCapacity: from.count)
+		for (i, vc) in from.enumerated() { fromIndex[ObjectIdentifier(vc)] = i }
+		let toSet = Set(to.map { ObjectIdentifier($0) })
 
 		// --- Merge the tails ---
 		// `to` tail is the base; departing controllers are inserted near

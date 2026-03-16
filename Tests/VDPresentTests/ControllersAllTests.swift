@@ -175,4 +175,33 @@ final class ControllersAllTests: XCTestCase {
 		// B and C should be between A and D
 		XCTAssertEqual(ids(result), ["0", "1", "2", "3"])
 	}
+
+	// MARK: - Fast path: to is prefix of from (pop-prefix)
+
+	/// Pop two: [A, B, C, D] → [A, B]
+	/// to is a prefix of from → fast path, departed appended in from-order.
+	func testPopPrefixFastPath() {
+		let all = vcs(4)
+		let ctrl = controllers(
+			from: all,
+			to: [all[0], all[1]]
+		)
+		let result = ctrl.all(.removal)
+		XCTAssertEqual(ids(result), ["0", "1", "2", "3"])
+		// Old top (3) is last
+		XCTAssert(result.last === all[3])
+	}
+
+	/// Push two at once: [A, B] → [A, B, C, D]
+	/// from is a prefix of to → fast path returns to directly.
+	func testPushPrefixFastPath() {
+		let all = vcs(4)
+		let ctrl = controllers(
+			from: [all[0], all[1]],
+			to: all
+		)
+		let result = ctrl.all(.insertion)
+		XCTAssertEqual(ids(result), ["0", "1", "2", "3"])
+		XCTAssert(result.last === all[3])
+	}
 }
