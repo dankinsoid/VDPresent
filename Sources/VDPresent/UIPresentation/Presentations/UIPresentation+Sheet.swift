@@ -14,7 +14,7 @@ public extension UIPresentation {
 		containerColor: UIColor = .black.withAlphaComponent(0.1)
 	) -> UIPresentation {
 		UIPresentation(
-			transition: .base()
+			transition: .base(transitionID: "sheet")
 				.environment(\.contentTransition) { _ in
 					[
 						.move(edge: edge),

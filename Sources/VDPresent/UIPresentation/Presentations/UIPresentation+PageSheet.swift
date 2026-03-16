@@ -14,7 +14,7 @@ public extension UIPresentation {
         containerColor: UIColor = .pageSheetBackground
     ) -> UIPresentation {
         UIPresentation(
-            transition: .base()
+            transition: .base(transitionID: "pageSheet")
             .environment(\.contentLayout, .padding(
                 NSDirectionalEdgeInsets(
                     [

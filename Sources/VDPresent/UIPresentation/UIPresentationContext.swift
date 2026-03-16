@@ -19,17 +19,27 @@ public extension UIPresentation {
         public var animation: UIKitAnimation
         public var viewControllers: Controllers
         public var direction: TransitionDirection
-        
+
+			  public var ownDirection: TransitionDirection {
+					guard isChangingController else { return .insertion }
+					return viewControllers.to.contains(viewController) ? .insertion : .removal
+				}
+
         public var environment: UIPresentation.Environment {
-            _environment(viewController)
+            presentation.environment
         }
-        
+
+        /// The presentation assigned to this controller.
+        public var presentation: UIPresentation {
+            _presentation(viewController)
+        }
+
         private weak var _controller: UIViewController?
         private let views: (UIViewController) -> UIStackViewWrapper
         private let _container: (UIViewController) -> UIStackControllerContainer
-        private let _environment: (UIViewController) -> UIPresentation.Environment
+        private let _presentation: (UIViewController) -> UIPresentation
         private let _updateStatusBar: (UIStatusBarStyle, UIStatusBarAnimation) -> Void
-        
+
         public init(
             direction: TransitionDirection,
             controller: UIViewController,
@@ -42,7 +52,7 @@ public extension UIPresentation {
             isInteractive: Bool,
             cache: Cache,
             updateStatusBar: @escaping (UIStatusBarStyle, UIStatusBarAnimation) -> Void,
-            environment: @escaping (UIViewController) -> UIPresentation.Environment
+            presentation: @escaping (UIViewController) -> UIPresentation
         ) {
             self.direction = direction
             self._controller = controller
@@ -56,7 +66,7 @@ public extension UIPresentation {
             self.isInteractive = isInteractive
             self.cache = cache
             self._updateStatusBar = updateStatusBar
-            self._environment = environment
+            self._presentation = presentation
             self.animation = animation
         }
         
@@ -258,6 +268,34 @@ extension UIPresentation.Context {
     var needAnimate: Bool {
         isTopController && !viewControllers.isTopTheSame || isChangingController && !needHide
     }
+
+    /// Whether this behind-controller should be frozen (no own contentTransition)
+    /// based on the top controller's `behindBehavior` and `transitionID`.
+    ///
+    /// "Behind" means a changing controller that is not the top of the transition
+    /// (e.g. a departing VC behind the new top during a replace, or a newly
+    /// inserted VC behind the new top).
+    ///
+    /// The top controller's `behindBehavior` decides whether such controllers
+    /// animate their own contentTransition or stay frozen.
+    var isBehindFrozen: Bool {
+        // Only applies to non-top changing controllers.
+        guard isChangingController, !isTopController else { return false }
+        // The top controller drives the decision.
+        let top = direction == .insertion ? viewControllers.to.last : viewControllers.from.last
+        guard let top else { return true }
+        let topContext = self.for(top)
+        switch topContext.environment.behindBehavior {
+        case .freeze:
+            return true
+        case .animate:
+            return false
+        case .freezeSame:
+            let myID = presentation.transition.transitionID
+            let topID = topContext.presentation.transition.transitionID
+            return myID == topID
+        }
+    }
 }
 
 extension UIPresentation.Context {
@@ -291,7 +329,7 @@ extension UIPresentation.Context {
             isInteractive: isInteractive,
             cache: cache,
             updateStatusBar: updateStatusBar,
-            environment: _environment
+            presentation: _presentation
         )
     }
 }

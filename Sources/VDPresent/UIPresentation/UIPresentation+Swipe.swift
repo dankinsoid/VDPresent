@@ -124,9 +124,9 @@ public extension UIPresentation.Interactivity {
                     isInteractive: true,
                     cache: context.cache,
                     updateStatusBar: context.updateStatusBar,
-                    environment: {
-                        context.for($0).environment.with(\.currentSwipeEdge, edge)
-                    }
+										presentation: {
+											context.for($0).presentation.environment(\.currentSwipeEdge, edge)
+										}
                 )
             }
         }

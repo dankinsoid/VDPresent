@@ -12,10 +12,10 @@ public extension UIPresentation {
         containerColor: UIColor = .black.withAlphaComponent(0.1)
     ) -> UIPresentation {
         UIPresentation(
-            transition: .base()
+            transition: .base(transitionID: "push")
             .environment(\.contentTransition) { _ in .move(edge: edge) }
             .environment(\.moveToBackTransition) { _, _ in .move(edge: edge.opposite, offset: .relative(0.3)) }
-						.environment(\.backEffectBarrier, "push")
+            .environment(\.backEffectBarrier, true)
             .withBackground(containerColor),
             interactivity: .swipe(to: edge),
             animation: .default

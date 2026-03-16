@@ -28,24 +28,24 @@ public extension UIPresentation.Transition {
 	///     transition was cancelled (e.g. interactive gesture reversed).
 	// @ai-generated(guided)
 	static func base(
+		transitionID: AnyHashable,
 		additionalPrepare: ((UIPresentation.Context) -> Void)? = nil,
 		additionalAnimation: ((UIPresentation.Context, Progress) -> Void)? = nil,
 		completion: ((UIPresentation.Context, Bool) -> Void)? = nil
 	) -> UIPresentation.Transition {
 		UIPresentation.Transition(
+			transitionID: transitionID,
 			prepare: { context in
-				if context.isTopController || !context.needHide {
-					context.container.isHidden = false
-				}
+				context.container.isHidden = false
 
-				guard context.isChangingController else { return }
+				guard context.isChangingController, !context.isBehindFrozen else { return }
 				prepareInsertionTransition(context: context)
 				prepareBackground(context: context)
 				additionalPrepare?(context)
 				// Snap to start state so the view is in its pre-animation position
 				// (e.g. off-screen for a slide-up transition) before the animation block runs.
-				animateOwn(context: context, progress: context.direction.at(.start), animation: additionalAnimation)
-				applyBackEffects(context: context, progress: context.direction.at(.start))
+				animateOwn(context: context, progress: context.ownDirection.at(.start), animation: additionalAnimation)
+				applyBackEffects(context: context, progress: context.ownDirection.at(.start))
 			},
 			animation: { context in
 				// Reset this view to identity by undoing any previously applied effects
@@ -53,14 +53,14 @@ public extension UIPresentation.Transition {
 				// This is safe inside UIView.animate — only the final state matters.
 				resetView(context: context)
 
-				// Changing controllers animate to their end state (e.g. slide off-screen).
-				// Remaining controllers animate to "fully inserted" — they stay in place.
-				let ownProgress: Progress = context.isChangingController ? context.direction.at(.end) : .insertion(1)
+				// Frozen background controllers act like remaining — stay in place,
+				// moved only via backEffect from controllers above.
+				let ownProgress: Progress = context.isBehindFrozen
+					? .insertion(1)
+					: context.ownDirection.at(.end)
 				animateOwn(context: context, progress: ownProgress, animation: additionalAnimation)
 
-				// Apply moveToBack effects on views below this controller in the stack.
-				// Only if this controller stays in the stack — departing controllers
-				// should not push others back.
+				// Apply moveToBack effects on views below this controller.
 				applyBackEffects(context: context, progress: ownProgress)
 
 				if context.isTopController {
@@ -109,16 +109,42 @@ public extension UIPresentation.Environment {
         set { self[\.overCurrentContext] = newValue }
     }
 
-    /// Back-effect barrier keys for this presentation. When `applyBackEffects` iterates
-    /// downward through the stack, it stops at any controller whose barriers intersect
-    /// with the current controller's barriers. This prevents effects from accumulating
-    /// across same-type presentations (e.g. two pushes both offsetting the same view).
-    /// Different presentation types (push vs pageSheet) use different keys and pass
-    /// through each other. Default: empty (no barrier).
-    var backEffectBarrier: AnyHashable? {
-        get { self[\.backEffectBarrier] ?? nil }
+    /// When `true`, this controller acts as a barrier for back effects from above.
+    /// `applyBackEffects` stops iterating downward when it hits a barrier controller.
+    /// This prevents effects from accumulating across same-type presentations
+    /// (e.g. two pushes both offsetting the same root view). Default: `false`.
+    var backEffectBarrier: Bool {
+        get { self[\.backEffectBarrier] ?? false }
         set { self[\.backEffectBarrier] = newValue }
     }
+
+    /// Controls how controllers behind the top animate during a stack change.
+    ///
+    /// - `freeze`: All behind-controllers stay in place; the top controller
+    ///   simply slides over them. Like UINavigationController push. **(default)**
+    /// - `animate`: All behind departing/arriving controllers play their own
+    ///   reverse contentTransition animation.
+    /// - `freezeSame`: Behind-controllers with the same `transitionID` as the top
+    ///   are frozen (moved only via backEffect); controllers with a different
+    ///   `transitionID` play their own animation.
+    var behindBehavior: BehindBehavior {
+        get { self[\.behindBehavior] ?? .freeze }
+        set { self[\.behindBehavior] = newValue }
+    }
+}
+
+/// Controls how controllers behind the top animate during a transition.
+public enum BehindBehavior {
+
+    /// All behind-controllers are frozen — no own animation, only backEffect.
+    case freeze
+
+    /// All behind departing/arriving controllers animate their own contentTransition.
+    case animate
+
+    /// Behind-controllers with the same `transitionID` as the top are frozen;
+    /// controllers with a different `transitionID` play their own animation.
+    case freezeSame
 }
 
 /// Ordered list of all transitions applied to a single view.
@@ -250,21 +276,22 @@ private extension UIPresentation.Transition {
         animation?(context, progress)
     }
 
-    /// Applies moveToBack effects from this controller onto all visible views below it.
+    /// Applies moveToBack effects from this controller onto all visible views below it
+    /// in the `all()` iteration order (which includes both `to` and departing controllers).
+    ///
     /// Each back view's current state (already set by its own contentTransition) becomes
     /// the initial state for the moveToBack transition, making effects composable.
     /// The applied transitions are stored in each back view's `viewTransitions.backEffects`
     /// so they can be undone by `resetView` in the next cycle.
     ///
-    /// Called only for controllers that remain in the `to` stack — departing controllers
-    /// should not push views behind them.
+    /// Stops at a controller with `backEffectBarrier == true` — it owns back effects
+    /// for everything below it.
     // @ai-generated(guided)
 	static func applyBackEffects(context: UIPresentation.Context, progress: Progress) {
-		let toStack = context.viewControllers.to
-		guard let myIndex = toStack.firstIndex(of: context.viewController), myIndex > 0 else { return }
-		
-		let myBarrier = context.environment.backEffectBarrier
-		let backControllers = toStack[..<myIndex].reversed()
+		let allControllers = context.viewControllers.all(context.direction)
+		guard let myIndex = allControllers.firstIndex(of: context.viewController), myIndex > 0 else { return }
+
+		let backControllers = allControllers[..<myIndex].reversed()
 		for (index, vc) in backControllers.enumerated() {
 			let backContext = context.for(vc)
 			let backView = backContext.view
@@ -285,10 +312,9 @@ private extension UIPresentation.Transition {
 				print("⚡ backEffect  vc=\(viewId(context.viewController)) → \(viewName(backView)) depth=\(depthIndex), \(before) → \(fmt(backView))  @\(progress)")
 			}
 #endif
-			
-			// Stop at a controller whose barriers overlap with ours — it owns
-			// back effects for everything below it in the same category.
-			if let myBarrier, myBarrier == backContext.environment.backEffectBarrier {
+
+			// Stop at a barrier — it owns back effects for everything below.
+			if backContext.environment.backEffectBarrier {
 				break
 			}
 		}

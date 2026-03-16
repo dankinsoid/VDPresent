@@ -11,7 +11,7 @@ public struct UIPresentation {
 	public var environment: Environment { transition.environment }
 	
 	public init(
-		transition: Transition = .base(),
+		transition: Transition,
 		interactivity: Interactivity? = nil,
 		animation: UIKitAnimation = .default
 	) {
@@ -103,8 +103,13 @@ public extension UIPresentation {
 	struct Transition {
 
 		public static var identity: UIPresentation.Transition {
-			UIPresentation.Transition()
+			UIPresentation.Transition(transitionID: "identity")
 		}
+
+		/// Identifies the type of transition (e.g. "push", "fullScreen", "sheet").
+		/// Used by `behindBehavior(.freezeSame)` to decide which behind-controllers
+		/// are frozen vs animated during stack changes.
+		public var transitionID: AnyHashable
 
 		/// Sets up initial state before animation begins (layout, transforms, visibility).
 		public var prepare: (Context) -> Void
@@ -118,11 +123,13 @@ public extension UIPresentation {
 		public var environment: UIPresentation.Environment
 
 		public init(
+			transitionID: AnyHashable,
 			environment: UIPresentation.Environment = UIPresentation.Environment(),
 			prepare: @escaping (Context) -> Void = { _ in },
 			animation: @escaping (Context) -> Void = { _ in },
 			completion: @escaping (Context, Bool) -> Void = { _, _ in }
 		) {
+			self.transitionID = transitionID
 			self.prepare = prepare
 			self.animation = animation
 			self.completion = completion

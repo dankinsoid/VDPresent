@@ -232,7 +232,7 @@ private extension UIStackController {
 					self?.statusBarAnimation = $1
 					self?.statusBarStyle = $0
 				},
-				environment: { presentations[$0]?.environment ?? presentation.environment }
+				presentation: { presentations[$0] ?? presentation }
 			)
 		}
 		transition(
