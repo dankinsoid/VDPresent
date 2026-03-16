@@ -30,6 +30,7 @@ public extension UIPresentation {
                     .move(edge: edge),
                     .constant(\.clipsToBounds, true),
                     .constant(\.layer.cornerRadius, cornerRadius),
+										.constant(\.layer.cornerCurve, .continuous),
                     .constant(\.layer.maskedCorners, .edge(edge.opposite))
                 ]
             }
@@ -78,6 +79,7 @@ private extension UITransition<UIView> {
             )
             view.clipsToBounds = true
             view.layer.maskedCorners = .edge(edge)
+					  view.layer.cornerCurve = .continuous
             view.layer.cornerRadius = UITransition<UIView>.cornerRadius(
                 progress: progress,
                 initial: initial,

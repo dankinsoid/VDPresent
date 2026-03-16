@@ -26,7 +26,7 @@ public extension UIPresentation.Transition {
 	///     Runs in the same `UIView.animate` batch as the built-in transitions.
 	///   - completion: Called after the transition finishes. `completed` is `false` when the
 	///     transition was cancelled (e.g. interactive gesture reversed).
-	// @ai-generated(paired)
+	// @ai-generated(guided)
 	static func base(
 		additionalPrepare: ((UIPresentation.Context) -> Void)? = nil,
 		additionalAnimation: ((UIPresentation.Context, Progress) -> Void)? = nil,
@@ -45,6 +45,7 @@ public extension UIPresentation.Transition {
 				// Snap to start state so the view is in its pre-animation position
 				// (e.g. off-screen for a slide-up transition) before the animation block runs.
 				animateOwn(context: context, progress: context.direction.at(.start), animation: additionalAnimation)
+				applyBackEffects(context: context, progress: context.direction.at(.start))
 			},
 			animation: { context in
 				// Reset this view to identity by undoing any previously applied effects
@@ -60,9 +61,7 @@ public extension UIPresentation.Transition {
 				// Apply moveToBack effects on views below this controller in the stack.
 				// Only if this controller stays in the stack — departing controllers
 				// should not push others back.
-				// Progress is always insertion(1) = "fully pushed to back" since these
-				// controllers are in the final (to) stack and won't animate further.
-				applyBackEffects(context: context, progress: .insertion(1))
+				applyBackEffects(context: context, progress: ownProgress)
 
 				if context.isTopController {
 					// do we need this? ios seems to update the status bar automatically, need to figure out if there are ios versions that don't do this or if there are edge cases where it doesn't work
@@ -117,7 +116,7 @@ public extension UIPresentation.Environment {
 /// `setOwn` must be called before `addBackEffect`.
 ///
 /// `reset` undoes all effects in reverse order, returning the view to identity.
-// @ai-generated(paired)
+// @ai-generated(guided)
 struct ViewTransitions {
 
 	private(set) var all: [UITransition<UIView>] = []
@@ -200,7 +199,7 @@ private extension UIPresentation.Transition {
     /// in reverse order, then own), then clears the list. After reset the view
     /// is in identity state — `animateOwn` will recreate the own transition
     /// with fresh initial states captured from this clean state.
-    // @ai-generated(paired)
+    // @ai-generated(guided)
     static func resetView(context: UIPresentation.Context) {
         let view = context.view
         #if VDPRESENT_LOG
@@ -216,7 +215,7 @@ private extension UIPresentation.Transition {
     /// Applies this controller's own content transition to `progress`.
     /// After reset, the view is in identity — a fresh transition is created
     /// capturing identity as initial state, then driven to `progress`.
-    // @ai-generated(paired)
+    // @ai-generated(guided)
     static func animateOwn(
         context: UIPresentation.Context,
         progress: Progress,
@@ -248,7 +247,7 @@ private extension UIPresentation.Transition {
     ///
     /// Called only for controllers that remain in the `to` stack — departing controllers
     /// should not push views behind them.
-    // @ai-generated(paired)
+    // @ai-generated(guided)
     static func applyBackEffects(context: UIPresentation.Context, progress: Progress) {
         let toStack = context.viewControllers.to
         guard let myIndex = toStack.firstIndex(of: context.viewController), myIndex > 0 else { return }
@@ -268,9 +267,7 @@ private extension UIPresentation.Transition {
             #endif
             transition.update(progress: progress, view: backView)
             // Store so resetView can undo this effect next cycle.
-            var vt = backContext.viewTransitions
-            vt.addBackEffect(transition)
-            backContext.viewTransitions = vt
+            backContext.viewTransitions.addBackEffect(transition)
             #if VDPRESENT_LOG
             if progress.value == 0 || progress.value == 1 {
                 print("⚡ backEffect  vc=\(viewId(context.viewController)) → \(viewName(backView)) depth=\(depthIndex), \(before) → \(fmt(backView))  @\(progress)")
@@ -280,7 +277,7 @@ private extension UIPresentation.Transition {
     }
 
     /// Resets all transitions and clears cache for controllers being removed from the stack.
-    // @ai-generated(paired)
+    // @ai-generated(guided)
     static func cleanupTransitions(context: UIPresentation.Context) {
         guard context.viewControllers.toRemove.contains(context.viewController) else { return }
         let view = context.view

@@ -21,5 +21,9 @@ let package = Package(
 				"VDTransition",
 			]
 		),
+		.testTarget(
+			name: "VDPresentTests",
+			dependencies: ["VDPresent"]
+		),
 	]
 )

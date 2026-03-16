@@ -115,25 +115,83 @@ public extension UIPresentation.Context.Controllers {
 		to.filter { !from.contains($0) }
 	}
 	
-	func all(_ direction: TransitionDirection, order: AllOrder) -> [UIViewController] {
+	/// Merges `from` and `to` into a single iteration order for transitions.
+	///
+	/// Preserves relative order from both arrays to minimise z-index jumps
+	/// during animation. Old and new top controllers are always placed at
+	/// the end: during insertion the new top is frontmost; during removal
+	/// the old top is.
+	///
+	/// Fast path: the common prefix (unchanged bottom of the stack) is
+	/// emitted directly — covers the typical push/pop case. Remaining
+	/// departing controllers are inserted near their original `from`
+	/// neighbours via a pre-built index.
+	// @ai-generated(guided)
+	func all(_ direction: TransitionDirection) -> [UIViewController] {
 		guard !from.isEmpty else { return to }
 		guard !to.isEmpty else { return from }
-		switch order {
-		case .animation:
-			return from.reversed().filter { !to.contains($0) } + to
-		case .zIndex:
-			let prefix = from.dropLast().filter { !to.contains($0) } + to.filter { !from.contains($0) }.dropLast()
-			let suffix = from.suffix(1) + to.suffix(1).filter { $0 !== from.last }
-			return direction == .insertion
-			? prefix + suffix
-			: prefix + suffix.reversed()
-		}
-	}
 
-	enum AllOrder {
-		
-		case animation
-		case zIndex
+		// --- Index maps: controller → position. O(n + m) ---
+		var fromIndex: [ObjectIdentifier: Int] = Dictionary(minimumCapacity: from.count)
+		for (i, vc) in from.enumerated() { fromIndex[ObjectIdentifier(vc)] = i }
+		let toSet = Set(to.map { ObjectIdentifier($0) })
+
+		// --- Common prefix — fast path for push / pop ---
+		var prefixEnd = 0
+		while prefixEnd < from.count && prefixEnd < to.count
+				&& from[prefixEnd] === to[prefixEnd] {
+			prefixEnd += 1
+		}
+		var result = Array(to[..<prefixEnd])
+
+		// --- Merge the tails ---
+		// `to` tail is the base; departing controllers are inserted near
+		// their original right neighbour from `from`.
+		let toTail = Array(to[prefixEnd...])
+		let removed = from[prefixEnd...].filter { !toSet.contains(ObjectIdentifier($0)) }
+
+		var merged = toTail
+		for vc in removed {
+			let fi = fromIndex[ObjectIdentifier(vc)]!
+			// Find nearest right neighbour in `from` that exists in `merged`.
+			var insertAt = merged.count
+			for j in (fi + 1)..<from.count {
+				if let mi = merged.firstIndex(where: { $0 === from[j] }) {
+					insertAt = mi
+					break
+				}
+			}
+			merged.insert(vc, at: insertAt)
+		}
+		result.append(contentsOf: merged)
+
+		// --- Ensure old & new tops are at the end ---
+		// Only move tops that are *changing* (not in both stacks) — a remaining
+		// controller that happens to be top should keep its merged position.
+		let oldTop = from.last
+		let newTop = to.last
+		if let old = oldTop, old !== newTop, let new = newTop {
+			let oldIsChanging = !toSet.contains(ObjectIdentifier(old))
+			let newIsChanging = fromIndex[ObjectIdentifier(new)] == nil
+			// Collect which changing tops need to be pulled to the end.
+			var tops: [UIViewController] = []
+			if direction == .insertion {
+				// Push: old behind, new in front
+				if oldIsChanging { tops.append(old) }
+				if newIsChanging { tops.append(new) }
+			} else {
+				// Pop: new behind, old in front (old animates out on top)
+				if newIsChanging { tops.append(new) }
+				if oldIsChanging { tops.append(old) }
+			}
+			if !tops.isEmpty {
+				let topSet = Set(tops.map { ObjectIdentifier($0) })
+				result.removeAll { topSet.contains(ObjectIdentifier($0)) }
+				result.append(contentsOf: tops)
+			}
+		}
+
+		return result
 	}
 	
 	var isTopTheSame: Bool {
