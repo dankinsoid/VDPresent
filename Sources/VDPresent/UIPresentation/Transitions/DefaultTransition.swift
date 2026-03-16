@@ -40,8 +40,9 @@ public extension UIPresentation.Transition {
 					context.container.isHidden = false
 				}
 				if context.isBehindFrozen,
-					 context.direction == .removal,
-					 context.viewControllers.toRemove.contains(context.viewController) {
+				   context.direction == .removal,
+				   context.viewControllers.toRemove.contains(context.viewController)
+				{
 					// Removal frozen departing: snap to removed state before top animates.
 					// Back effects at removal(1) = identity, so remaining views stay in place.
 					context.container.isHidden = true
@@ -84,7 +85,7 @@ public extension UIPresentation.Transition {
 			},
 			completion: { context, completed in
 				let finalContext = completed ? context : context.reversed
-//				cleanupTransitions(context: finalContext)
+				cleanupTransitions(context: finalContext)
 				if finalContext.needHide {
 					finalContext.container.isHidden = true
 				}

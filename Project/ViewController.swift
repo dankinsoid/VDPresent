@@ -397,6 +397,169 @@ private func stackSectionItems() -> [DemoItem] {
 				entry.show(as: .push)
 			}
 		),
+
+		// Demo: multiple pageSheets stacked
+		.init(
+			title: "Multiple .pageSheet",
+			description: "Three pageSheets stacked on top of each other. Each scales the previous one.",
+			code: "a.show(as: .pageSheet)\nb.show(as: .pageSheet)\nc.show(as: .pageSheet)",
+			presentation: .pageSheet,
+			tapAction: { _ in
+				let sheetC = StackStepViewController(
+					stepTitle: "Sheet C",
+					description: "Third pageSheet. Notice how each layer scales the one below.",
+					code: "c.show(as: .pageSheet)",
+					actions: [
+						.init(title: "Dismiss all sheets", style: .primary, handler: { vc in
+							vc.stackController?.hide(3)
+						}),
+						.init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
+					]
+				)
+				let sheetB = StackStepViewController(
+					stepTitle: "Sheet B",
+					description: "Second pageSheet stacked on A.",
+					code: "b.show(as: .pageSheet)",
+					actions: [
+						.init(title: "Show Sheet C", style: .primary, handler: { _ in
+							sheetC.show(as: .pageSheet)
+						}),
+						.init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
+					]
+				)
+				let sheetA = StackStepViewController(
+					stepTitle: "Sheet A",
+					description: "First pageSheet. Push another on top.",
+					code: "a.show(as: .pageSheet)",
+					actions: [
+						.init(title: "Show Sheet B", style: .primary, handler: { _ in
+							sheetB.show(as: .pageSheet)
+						}),
+						.init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
+					]
+				)
+				sheetA.show(as: .pageSheet)
+			}
+		),
+
+		// Demo: push after pageSheet
+		.init(
+			title: ".push after .pageSheet",
+			description: "Show a pageSheet, then push on top of it. Different transitions coexist in the same stack.",
+			code: "a.show(as: .pageSheet)\nb.show(as: .push)",
+			presentation: .pageSheet,
+			tapAction: { _ in
+				let pushed = StackStepViewController(
+					stepTitle: "Pushed on Sheet",
+					description: "This controller was pushed on top of a pageSheet. Swipe from right edge to go back.",
+					code: "pushed.show(as: .push)",
+					actions: [
+						.init(title: "Dismiss all", style: .primary, handler: { vc in
+							vc.stackController?.hide(2)
+						}),
+						.init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
+					]
+				)
+				let sheet = StackStepViewController(
+					stepTitle: "PageSheet",
+					description: "Now push a controller on top of this sheet.",
+					code: "a.show(as: .pageSheet)",
+					actions: [
+						.init(title: "Push on top", style: .primary, handler: { _ in
+							pushed.show(as: .push)
+						}),
+						.init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
+					]
+				)
+				sheet.show(as: .pageSheet)
+			}
+		),
+
+		// Demo: replace pageSheet with push via set(viewControllers:)
+		.init(
+			title: ".pageSheet → replace with .push",
+			description: "Show a pageSheet, then replace it with a push controller via set(viewControllers:).",
+			code: "stack.set(viewControllers: [menu, pushed], as: .push)",
+			presentation: .pageSheet,
+			tapAction: { _ in
+				let sheet = StackStepViewController(
+					stepTitle: "PageSheet",
+					description: "Tap to replace this pageSheet with a pushed controller.",
+					code: "stack.set(viewControllers: [menu, pushed], as: .push)",
+					actions: [
+						.init(title: "Replace with .push", style: .primary, handler: { vc in
+							guard let stack = vc.stackController else { return }
+							let menu = stack.viewControllers.first.map { [$0] } ?? []
+							let pushed = StackStepViewController(
+								stepTitle: "Pushed (replaced sheet)",
+								description: "This controller replaced the pageSheet. Swipe from right edge to go back.",
+								code: "",
+								actions: [
+									.init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
+								]
+							)
+							stack.set(viewControllers: menu + [pushed], as: .push)
+						}),
+						.init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
+					]
+				)
+				sheet.show(as: .pageSheet)
+			}
+		),
+
+		// Demo: random stack mutation
+		.init(
+			title: "Random stack mutation",
+			description: "Each tap builds a random stack with random presentations. Tests arbitrary stack changes.",
+			code: "stack.set(viewControllers: random, as: .push)",
+			presentation: .push,
+			tapAction: { _ in
+				/// @ai-generated(solo)
+				func makeRandomStep(index: Int, total: Int) -> StackStepViewController {
+					let presentations: [(String, UIPresentation)] = [
+						(".push", .push),
+						(".pageSheet", .pageSheet),
+						(".sheet", .sheet),
+						(".fullScreen", .fullScreen),
+					]
+					let (name, _) = presentations[index % presentations.count]
+					return StackStepViewController(
+						stepTitle: "Random \(index + 1)/\(total) (\(name))",
+						description: "Part of a randomly generated stack.",
+						code: "",
+						actions: [
+							.init(title: "Randomize again", style: .primary, handler: { vc in
+								randomize(from: vc)
+							}),
+							.init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
+						]
+					)
+				}
+
+				/// @ai-generated(solo)
+				func randomize(from vc: UIViewController) {
+					guard let stack = vc.stackController else { return }
+					let presentations: [UIPresentation] = [.push, .pageSheet, .sheet, .fullScreen]
+					let count = Int.random(in: 1...4)
+					let menu = stack.viewControllers.first.map { [$0] } ?? []
+					let controllers = (0..<count).map { i in makeRandomStep(index: i, total: count) }
+					let presentation = presentations.randomElement() ?? .push
+					stack.set(viewControllers: menu + controllers, as: presentation)
+				}
+
+				let entry = StackStepViewController(
+					stepTitle: "Random Stack",
+					description: "Tap to replace the stack with a random set of controllers and presentations.",
+					code: "stack.set(viewControllers: random, as: randomPresentation)",
+					actions: [
+						.init(title: "Randomize!", style: .primary, handler: { vc in
+							randomize(from: vc)
+						}),
+					]
+				)
+				entry.show(as: .push)
+			}
+		),
 	]
 }
 
