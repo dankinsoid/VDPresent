@@ -204,4 +204,53 @@ final class ControllersAllTests: XCTestCase {
 		XCTAssertEqual(ids(result), ["0", "1", "2", "3"])
 		XCTAssert(result.last === all[3])
 	}
+
+	// MARK: - Remove from middle / edges with new top
+
+	/// Remove middle + replace top: [A, B, C, D] → [A, C, E]
+	/// B removed, D replaced by E. Both old (D) and new (E) tops are changing.
+	func testRemoveMiddleAndReplaceTop() {
+		let all = vcs(5)
+		let ctrl = controllers(
+			from: [all[0], all[1], all[2], all[3]],
+			to: [all[0], all[2], all[4]]
+		)
+		// Removal: new top (4) behind, old top (3) in front
+		let result = ctrl.all(.removal)
+		XCTAssertEqual(result.count, 5)
+		// B (1) inserted before C (2), its right neighbour
+		XCTAssert(result[0] === all[0])
+		XCTAssert(result[1] === all[1])
+		XCTAssert(result[2] === all[2])
+		// Old top (3) is last during removal
+		XCTAssert(result.last === all[3])
+		// New top (4) is second to last
+		XCTAssert(result[result.count - 2] === all[4])
+	}
+
+	/// Remove penultimate, same top: [A, B, C, D] → [A, B, D]
+	/// C removed. Top stays D — no top rearrangement.
+	func testRemovePenultimate() {
+		let all = vcs(4)
+		let ctrl = controllers(
+			from: all,
+			to: [all[0], all[1], all[3]]
+		)
+		let result = ctrl.all(.removal)
+		// C placed before D (its right neighbour), top unchanged
+		XCTAssertEqual(ids(result), ["0", "1", "2", "3"])
+	}
+
+	/// Remove first, same top: [A, B, C, D] → [B, C, D]
+	/// A removed. Top stays D — no rearrangement.
+	func testRemoveFirst() {
+		let all = vcs(4)
+		let ctrl = controllers(
+			from: all,
+			to: [all[1], all[2], all[3]]
+		)
+		let result = ctrl.all(.removal)
+		// A placed before B (its right neighbour)
+		XCTAssertEqual(ids(result), ["0", "1", "2", "3"])
+	}
 }
