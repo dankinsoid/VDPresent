@@ -108,6 +108,17 @@ public extension UIPresentation.Environment {
         get { self[\.overCurrentContext] ?? { _ in false } }
         set { self[\.overCurrentContext] = newValue }
     }
+
+    /// Back-effect barrier keys for this presentation. When `applyBackEffects` iterates
+    /// downward through the stack, it stops at any controller whose barriers intersect
+    /// with the current controller's barriers. This prevents effects from accumulating
+    /// across same-type presentations (e.g. two pushes both offsetting the same view).
+    /// Different presentation types (push vs pageSheet) use different keys and pass
+    /// through each other. Default: empty (no barrier).
+    var backEffectBarrier: AnyHashable? {
+        get { self[\.backEffectBarrier] ?? nil }
+        set { self[\.backEffectBarrier] = newValue }
+    }
 }
 
 /// Ordered list of all transitions applied to a single view.
@@ -248,33 +259,40 @@ private extension UIPresentation.Transition {
     /// Called only for controllers that remain in the `to` stack — departing controllers
     /// should not push views behind them.
     // @ai-generated(guided)
-    static func applyBackEffects(context: UIPresentation.Context, progress: Progress) {
-        let toStack = context.viewControllers.to
-        guard let myIndex = toStack.firstIndex(of: context.viewController), myIndex > 0 else { return }
-
-        let backControllers = toStack[..<myIndex].reversed()
-        for (index, vc) in backControllers.enumerated() {
-            let backContext = context.for(vc)
-            let backView = backContext.view
-            guard !backView.isHidden else { continue }
-            let depthIndex = index + 1
-            var transition = context.environment.moveToBackTransition(depthIndex, context).reversed
-            // Capture current state (after own contentTransition + any earlier back effects)
-            // as initial, so this moveToBack composes on top rather than overwriting.
-            transition.beforeTransition(view: backView)
-            #if VDPRESENT_LOG
-            let before = fmt(backView)
-            #endif
-            transition.update(progress: progress, view: backView)
-            // Store so resetView can undo this effect next cycle.
-            backContext.viewTransitions.addBackEffect(transition)
-            #if VDPRESENT_LOG
-            if progress.value == 0 || progress.value == 1 {
-                print("⚡ backEffect  vc=\(viewId(context.viewController)) → \(viewName(backView)) depth=\(depthIndex), \(before) → \(fmt(backView))  @\(progress)")
-            }
-            #endif
-        }
-    }
+	static func applyBackEffects(context: UIPresentation.Context, progress: Progress) {
+		let toStack = context.viewControllers.to
+		guard let myIndex = toStack.firstIndex(of: context.viewController), myIndex > 0 else { return }
+		
+		let myBarrier = context.environment.backEffectBarrier
+		let backControllers = toStack[..<myIndex].reversed()
+		for (index, vc) in backControllers.enumerated() {
+			let backContext = context.for(vc)
+			let backView = backContext.view
+			guard !backView.isHidden else { continue }
+			let depthIndex = index + 1
+			var transition = context.environment.moveToBackTransition(depthIndex, context).reversed
+			// Capture current state (after own contentTransition + any earlier back effects)
+			// as initial, so this moveToBack composes on top rather than overwriting.
+			transition.beforeTransition(view: backView)
+#if VDPRESENT_LOG
+			let before = fmt(backView)
+#endif
+			transition.update(progress: progress, view: backView)
+			// Store so resetView can undo this effect next cycle.
+			backContext.viewTransitions.addBackEffect(transition)
+#if VDPRESENT_LOG
+			if progress.value == 0 || progress.value == 1 {
+				print("⚡ backEffect  vc=\(viewId(context.viewController)) → \(viewName(backView)) depth=\(depthIndex), \(before) → \(fmt(backView))  @\(progress)")
+			}
+#endif
+			
+			// Stop at a controller whose barriers overlap with ours — it owns
+			// back effects for everything below it in the same category.
+			if let myBarrier, myBarrier == backContext.environment.backEffectBarrier {
+				break
+			}
+		}
+	}
 
     /// Resets all transitions and clears cache for controllers being removed from the stack.
     // @ai-generated(guided)
