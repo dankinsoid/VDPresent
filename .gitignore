@@ -5,3 +5,4 @@ Package.resolved~main_0
 .idea
 **/.DS_Store
 VDPresent.xcodeproj/project.xcworkspace/xcuserdata/**/*
+*.xcuserstate
