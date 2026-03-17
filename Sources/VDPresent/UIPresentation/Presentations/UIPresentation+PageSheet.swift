@@ -42,9 +42,7 @@ public extension UIPresentation {
 						up: i == 1
 					)
 				}
-				.environment(\.overCurrentContext) { context in
-					context.viewControllers.to.last === context.viewController || context.isTopController
-				}
+				.environment(\.overCurrentContext) { _ in true }
 				.withBackground(containerColor)
 				.environment(\.backgroundPlacement, .behindController),
 			interactivity: .swipe(to: edge),
