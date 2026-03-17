@@ -1,5 +1,4 @@
 import UIKit
-import VDPresent
 
 // MARK: - DemoItem
 

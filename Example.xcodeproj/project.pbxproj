@@ -3,11 +3,10 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 60;
+	objectVersion = 70;
 	objects = {
 
 /* Begin PBXBuildFile section */
-		83DD550D2F6943D0004CBE38 /* VDPresent in Frameworks */ = {isa = PBXBuildFile; productRef = 83DD550C2F6943D0004CBE38 /* VDPresent */; };
 		83F74E57296AEC4300C5E3D4 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83F74E4D296AEC4300C5E3D4 /* AppDelegate.swift */; };
 		83F74E58296AEC4300C5E3D4 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83F74E4E296AEC4300C5E3D4 /* ViewController.swift */; };
 		83F74E59296AEC4300C5E3D4 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 83F74E4F296AEC4300C5E3D4 /* Assets.xcassets */; };
@@ -28,12 +27,15 @@
 		83F8071E296CA8E000AA7AB5 /* FadeLayer.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = FadeLayer.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		83DD553A2F6950E0004CBE38 /* Sources */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Sources; sourceTree = SOURCE_ROOT; };
+/* End PBXFileSystemSynchronizedRootGroup section */
+
 /* Begin PBXFrameworksBuildPhase section */
 		83F74E02296AEB7D00C5E3D4 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				83DD550D2F6943D0004CBE38 /* VDPresent in Frameworks */,
 				83F74E61296AEDF400C5E3D4 /* VDTransition in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -68,6 +70,7 @@
 		83F74E4A296AEBE500C5E3D4 /* Project */ = {
 			isa = PBXGroup;
 			children = (
+				83DD553A2F6950E0004CBE38 /* Sources */,
 				83F8071E296CA8E000AA7AB5 /* FadeLayer.swift */,
 				83F74E4D296AEC4300C5E3D4 /* AppDelegate.swift */,
 				83F74E4F296AEC4300C5E3D4 /* Assets.xcassets */,
@@ -102,10 +105,12 @@
 			);
 			dependencies = (
 			);
+			fileSystemSynchronizedGroups = (
+				83DD553A2F6950E0004CBE38 /* Sources */,
+			);
 			name = Example;
 			packageProductDependencies = (
 				83F74E60296AEDF400C5E3D4 /* VDTransition */,
-				83DD550C2F6943D0004CBE38 /* VDPresent */,
 			);
 			productName = VDPresentation;
 			productReference = 83F74E05296AEB7D00C5E3D4 /* Example.app */;
@@ -138,7 +143,6 @@
 			packageReferences = (
 				83F74E5F296AEDF400C5E3D4 /* XCRemoteSwiftPackageReference "VDTransition" */,
 				83DD55072F694351004CBE38 /* XCLocalSwiftPackageReference "../cleanup-simulators" */,
-				83DD550B2F6943D0004CBE38 /* XCLocalSwiftPackageReference "../VDPresent" */,
 			);
 			productRefGroup = 83F74E06296AEB7D00C5E3D4 /* Products */;
 			projectDirPath = "";
@@ -386,10 +390,6 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = "../cleanup-simulators";
 		};
-		83DD550B2F6943D0004CBE38 /* XCLocalSwiftPackageReference "../VDPresent" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = ../VDPresent;
-		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCRemoteSwiftPackageReference section */
@@ -404,10 +404,6 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		83DD550C2F6943D0004CBE38 /* VDPresent */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = VDPresent;
-		};
 		83F74E60296AEDF400C5E3D4 /* VDTransition */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 83F74E5F296AEDF400C5E3D4 /* XCRemoteSwiftPackageReference "VDTransition" */;
