@@ -96,8 +96,8 @@ open class UIStackController: UIViewController {
 	override open var preferredStatusBarStyle: UIStatusBarStyle { statusBarStyle }
 
 	private let content = UIStackControllerView()
-	private var containers: [UIViewController: UIStackControllerContainer] = [:]
-	private var wrappers: [UIViewController: UIStackViewWrapper] = [:]
+	private var containers: [UIViewController: UIStackControllerCanvas] = [:]
+	private var wrappers: [UIViewController: UIStackEffectView] = [:]
 	private var presentations: [UIViewController: UIPresentation] = [:]
 	private var animators: [UIViewController: (UIPresentation.Interactivity.State) -> Void] = [:]
 	private let cache = UIPresentation.Context.Cache()
@@ -183,8 +183,8 @@ open class UIStackController: UIViewController {
 		)
 	}
 
-	open func wrap(view: UIView) -> UIStackViewWrapper {
-		UIStackViewWrapper(view)
+	open func wrap(view: UIView) -> UIStackEffectView {
+		UIStackEffectView(view)
 	}
 }
 
@@ -220,10 +220,10 @@ private extension UIStackController {
 			UIPresentation.Context(
 				direction: direction,
 				controller: $0,
-				container: { [weak self] in self?.container(for: $0) ?? UIStackControllerContainer() },
+				container: { [weak self] in self?.container(for: $0) ?? UIStackControllerCanvas() },
 				fromViewControllers: fromViewControllers,
 				toViewControllers: toViewControllers,
-				views: { [weak self] in self?.wrapper(for: $0) ?? UIStackViewWrapper($0.view) },
+				views: { [weak self] in self?.wrapper(for: $0) ?? UIStackEffectView($0.view) },
 				animated: animated,
 				animation: (presentations[$0] ?? presentation).animation,
 				isInteractive: isInteractive,
@@ -263,13 +263,14 @@ private extension UIStackController {
 				container(for: toViewController)
 			}
 			if presentations[toViewController] == nil {
-				presentations[toViewController] = presentation
+				// Prefer controller's own defaultPresentation over the transition-wide one
+				presentations[toViewController] = toViewController.defaultPresentation ?? presentation
 			}
 		}
 
 		// Use zIndex order so animate phase processes controllers bottom-to-top:
 		// each controller first applies its own effect, then higher controllers
-		// apply moveToBack on views below — no ordering conflicts.
+		// apply recess on views below — no ordering conflicts.
 		let allControllers = controllers.all(direction)
 
 		allControllers.map(container).forEach(content.bringSubviewToFront)
@@ -431,16 +432,16 @@ private extension UIStackController {
 		updateContainers()
 	}
 
-	func wrapper(for controller: UIViewController) -> UIStackViewWrapper {
-		wrappers[controller] ?? UIStackViewWrapper(controller.view)
+	func wrapper(for controller: UIViewController) -> UIStackEffectView {
+		wrappers[controller] ?? UIStackEffectView(controller.view)
 	}
 
 	@discardableResult
-	func container(for controller: UIViewController) -> UIStackControllerContainer {
+	func container(for controller: UIViewController) -> UIStackControllerCanvas {
 		if let result = containers[controller] {
 			return result
 		}
-		let container = UIStackControllerContainer()
+		let container = UIStackControllerCanvas()
 		container.backgroundColor = .clear
 		containers[controller] = container
 		content.containers.append(container)

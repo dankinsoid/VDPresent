@@ -3,7 +3,7 @@ import UIKit
 /// A full-screen layer that acts as the drawing canvas for one child view
 /// controller inside a `UIStackController`.
 ///
-/// `UIStackController` maintains one `UIStackControllerContainer` per entry in
+/// `UIStackController` maintains one `UIStackControllerCanvas` per entry in
 /// `viewControllers`. Every container is pinned to the edges of the stack's
 /// root view (`UIStackControllerView`), so at rest they all occupy the full
 /// screen and only the topmost one is visible. During a transition the stack
@@ -19,14 +19,14 @@ import UIKit
 /// container.remove(subview: badgeView)
 /// ```
 ///
-/// The direct subclass `UIStackViewWrapper` is the concrete container used
+/// The direct subclass `UIStackEffectView` is the concrete container used
 /// in practice — it wraps a child view controller's `view` and proxies its
 /// size methods so the transition system can measure it correctly.
 ///
 /// - Note: The `ContentLayout`-based frame calculation inside `layout()` is
 ///   currently commented out; subview positioning relies entirely on
 ///   Auto Layout constraints installed by `ContentLayout.constraints(_:in:)`.
-public class UIStackControllerContainer: UIView {
+public class UIStackControllerCanvas: UIView {
 
 	private var layouts: [UIView: ContentLayout] = [:]
 

@@ -4,10 +4,10 @@ import VDTransition
 public extension UIPresentation.Transition {
 
 	/// Base transition that orchestrates the full presentation lifecycle: insertion animation,
-	/// move-to-back animation for views below, background view, status bar, and cleanup.
+	/// recess animation for views below, background view, status bar, and cleanup.
 	///
 	/// All visual behaviour is configured via environment keys — call `.environment(...)` on the
-	/// result to set `contentTransition`, `moveToBackTransition`, `contentLayout`, etc.
+	/// result to set `contentTransition`, `recessTransition`, `contentLayout`, etc.
 	///
 	/// Three lifecycle phases, executed in order:
 	/// - **prepare** — layout, initial states for changing controllers, snap to `.start`
@@ -16,7 +16,7 @@ public extension UIPresentation.Transition {
 	///
 	/// The animate phase eliminates ordering conflicts by always resetting each view before
 	/// applying effects. Controllers are iterated in z-index order (bottom to top), so each
-	/// view first applies its own contentTransition, then higher controllers apply moveToBack
+	/// view first applies its own contentTransition, then higher controllers apply recess
 	/// on top. `UIView.animate` only sees the before/after states, not intermediate resets.
 	///
 	/// - Parameters:
@@ -63,7 +63,7 @@ public extension UIPresentation.Transition {
 			},
 			animation: { context in
 				// Reset this view to identity by undoing any previously applied effects
-				// (own contentTransition + moveToBack from controllers above).
+				// (own contentTransition + recess from controllers above).
 				// This is safe inside UIView.animate — only the final state matters.
 				resetView(context: context)
 
@@ -75,7 +75,7 @@ public extension UIPresentation.Transition {
 					: context.ownDirection.at(.end)
 				animateOwn(context: context, progress: ownProgress, animation: additionalAnimation)
 
-				// Apply moveToBack effects on views below this controller.
+				// Apply recess effects on views below this controller.
 				applyBackEffects(context: context, progress: ownProgress)
 
 				if context.isTopController {
@@ -106,9 +106,9 @@ public extension UIPresentation.Environment {
 
 	/// Animation applied to views moving to the back when a new VC becomes top.
 	/// `Int` is the depth index (1 = immediate predecessor, 2 = one below, …). Default: `.identity`.
-	var moveToBackTransition: (Int, UIPresentation.Context) -> UITransition<UIView> {
-		get { self[\.moveToBackTransition] ?? { _, _ in .identity } }
-		set { self[\.moveToBackTransition] = newValue }
+	var recessTransition: (Int, UIPresentation.Context) -> UITransition<UIView> {
+		get { self[\.recessTransition] ?? { _, _ in .identity } }
+		set { self[\.recessTransition] = newValue }
 	}
 
 	/// Layout constraints applied to the presented view's container. Default: `.fill`.
@@ -139,7 +139,7 @@ public extension UIPresentation.Environment {
 	///   simply slides over them. Like UINavigationController push. **(default)**
 	/// - `animate`: All behind departing/arriving controllers play their own
 	///   reverse contentTransition animation.
-	/// - `freezeSame`: Behind-controllers with the same `transitionID` as the top
+	/// - `freezeMatching`: Behind-controllers with the same `transitionID` as the top
 	///   are frozen (moved only via backEffect); controllers with a different
 	///   `transitionID` play their own animation.
 	var behindBehavior: BehindBehavior {
@@ -159,11 +159,11 @@ public enum BehindBehavior {
 
 	/// Behind-controllers with the same `transitionID` as the top are frozen;
 	/// controllers with a different `transitionID` play their own animation.
-	case freezeSame
+	case freezeMatching
 }
 
 /// Ordered list of all transitions applied to a single view.
-/// Own contentTransition is always first, followed by moveToBack effects
+/// Own contentTransition is always first, followed by recess effects
 /// from controllers above. This ordering is enforced by the API:
 /// `setOwn` must be called before `addBackEffect`.
 ///
@@ -190,7 +190,7 @@ struct ViewTransitions {
 		ownCount > 0 ? all[0] : nil
 	}
 
-	/// Appends a moveToBack effect (applied after own transition).
+	/// Appends a recess effect (applied after own transition).
 	mutating func addBackEffect(_ transition: UITransition<UIView>) {
 		all.append(transition)
 	}
@@ -291,11 +291,11 @@ private extension UIPresentation.Transition {
 		animation?(context, progress)
 	}
 
-	/// Applies moveToBack effects from this controller onto all visible views below it
+	/// Applies recess effects from this controller onto all visible views below it
 	/// in the `all()` iteration order (which includes both `to` and departing controllers).
 	///
 	/// Each back view's current state (already set by its own contentTransition) becomes
-	/// the initial state for the moveToBack transition, making effects composable.
+	/// the initial state for the recess transition, making effects composable.
 	/// The applied transitions are stored in each back view's `viewTransitions.backEffects`
 	/// so they can be undone by `resetView` in the next cycle.
 	///
@@ -312,9 +312,9 @@ private extension UIPresentation.Transition {
 			let backView = backContext.view
 			guard !backView.isHidden else { continue }
 			let depthIndex = index + 1
-			var transition = context.environment.moveToBackTransition(depthIndex, context).reversed
+			var transition = context.environment.recessTransition(depthIndex, context).reversed
 			// Capture current state (after own contentTransition + any earlier back effects)
-			// as initial, so this moveToBack composes on top rather than overwriting.
+			// as initial, so this recess composes on top rather than overwriting.
 			transition.beforeTransition(view: backView)
 			#if VDPRESENT_LOG
 			let before = fmt(backView)
@@ -355,7 +355,7 @@ private extension UIPresentation.Transition {
 	}
 
 	private static func viewName(_ view: UIView) -> String {
-		(view as? UIStackViewWrapper)?.wrapped.accessibilityIdentifier
+		(view as? UIStackEffectView)?.wrapped.accessibilityIdentifier
 			?? view.accessibilityIdentifier
 			?? String(describing: type(of: view))
 	}
@@ -386,7 +386,7 @@ private extension UIPresentation.Transition {
 			backgroundView.backgroundColor = .clear
 			backgroundView.isUserInteractionEnabled = false
 			context.backgroundView = backgroundView
-			if context.environment.isOverlay {
+			if context.environment.backgroundPlacement == .behindController {
 				if let i = context.viewControllers.to.firstIndex(of: context.viewController), i > 0 {
 					let vc = context.viewControllers.to[i - 1]
 					context.for(vc).view.addSubview(backgroundView, layout: context.environment.backgroundLayout)

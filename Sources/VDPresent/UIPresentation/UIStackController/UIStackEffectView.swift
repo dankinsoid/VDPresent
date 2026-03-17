@@ -1,6 +1,6 @@
 import UIKit
 
-public final class UIStackViewWrapper: UIStackControllerContainer {
+public final class UIStackEffectView: UIStackControllerCanvas {
 
 	let wrapped: UIView
 

@@ -522,8 +522,8 @@ private func stackSectionItems() -> [DemoItem] {
 						(".sheet", .sheet),
 						(".fullScreen", .fullScreen),
 					]
-					let (name, _) = presentations[index % presentations.count]
-					return StackStepViewController(
+					let (name, presentation) = presentations[index % presentations.count]
+					let vc = StackStepViewController(
 						stepTitle: "Random \(index + 1)/\(total) (\(name))",
 						description: "Part of a randomly generated stack.",
 						code: "",
@@ -534,17 +534,24 @@ private func stackSectionItems() -> [DemoItem] {
 							.init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
 						]
 					)
+					vc.defaultPresentation = presentation
+					return vc
 				}
 
-				/// @ai-generated(solo)
+				/// @ai-generated(guided)
 				func randomize(from vc: UIViewController) {
 					guard let stack = vc.stackController else { return }
-					let presentations: [UIPresentation] = [.push, .pageSheet, .sheet, .fullScreen]
-					let count = Int.random(in: 1...4)
 					let menu = stack.viewControllers.first.map { [$0] } ?? []
-					let controllers = (0..<count).map { i in makeRandomStep(index: i, total: count) }
-					let presentation = presentations.randomElement() ?? .push
-					stack.set(viewControllers: menu + controllers, as: presentation)
+					// Existing non-menu controllers that can be kept
+					let existing = Array(stack.viewControllers.dropFirst())
+					let keepCount = Int.random(in: 0...existing.count)
+					let kept = Array(existing.prefix(keepCount))
+					let newCount = Int.random(in: (kept.isEmpty ? 1 : 0)...7)
+					let total = kept.count + newCount
+					let newControllers = (0..<newCount).map { i in
+						makeRandomStep(index: kept.count + i, total: total)
+					}
+					stack.set(viewControllers: menu + (kept + newControllers).shuffled())
 				}
 
 				let entry = StackStepViewController(

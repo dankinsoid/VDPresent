@@ -14,7 +14,7 @@ public extension UIPresentation {
 		UIPresentation(
 			transition: .base(transitionID: "push")
 				.environment(\.contentTransition) { _ in .move(edge: edge) }
-				.environment(\.moveToBackTransition) { _, _ in .move(edge: edge.opposite, offset: .relative(0.3)) }
+				.environment(\.recessTransition) { _, _ in .move(edge: edge.opposite, offset: .relative(0.3)) }
 				.environment(\.backEffectBarrier, true)
 				.withBackground(containerColor),
 			interactivity: .swipe(to: edge),

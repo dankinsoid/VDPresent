@@ -107,7 +107,7 @@ public extension UIPresentation {
 		}
 
 		/// Identifies the type of transition (e.g. "push", "fullScreen", "sheet").
-		/// Used by `behindBehavior(.freezeSame)` to decide which behind-controllers
+		/// Used by `behindBehavior(.freezeMatching)` to decide which behind-controllers
 		/// are frozen vs animated during stack changes.
 		public var transitionID: AnyHashable
 

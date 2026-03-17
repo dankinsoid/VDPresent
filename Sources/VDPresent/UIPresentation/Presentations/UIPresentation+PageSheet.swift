@@ -34,7 +34,7 @@ public extension UIPresentation {
 						.constant(\.layer.maskedCorners, .edge(edge.opposite)),
 					]
 				}
-				.environment(\.moveToBackTransition) { i, context in
+				.environment(\.recessTransition) { i, context in
 					.transform(
 						to: context.view,
 						edge: edge.opposite,
@@ -46,7 +46,7 @@ public extension UIPresentation {
 					context.viewControllers.to.last === context.viewController || context.isTopController
 				}
 				.withBackground(containerColor)
-				.environment(\.isOverlay, true),
+				.environment(\.backgroundPlacement, .behindController),
 			interactivity: .swipe(to: edge),
 			animation: .default
 		)

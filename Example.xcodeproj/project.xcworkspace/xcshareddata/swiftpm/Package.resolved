@@ -1,0 +1,24 @@
+{
+  "originHash" : "c6df686f2819d93bdc98f8ad4903f8bf31f69a6067a3e745240e8471d52372dc",
+  "pins" : [
+    {
+      "identity" : "swift-argument-parser",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-argument-parser.git",
+      "state" : {
+        "revision" : "c5d11a805e765f52ba34ec7284bd4fcd6ba68615",
+        "version" : "1.7.0"
+      }
+    },
+    {
+      "identity" : "vdtransition",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/dankinsoid/VDTransition.git",
+      "state" : {
+        "revision" : "c75e2f9d916817e1085a2715e0c212b24c141f32",
+        "version" : "1.24.0"
+      }
+    }
+  ],
+  "version" : 3
+}

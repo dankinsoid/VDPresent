@@ -8,11 +8,11 @@ public extension UIPresentation {
 			_controller ?? UIViewController()
 		}
 
-		public var view: UIStackViewWrapper {
+		public var view: UIStackEffectView {
 			views(viewController)
 		}
 
-		public var container: UIStackControllerContainer {
+		public var container: UIStackControllerCanvas {
 			_container(viewController)
 		}
 
@@ -38,18 +38,18 @@ public extension UIPresentation {
 		}
 
 		private weak var _controller: UIViewController?
-		private let views: (UIViewController) -> UIStackViewWrapper
-		private let _container: (UIViewController) -> UIStackControllerContainer
+		private let views: (UIViewController) -> UIStackEffectView
+		private let _container: (UIViewController) -> UIStackControllerCanvas
 		private let _presentation: (UIViewController) -> UIPresentation
 		private let _updateStatusBar: (UIStatusBarStyle, UIStatusBarAnimation) -> Void
 
 		public init(
 			direction: TransitionDirection,
 			controller: UIViewController,
-			container: @escaping (UIViewController) -> UIStackControllerContainer,
+			container: @escaping (UIViewController) -> UIStackControllerCanvas,
 			fromViewControllers: [UIViewController],
 			toViewControllers: [UIViewController],
-			views: @escaping (UIViewController) -> UIStackViewWrapper,
+			views: @escaping (UIViewController) -> UIStackEffectView,
 			animated: Bool,
 			animation: UIKitAnimation,
 			isInteractive: Bool,
@@ -300,7 +300,7 @@ extension UIPresentation.Context {
 			return true
 		case .animate:
 			return false
-		case .freezeSame:
+		case .freezeMatching:
 			let myID = presentation.transition.transitionID
 			let topID = topContext.presentation.transition.transitionID
 			return myID == topID

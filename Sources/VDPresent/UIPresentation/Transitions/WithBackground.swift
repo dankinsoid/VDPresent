@@ -21,19 +21,19 @@ extension UIPresentation.Transition {
 	) -> UIPresentation.Transition {
 		environment(\.backgroundTransition, transition)
 			.environment(\.backgroundLayout, layout)
-			.environment(\.isOverlay, false)
+			.environment(\.backgroundPlacement, .global)
 	}
 
 	func withOverlay(
 		_ color: UIColor
 	) -> UIPresentation.Transition {
-		withBackground(color).environment(\.isOverlay, true)
+		withBackground(color).environment(\.backgroundPlacement, .behindController)
 	}
 
 	func withOverlay(
 		_ transition: UIViewTransition
 	) -> UIPresentation.Transition {
-		withBackground(transition).environment(\.isOverlay, true)
+		withBackground(transition).environment(\.backgroundPlacement, .behindController)
 	}
 }
 
@@ -50,11 +50,21 @@ public extension UIPresentation.Environment {
 	}
 }
 
+/// Where the background/overlay view is placed in the view hierarchy.
+public enum BackgroundPlacement {
+
+	/// Background is added to this controller's own canvas (covers the full screen).
+	case global
+
+	/// Background is added as a subview of the controller directly behind this one.
+	case behindController
+}
+
 extension UIPresentation.Environment {
 
-	var isOverlay: Bool {
-		get { self[\.isOverlay] ?? false }
-		set { self[\.isOverlay] = newValue }
+	var backgroundPlacement: BackgroundPlacement {
+		get { self[\.backgroundPlacement] ?? .global }
+		set { self[\.backgroundPlacement] = newValue }
 	}
 }
 
