@@ -115,7 +115,7 @@ public extension UIPresentation {
 		public var prepare: (Context) -> Void
 
 		/// The animatable changes — called inside an animation block or at each progress step.
-		public var animation: (Context) -> Void
+		public var animation: (Context, Progress) -> Void
 
 		/// Called after the animation finishes. `Bool` is `false` when cancelled.
 		public var completion: (Context, Bool) -> Void
@@ -126,7 +126,7 @@ public extension UIPresentation {
 			transitionID: AnyHashable,
 			environment: UIPresentation.Environment = UIPresentation.Environment(),
 			prepare: @escaping (Context) -> Void = { _ in },
-			animation: @escaping (Context) -> Void = { _ in },
+			animation: @escaping (Context, Progress) -> Void = { _, _ in },
 			completion: @escaping (Context, Bool) -> Void = { _, _ in }
 		) {
 			self.transitionID = transitionID

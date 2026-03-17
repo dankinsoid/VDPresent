@@ -58,7 +58,7 @@ enum AnimationDriver {
 		let animate: () -> Void = {
 			beginAppearance()
 			for (context, transition) in items {
-				transition.animation(context)
+				transition.animation(context, context.direction.at(.end))
 			}
 		}
 		let complete: (Bool) -> Void = { completed in
@@ -67,41 +67,40 @@ enum AnimationDriver {
 
 		if main.context.animated {
 			if main.context.isInteractive {
-				let animator = main.context.animator ?? Animator(duration: main.context.animation.duration, curve: .linear)
-				main.context.animator = animator
-				// Allow touches during interactive transitions so the UI stays
-				// responsive while the animator runs (especially the reverse
-				// animation after a cancelled gesture).
-				animator.isUserInteractionEnabled = true
-				animator.addAnimations(animate)
-				animator.addCompletion { position in
-					let completed = position == .end
-					complete(completed)
-					main.context.animator?.finishAnimation(at: completed ? .end : .start)
-					main.context.animator = nil
-					main.context.animatorDidContinue = false
-					main.context.animatorDidStart = false
-				}
 				prepareInteractive { state in
 					switch state {
 					case .begin:
 						if !main.context.animatorDidStart {
 							main.context.animatorDidStart = true
-							animator.startAnimation()
-							animator.pauseAnimation()
+							beginAppearance()
 						}
 
 					case let .change(progress):
-						if animator.fractionComplete != progress.value {
-							animator.fractionComplete = progress.value
+						for (context, transition) in items {
+							transition.animation(context, progress)
 						}
 
 					case let .end(completed, duration):
-						if !main.context.animatorDidContinue {
-							main.context.animatorDidContinue = true
-							animator.isReversed = !completed
-							animator.continueAnimation(duration: duration)
+						guard !main.context.animatorDidContinue else { return }
+						main.context.animatorDidContinue = true
+
+						// Animate from current scrubbed state to the target.
+						let animator = Animator(duration: duration, curve: .easeOut)
+						main.context.animator = animator
+						animator.isUserInteractionEnabled = true
+						animator.addAnimations {
+							for (context, transition) in items {
+								transition.animation(context, context.direction.at(.end))
+							}
 						}
+						animator.addCompletion { position in
+							let completed = position == .end
+							complete(completed)
+							main.context.animator = nil
+							main.context.animatorDidContinue = false
+							main.context.animatorDidStart = false
+						}
+						animator.startAnimation()
 					}
 				}
 			} else {

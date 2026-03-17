@@ -61,7 +61,11 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
 				self.edge = edge.opposite
 				begin()
 			}
-			let percent = abs(max(0, min(1, percent)))
+			let rawPercent = self.percent
+			let percent = abs(max(0, min(1, rawPercent)))
+			#if VDPRESENT_LOG
+			print("🖐 gesture raw: \(rawPercent), clamped: \(percent)")
+			#endif
 			update(percent: percent)
 
 		case .ended:

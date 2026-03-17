@@ -36,6 +36,7 @@ public extension UIPresentation.Transition {
 		UIPresentation.Transition(
 			transitionID: transitionID,
 			prepare: { context in
+				
 				if !context.needHide || context.isTopController {
 					context.container.isHidden = false
 				}
@@ -61,22 +62,22 @@ public extension UIPresentation.Transition {
 				animateOwn(context: context, progress: context.ownDirection.at(.start), animation: additionalAnimation)
 				applyBackEffects(context: context, progress: context.ownDirection.at(.start))
 			},
-			animation: { context in
-				// Reset this view to identity by undoing any previously applied effects
-				// (own contentTransition + moveToBack from controllers above).
-				// This is safe inside UIView.animate — only the final state matters.
-				resetView(context: context)
-
+			animation: { context, progress in
+					// Reset this view to identity by undoing any previously applied effects
+					// (own contentTransition + moveToBack from controllers above).
+					// This is safe inside UIView.animate — only the final state matters.
+					resetView(context: context)
+				
 				// Frozen behind-controllers:
 				// - insertion: stay at insertion(1), moved only by backEffect from top
 				// - removal: already snapped to removal(1) in prepare
 				let ownProgress: Progress = context.isBehindFrozen && context.direction == .insertion
 					? .insertion(1)
 					: context.ownDirection.at(.end)
-				animateOwn(context: context, progress: ownProgress, animation: additionalAnimation)
+				animateOwn(context: context, progress: progress, animation: additionalAnimation)
 
 				// Apply moveToBack effects on views below this controller.
-				applyBackEffects(context: context, progress: ownProgress)
+				applyBackEffects(context: context, progress: progress)
 
 				if context.isTopController {
 					// do we need this? ios seems to update the status bar automatically, need to figure out if there are ios versions that don't do this or if there are edge cases where it doesn't work
