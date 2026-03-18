@@ -145,5 +145,5 @@ private final class VCPresentation {
 
 private enum AssociatedKey {
 
-	static var presentation = "presentation"
+	static var presentation = 0
 }

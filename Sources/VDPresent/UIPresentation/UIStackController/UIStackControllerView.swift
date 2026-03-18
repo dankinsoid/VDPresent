@@ -15,13 +15,13 @@ final class UIStackControllerView: UIView {
 					container.pinEdges(to: self)
 				}
 			}
-			layout()
+//			layout()
 		}
 	}
 
 	override func layoutSubviews() {
 		super.layoutSubviews()
-		layout()
+//		layout()
 	}
 
 	private func layout() {

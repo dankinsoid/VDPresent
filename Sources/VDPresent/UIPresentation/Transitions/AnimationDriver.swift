@@ -21,6 +21,9 @@ enum AnimationDriver {
 		context: UIPresentation.Context
 	) {
 		if !context.viewControllers.from.contains(context.viewController) {
+#if VDPRESENT_LOG
+			print("⚠️ AnimationDriver.prepare fallback addSubview for \(context.viewController.view.accessibilityIdentifier ?? "?")")
+#endif
 			context.container
 				.addSubview(
 					context.view,

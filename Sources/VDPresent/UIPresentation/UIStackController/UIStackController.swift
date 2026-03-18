@@ -120,6 +120,7 @@ open class UIStackController: UIViewController {
 		view.backgroundColor = .clear
 	}
 
+
 	override open func show(_ vc: UIViewController, sender: Any?) {
 		show(vc)
 	}
@@ -216,8 +217,9 @@ private extension UIStackController {
 			toViewControllers: toViewControllers
 		)
 
-		let context: (UIViewController) -> UIPresentation.Context = { [weak self, presentations, cache] in
-			UIPresentation.Context(
+		let context: (UIViewController) -> UIPresentation.Context = { [weak self, cache] in
+			let presentations = self?.presentations ?? [:]
+			return UIPresentation.Context(
 				direction: direction,
 				controller: $0,
 				container: { [weak self] in self?.container(for: $0) ?? UIStackControllerCanvas() },
@@ -268,6 +270,16 @@ private extension UIStackController {
 			}
 		}
 
+		// Add views to the hierarchy before addChild so UIKit can
+		// compute safe area insets from the view's actual position.
+		// Without this, adding multiple children at once leaves
+		// safe area at zero because UIKit snapshots it at addChild
+		// time when the view is not yet in a window.
+		for toViewController in controllers.toInsert {
+			let ctx = context(toViewController)
+			ctx.container.addSubview(ctx.view, layout: ctx.environment.contentLayout)
+		}
+		
 		// Use zIndex order so animate phase processes controllers bottom-to-top:
 		// each controller first applies its own effect, then higher controllers
 		// apply recess on views below — no ordering conflicts.
@@ -284,7 +296,7 @@ private extension UIStackController {
 		for item in controllers.toRemove {
 			item.willMove(toParent: nil)
 		}
-
+		
 		for controller in allControllers {
 			let currentPresentation = presentations[controller, default: presentation]
 			AnimationDriver.prepare(
@@ -292,24 +304,26 @@ private extension UIStackController {
 				context: context(controller)
 			)
 		}
-
+		
 		#if VDPRESENT_LOG
 		print("[UIStackController] allControllers: \(allControllers.map { $0.view.accessibilityIdentifier ?? "nil" })")
 		#endif
 		AnimationDriver.animate(
-			allControllers.map { controller in
-				(context(controller), presentations[controller, default: presentation].transition)
+			allControllers.map { vc in
+				(context(vc), presentations[vc, default: presentation].transition)
 			},
 			beginAppearance: {
 				if !controllers.isTopTheSame {
-					for controller in allControllers {
-						if controller === controllers.to.last {
-							controller.beginAppearanceTransition(true, animated: animated)
-						}
-						if controller === controllers.from.last {
-							controller.beginAppearanceTransition(false, animated: animated)
-						}
-					}
+					if let vc = controllers.to.last {
+						 vc.beginAppearanceTransition(true, animated: animated)
+						
+ #if VDPRESENT_LOG
+			print("[UIStackController] appear safeArea vc=\(vc.view.accessibilityIdentifier ?? "view") vc.view=[t=\(vc.view.safeAreaInsets.top) b=\(vc.view.safeAreaInsets.bottom)] vcFrame=\(Int(vc.view.frame.minY))-\(Int(vc.view.frame.maxY))")
+	#endif
+					 }
+					 if let vc = controllers.from.last {
+						 vc.beginAppearanceTransition(false, animated: animated)
+					 }
 				}
 			},
 			prepareInteractive: { [weak self] update in
@@ -356,6 +370,14 @@ private extension UIStackController {
 			controllers.to.last?.endAppearanceTransition()
 			controllers.from.last?.endAppearanceTransition()
 		}
+		#if VDPRESENT_LOG
+		// Log safe area for ALL toInsert right after endAppearanceTransition
+		for vc in controllers.toInsert {
+			let sa = vc.view.safeAreaInsets
+			let isTop = vc === controllers.to.last
+			print("📐 postAppearance  vc=\(vc.view.accessibilityIdentifier ?? "?") isTop=\(isTop) safeArea=t=\(Int(sa.top)) b=\(Int(sa.bottom))")
+		}
+		#endif
 		if isCompleted {
 			for fromViewController in controllers.toRemove {
 				fromViewController.removeFromParent()

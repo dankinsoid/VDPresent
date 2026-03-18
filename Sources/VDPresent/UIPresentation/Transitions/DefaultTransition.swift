@@ -47,7 +47,7 @@ public extension UIPresentation.Transition {
 					// Back effects at removal(1) = identity, so remaining views stay in place.
 					context.container.isHidden = true
 					animateOwn(context: context, progress: .removal(1), animation: additionalAnimation)
-					applyBackEffects(context: context, progress: .removal(1))
+//					applyBackEffects(context: context, progress: .removal(1))
 					// Insertion frozen: no prepare — stays at current state (insertion(1)),
 					// moved only by backEffect from the new top controller.
 					return
@@ -59,7 +59,7 @@ public extension UIPresentation.Transition {
 				// Snap to start state so the view is in its pre-animation position
 				// (e.g. off-screen for a slide-up transition) before the animation block runs.
 				animateOwn(context: context, progress: context.ownDirection.at(.start), animation: additionalAnimation)
-				applyBackEffects(context: context, progress: context.ownDirection.at(.start))
+//				applyBackEffects(context: context, progress: context.ownDirection.at(.start))
 			},
 			animation: { context in
 				// Reset this view to identity by undoing any previously applied effects
@@ -76,7 +76,7 @@ public extension UIPresentation.Transition {
 				animateOwn(context: context, progress: ownProgress, animation: additionalAnimation)
 
 				// Apply recess effects on views below this controller.
-				applyBackEffects(context: context, progress: ownProgress)
+//				applyBackEffects(context: context, progress: ownProgress)
 
 				if context.isTopController {
 					// do we need this? ios seems to update the status bar automatically, need to figure out if there are ios versions that don't do this or if there are edge cases where it doesn't work
@@ -90,6 +90,9 @@ public extension UIPresentation.Transition {
 					finalContext.container.isHidden = true
 				}
 				completeBackground(context: finalContext)
+				#if VDPRESENT_LOG
+				logSafeArea(context: finalContext)
+				#endif
 				completion?(context, completed)
 			}
 		)
@@ -368,6 +371,29 @@ private extension UIPresentation.Transition {
 		if ty == 0 { return "tx=\(Int(tx))" }
 		if tx == 0 { return "ty=\(Int(ty))" }
 		return "tx=\(Int(tx)) ty=\(Int(ty))"
+	}
+
+	/// Logs safe area insets at each level of the view hierarchy for a controller.
+	static func logSafeArea(context: UIPresentation.Context) {
+		let vc = context.viewController
+		let name = viewId(vc)
+		let vcView = vc.view!
+		let wrapper = context.view
+		let container = context.container
+		let hidden = container.isHidden
+		let vcSA = vcView.safeAreaInsets.descr
+		let wrapSA = wrapper.safeAreaInsets.descr
+		if vcView.safeAreaInsets.top == 0 || vcView.safeAreaInsets.bottom == 0 {
+			print("⚠️ safeArea  vc=\(name) hidden=\(hidden) vc.view=[\(vcSA)] wrapper=[\(wrapSA)] wrapFrame=\(Int(wrapper.frame.minY))-\(Int(wrapper.frame.maxY)) vcFrame=\(vcView.frame.descr) contFrame=\(container.frame.descr)")
+		}
+		// Deferred check: does safe area arrive after layout?
+		DispatchQueue.main.async { [weak vcView, weak wrapper, weak container] in
+			guard let vcView, let wrapper, let container, !container.isHidden else { return }
+			let vcSA2 = vcView.safeAreaInsets.descr
+			if vcView.safeAreaInsets.top == 0 || vcView.safeAreaInsets.bottom == 0 {
+				print("⚠️ safeArea(deferred)  vc=\(name) vc.view=[\(vcSA2)] wrapper=[\(wrapper.safeAreaInsets.descr)] container=[\(container.safeAreaInsets.descr)]")
+			}
+		}
 	}
 	#endif
 
