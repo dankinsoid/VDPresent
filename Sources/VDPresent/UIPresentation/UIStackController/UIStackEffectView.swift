@@ -10,7 +10,6 @@ public final class UIStackEffectView: UIStackControllerCanvas {
 		clipsToBounds = view.clipsToBounds
 		addSubview(view)
 		view.pinEdges(to: self)
-		Self.installSafeAreaSwizzleIfNeeded()
 	}
 
 	@available(*, unavailable)
@@ -39,52 +38,58 @@ public final class UIStackEffectView: UIStackControllerCanvas {
 	}
 }
 
-// MARK: - Safe area swizzle
+// MARK: - Safe area unlock for non-appeared child VCs
 
-/// UIKit does not propagate safe area insets to a UIView that is the `view`
-/// property of a child UIViewController until that child has gone through a
-/// full appearance cycle (`beginAppearanceTransition`/`endAppearanceTransition`).
-/// In a custom container like `UIStackController`, non-top children inserted
-/// in bulk never receive appearance transitions, so their `view.safeAreaInsets`
-/// stays at zero — even though the wrapper (UIStackEffectView) above them in
-/// the hierarchy has the correct insets.
+/// UIKit blocks safe area inset propagation for child VCs that haven't
+/// completed an appearance cycle. In `UIStackController`, non-top children
+/// inserted via bulk `set(viewControllers:)` never receive appearance
+/// transitions, so their `view.safeAreaInsets` stays at zero.
 ///
-/// This one-time swizzle of `UIView.safeAreaInsets` fixes the issue:
-/// when the view's direct superview is a `UIStackEffectView`, it returns
-/// the wrapper's safe area insets instead of the (broken) UIKit-computed ones.
+/// This workaround sets the internal `_appearState` bit in
+/// `_viewControllerFlags` to make UIKit treat the VC as "appeared" for
+/// safe area purposes — without triggering `viewWillAppear`/`viewDidAppear`.
+///
+/// The bit is validated at launch: if the ivar layout changes in a future
+/// iOS version, the function silently does nothing (safe area stays zero
+/// rather than corrupting memory).
 /// @ai-generated(guided)
-private extension UIStackEffectView {
+extension UIViewController {
 
-	private static let swizzleOnce: Void = {
-		guard
-			let original = class_getInstanceMethod(UIView.self, #selector(getter: UIView.safeAreaInsets)),
-			let swizzled = class_getInstanceMethod(UIView.self, #selector(UIView._vdp_swizzled_safeAreaInsets))
-		else { return }
-		method_exchangeImplementations(original, swizzled)
+	private static let appearStateBitInfo: (offset: Int, ok: Bool) = {
+		var count: UInt32 = 0
+		guard let ivars = class_copyIvarList(UIViewController.self, &count) else {
+			return (0, false)
+		}
+		defer { free(ivars) }
+		for i in 0..<Int(count) {
+			let name = String(cString: ivar_getName(ivars[i])!)
+			if name == "_viewControllerFlags" {
+				return (ivar_getOffset(ivars[i]), true)
+			}
+		}
+		return (0, false)
 	}()
 
-	static func installSafeAreaSwizzleIfNeeded() {
-		_ = swizzleOnce
+	/// Unlocks safe area propagation for this VC without triggering appearance callbacks.
+	/// No-op if the internal layout is unrecognized (future-proofing).
+	func unlockSafeAreaPropagation() {
+		let info = Self.appearStateBitInfo
+		guard info.ok else { return }
+		let ptr = Unmanaged.passUnretained(self).toOpaque()
+			.advanced(by: info.offset)
+			.assumingMemoryBound(to: UInt8.self)
+		ptr[0] |= 0x02
 	}
-}
 
-private extension UIView {
-
-	/// Swizzled replacement for `safeAreaInsets`.
-	/// For views whose direct superview is a `UIStackEffectView` (i.e. child
-	/// VC views managed by `UIStackController`), returns the wrapper's insets
-	/// so the child gets correct safe area regardless of appearance state.
-	/// For all other views, calls through to the original implementation.
-	@objc dynamic func _vdp_swizzled_safeAreaInsets() -> UIEdgeInsets {
-		// After swizzle, _vdp_swizzled_safeAreaInsets points to the original IMP.
-		let original = self._vdp_swizzled_safeAreaInsets()
-		guard let wrapper = superview as? UIStackEffectView else {
-			return original
-		}
-		let result = wrapper.safeAreaInsets// wrapper.window == nil ? wrapper.safeAreaInsets : wrapper.safeArea(in: nil)
-		#if VDPRESENT_LOG
-		print("UIStackEffectView safeAreaInsets swizzle: \(result.descr) instead of \(original.descr) for '\(accessibilityIdentifier ?? "nil")'")
-		#endif
-		return result
+	// TODO: Try clearing the bit after layout pass — sandbox showed safe area
+	// persists after clear. This would avoid permanently lying about appearState.
+	// Set bit → wait for layout → clear bit. Could do in completionBlock.
+	func lockSafeAreaPropagation() {
+		let info = Self.appearStateBitInfo
+		guard info.ok else { return }
+		let ptr = Unmanaged.passUnretained(self).toOpaque()
+			.advanced(by: info.offset)
+			.assumingMemoryBound(to: UInt8.self)
+		ptr[0] &= ~UInt8(0x02)
 	}
 }

@@ -47,7 +47,7 @@ public extension UIPresentation.Transition {
 					// Back effects at removal(1) = identity, so remaining views stay in place.
 					context.container.isHidden = true
 					animateOwn(context: context, progress: .removal(1), animation: additionalAnimation)
-//					applyBackEffects(context: context, progress: .removal(1))
+					applyBackEffects(context: context, progress: .removal(1))
 					// Insertion frozen: no prepare — stays at current state (insertion(1)),
 					// moved only by backEffect from the new top controller.
 					return
@@ -59,7 +59,7 @@ public extension UIPresentation.Transition {
 				// Snap to start state so the view is in its pre-animation position
 				// (e.g. off-screen for a slide-up transition) before the animation block runs.
 				animateOwn(context: context, progress: context.ownDirection.at(.start), animation: additionalAnimation)
-//				applyBackEffects(context: context, progress: context.ownDirection.at(.start))
+				applyBackEffects(context: context, progress: context.ownDirection.at(.start))
 			},
 			animation: { context in
 				// Reset this view to identity by undoing any previously applied effects
@@ -76,7 +76,7 @@ public extension UIPresentation.Transition {
 				animateOwn(context: context, progress: ownProgress, animation: additionalAnimation)
 
 				// Apply recess effects on views below this controller.
-//				applyBackEffects(context: context, progress: ownProgress)
+				applyBackEffects(context: context, progress: ownProgress)
 
 				if context.isTopController {
 					// do we need this? ios seems to update the status bar automatically, need to figure out if there are ios versions that don't do this or if there are edge cases where it doesn't work
