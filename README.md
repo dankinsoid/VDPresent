@@ -9,7 +9,7 @@ VDPresent is a powerful, customizable library for managing view controller trans
 - [x] Manage view controllers with a stack-based approach similar to `UINavigationController`.
 - [x] Customize transitions through `UIPresentation` struct.
 - [x] Simplify showing and hiding of view controllers.
-- [x] Common transitions like `UIPresentation.push`, `UIPresentation.fullScreen` out of the box.
+- [x] Common transitions like `UIPresentation.navigation`, `UIPresentation.fullScreen` out of the box.
 - [ ] Self-sizing behavior for modals like bottom sheets. (Coming soon)
 - [ ] Integration with SwiftUI. (Coming soon)
 - [ ] Alternatives to native tab and navigation bars. (Coming soon)
@@ -37,7 +37,7 @@ let stackController = UIStackController(rootViewController: rootViewController)
 viewController.show(as: .fullScreen(from: .leading, interactive: true))
 
 // local presentation
-stackController.show(viewController, as: .push)
+stackController.show(viewController, as: .navigation)
 ```
 
 #### Hide a View Controller

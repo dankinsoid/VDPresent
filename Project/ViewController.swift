@@ -74,10 +74,10 @@ final class MainMenuViewController: UITableViewController {
 				presentation: .pageSheet
 			),
 			.init(
-				title: ".push",
+				title: ".navigation",
 				description: "Previous screen slides back at 30% offset. Swipe from the right edge to go back.",
-				code: "controller.show(as: .push)",
-				presentation: .push
+				code: "controller.show(as: .navigation)",
+				presentation: .navigation
 			),
 			.init(
 				title: ".fullScreen",
@@ -106,10 +106,10 @@ final class MainMenuViewController: UITableViewController {
 				presentation: .sheet(from: .trailing)
 			),
 			.init(
-				title: ".push(from: .leading)",
-				description: "Push from the left — mirrors a back-navigation gesture.",
-				code: "controller.show(as: .push(from: .leading))",
-				presentation: .push(from: .leading)
+				title: ".navigation(from: .leading)",
+				description: "Navigation from the left — mirrors a back-navigation gesture.",
+				code: "controller.show(as: .navigation(from: .leading))",
+				presentation: .navigation(from: .leading)
 			),
 		]),
 		.init(title: "Interactivity", items: [
@@ -224,8 +224,8 @@ private func stackSectionItems() -> [DemoItem] {
 		.init(
 			title: "show(_:as:) — build a stack",
 			description: "Each controller is pushed individually. Swipe from the edge to go back.",
-			code: "controller.show(as: .push)",
-			presentation: .push,
+			code: "controller.show(as: .navigation)",
+			presentation: .navigation,
 			tapAction: { _ in
 				let step3 = StackStepViewController(
 					stepTitle: "Step 3 / 3",
@@ -234,31 +234,31 @@ private func stackSectionItems() -> [DemoItem] {
 					actions: [
 						.init(title: "Dismiss all", style: .secondary, handler: { vc in
 							// hide(3): pops step3, step2, step1 back to menu
-							vc.stackController?.hide(3)
+							vc.stackController?.pop(3)
 						}),
 					]
 				)
 				let step2 = StackStepViewController(
 					stepTitle: "Step 2 / 3",
 					description: "One more push to go deeper.",
-					code: "controller.show(as: .push)",
+					code: "controller.show(as: .navigation)",
 					actions: [
 						.init(title: "Push Step 3", style: .primary, handler: { _ in
-							step3.show(as: .push)
+							step3.show(as: .navigation)
 						}),
 					]
 				)
 				let step1 = StackStepViewController(
 					stepTitle: "Step 1 / 3",
 					description: "Push another controller on top of this one.",
-					code: "controller.show(as: .push)",
+					code: "controller.show(as: .navigation)",
 					actions: [
 						.init(title: "Push Step 2", style: .primary, handler: { _ in
-							step2.show(as: .push)
+							step2.show(as: .navigation)
 						}),
 					]
 				)
-				step1.show(as: .push)
+				step1.show(as: .navigation)
 			}
 		),
 
@@ -267,7 +267,7 @@ private func stackSectionItems() -> [DemoItem] {
 			title: "hide(_ count:) — pop multiple at once",
 			description: "Build a stack of 3, then call hide(3) to pop all of them at once.",
 			code: "stackController?.hide(3)",
-			presentation: .push,
+			presentation: .navigation,
 			tapAction: { _ in
 				let depth3 = StackStepViewController(
 					stepTitle: "Depth 3",
@@ -275,39 +275,39 @@ private func stackSectionItems() -> [DemoItem] {
 					code: "stackController?.hide(3)",
 					actions: [
 						.init(title: "hide(3) — pop all", style: .primary, handler: { vc in
-							vc.stackController?.hide(3)
+							vc.stackController?.pop(3)
 						}),
 					]
 				)
 				let depth2 = StackStepViewController(
 					stepTitle: "Depth 2",
 					description: "Go one level deeper.",
-					code: "controller.show(as: .push)",
+					code: "controller.show(as: .navigation)",
 					actions: [
 						.init(title: "Push to Depth 3", style: .primary, handler: { _ in
-							depth3.show(as: .push)
+							depth3.show(as: .navigation)
 						}),
 					]
 				)
 				let depth1 = StackStepViewController(
 					stepTitle: "Depth 1",
 					description: "Push two more controllers, then pop all three in a single call.",
-					code: "controller.show(as: .push)",
+					code: "controller.show(as: .navigation)",
 					actions: [
 						.init(title: "Push to Depth 2", style: .primary, handler: { _ in
-							depth2.show(as: .push)
+							depth2.show(as: .navigation)
 						}),
 					]
 				)
-				depth1.show(as: .push)
+				depth1.show(as: .navigation)
 			}
 		),
 
 		// Demo: mixed presentations — each controller in the stack uses a different animation
 		.init(
 			title: "Mixed presentations in one stack",
-			description: "Each controller is shown with its own presentation: sheet → push → pageSheet → fullScreen.",
-			code: "a.show(as: .sheet)\nb.show(as: .push)\nc.show(as: .pageSheet)\nd.show(as: .fullScreen)",
+			description: "Each controller is shown with its own presentation: sheet → navigation → pageSheet → fullScreen.",
+			code: "a.show(as: .sheet)\nb.show(as: .navigation)\nc.show(as: .pageSheet)\nd.show(as: .fullScreen)",
 			presentation: .sheet,
 			tapAction: { _ in
 				let d = StackStepViewController(
@@ -328,9 +328,9 @@ private func stackSectionItems() -> [DemoItem] {
 					]
 				)
 				let b = StackStepViewController(
-					stepTitle: "B — .push",
-					description: "Shown with .push on top of A. Swipe from right edge to go back.",
-					code: "b.show(as: .push)",
+					stepTitle: "B — .navigation",
+					description: "Shown with .navigation on top of A. Swipe from right edge to go back.",
+					code: "b.show(as: .navigation)",
 					actions: [
 						.init(title: "Show C (.pageSheet)", style: .primary, handler: { _ in c.show(as: .pageSheet) }),
 						.init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
@@ -341,7 +341,7 @@ private func stackSectionItems() -> [DemoItem] {
 					description: "Shown with .sheet. All four controllers live in the same stack.",
 					code: "a.show(as: .sheet)",
 					actions: [
-						.init(title: "Show B (.push)", style: .primary, handler: { _ in b.show(as: .push) }),
+						.init(title: "Show B (.navigation)", style: .primary, handler: { _ in b.show(as: .navigation) }),
 						.init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
 					]
 				)
@@ -353,13 +353,13 @@ private func stackSectionItems() -> [DemoItem] {
 		.init(
 			title: "set(viewControllers:) — replace stack",
 			description: "Replace the entire stack with a new array of controllers in one call.",
-			code: "stack.set(viewControllers: [a, b, c], as: .push)",
-			presentation: .push,
+			code: "stack.set(viewControllers: [a, b, c], as: .navigation)",
+			presentation: .navigation,
 			tapAction: { _ in
 				let entry = StackStepViewController(
 					stepTitle: "set(viewControllers:)",
 					description: "Pressing the button replaces the current stack with [A, B, C] at once — animating to C.",
-					code: "stack.set(viewControllers: [menu, a, b, c], as: .push)",
+					code: "stack.set(viewControllers: [menu, a, b, c], as: .navigation)",
 					actions: [
 						.init(title: "Replace stack with [A, B, C]", style: .primary, handler: { vc in
 							guard let stack = vc.stackController else { return }
@@ -389,11 +389,11 @@ private func stackSectionItems() -> [DemoItem] {
 									.init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
 								]
 							)
-							stack.set(viewControllers: menu + [a, b, c], as: .push)
+							stack.set(viewControllers: menu + [a, b, c], as: .navigation)
 						}),
 					]
 				)
-				entry.show(as: .push)
+				entry.show(as: .navigation)
 			}
 		),
 
@@ -410,7 +410,7 @@ private func stackSectionItems() -> [DemoItem] {
 					code: "c.show(as: .pageSheet)",
 					actions: [
 						.init(title: "Dismiss all sheets", style: .primary, handler: { vc in
-							vc.stackController?.hide(3)
+							vc.stackController?.pop(3)
 						}),
 						.init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
 					]
@@ -443,18 +443,18 @@ private func stackSectionItems() -> [DemoItem] {
 
 		// Demo: push after pageSheet
 		.init(
-			title: ".push after .pageSheet",
-			description: "Show a pageSheet, then push on top of it. Different transitions coexist in the same stack.",
-			code: "a.show(as: .pageSheet)\nb.show(as: .push)",
+			title: ".navigation after .pageSheet",
+			description: "Show a pageSheet, then navigate on top of it. Different transitions coexist in the same stack.",
+			code: "a.show(as: .pageSheet)\nb.show(as: .navigation)",
 			presentation: .pageSheet,
 			tapAction: { _ in
 				let pushed = StackStepViewController(
 					stepTitle: "Pushed on Sheet",
 					description: "This controller was pushed on top of a pageSheet. Swipe from right edge to go back.",
-					code: "pushed.show(as: .push)",
+					code: "pushed.show(as: .navigation)",
 					actions: [
 						.init(title: "Dismiss all", style: .primary, handler: { vc in
-							vc.stackController?.hide(2)
+							vc.stackController?.pop(2)
 						}),
 						.init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
 					]
@@ -465,7 +465,7 @@ private func stackSectionItems() -> [DemoItem] {
 					code: "a.show(as: .pageSheet)",
 					actions: [
 						.init(title: "Push on top", style: .primary, handler: { _ in
-							pushed.show(as: .push)
+							pushed.show(as: .navigation)
 						}),
 						.init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
 					]
@@ -476,17 +476,17 @@ private func stackSectionItems() -> [DemoItem] {
 
 		// Demo: replace pageSheet with push via set(viewControllers:)
 		.init(
-			title: ".pageSheet → replace with .push",
-			description: "Show a pageSheet, then replace it with a push controller via set(viewControllers:).",
-			code: "stack.set(viewControllers: [menu, pushed], as: .push)",
+			title: ".pageSheet → replace with .navigation",
+			description: "Show a pageSheet, then replace it with a navigation controller via set(viewControllers:).",
+			code: "stack.set(viewControllers: [menu, pushed], as: .navigation)",
 			presentation: .pageSheet,
 			tapAction: { _ in
 				let sheet = StackStepViewController(
 					stepTitle: "PageSheet",
 					description: "Tap to replace this pageSheet with a pushed controller.",
-					code: "stack.set(viewControllers: [menu, pushed], as: .push)",
+					code: "stack.set(viewControllers: [menu, pushed], as: .navigation)",
 					actions: [
-						.init(title: "Replace with .push", style: .primary, handler: { vc in
+						.init(title: "Replace with .navigation", style: .primary, handler: { vc in
 							guard let stack = vc.stackController else { return }
 							let menu = stack.viewControllers.first.map { [$0] } ?? []
 							let pushed = StackStepViewController(
@@ -497,7 +497,7 @@ private func stackSectionItems() -> [DemoItem] {
 									.init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
 								]
 							)
-							stack.set(viewControllers: menu + [pushed], as: .push)
+							stack.set(viewControllers: menu + [pushed], as: .navigation)
 						}),
 						.init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
 					]
@@ -510,13 +510,13 @@ private func stackSectionItems() -> [DemoItem] {
 		.init(
 			title: "Random stack mutation",
 			description: "Each tap builds a random stack with random presentations. Tests arbitrary stack changes.",
-			code: "stack.set(viewControllers: random, as: .push)",
-			presentation: .push,
+			code: "stack.set(viewControllers: random, as: .navigation)",
+			presentation: .navigation,
 			tapAction: { _ in
 				/// @ai-generated(solo)
 				func makeRandomStep(index: Int, total: Int) -> StackStepViewController {
 					let presentations: [(String, UIPresentation)] = [
-						(".push", .push),
+						(".navigation", .navigation),
 						(".pageSheet", .pageSheet),
 						(".sheet", .sheet),
 						(".fullScreen", .fullScreen),
@@ -563,7 +563,7 @@ private func stackSectionItems() -> [DemoItem] {
 						}),
 					]
 				)
-				entry.show(as: .push)
+				entry.show(as: .navigation)
 			}
 		),
 	]

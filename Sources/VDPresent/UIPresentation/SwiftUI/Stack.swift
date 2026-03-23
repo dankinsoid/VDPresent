@@ -1,7 +1,7 @@
 import SwiftUI
 import VDTransition
 
-public struct Stack<Content: View>: View {
+struct Stack<Content: View>: View {
 
 	public let content: Content
 

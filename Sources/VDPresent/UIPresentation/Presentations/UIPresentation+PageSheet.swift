@@ -219,13 +219,18 @@ private struct PageSheetModifier: TransitionModifier {
 	}
 
 	func value(for root: UIView) -> Value {
-		Value(
+		let sourceRect = root.convert(root.bounds, to: nil)
+		let targetRect = target?.convert(target?.bounds ?? .zero, to: nil) ?? root.bounds
+		#if VDPRESENT_LOG
+		print("📐 PageSheetModifier sourceRect=\(sourceRect.descr) targetRect=\(targetRect.descr) rootBounds=\(root.bounds.descr) targetBounds=\(target?.bounds.descr ?? "nil") rootTransform=\(root.affineTransform)")
+		#endif
+		return Value(
 			sourceTransform: root.affineTransform,
 			cornerRadius: root.layer.cornerRadius,
 			cornerMask: root.layer.maskedCorners,
 			clipsToBounds: root.clipsToBounds,
-			sourceRect: root.convert(root.bounds, to: nil),
-			targetRect: target?.convert(target?.bounds ?? .zero, to: nil) ?? root.bounds
+			sourceRect: sourceRect,
+			targetRect: targetRect
 		)
 	}
 

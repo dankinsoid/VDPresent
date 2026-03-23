@@ -363,14 +363,20 @@ private extension UIPresentation.Transition {
 			?? String(describing: type(of: view))
 	}
 
-	/// Short readable representation of a view's current transform offset.
+	/// Short readable representation of a view's current transform.
 	private static func fmt(_ view: UIView) -> String {
-		let tx = view.affineTransform.tx
-		let ty = view.affineTransform.ty
-		if tx == 0, ty == 0 { return "center" }
-		if ty == 0 { return "tx=\(Int(tx))" }
-		if tx == 0 { return "ty=\(Int(ty))" }
-		return "tx=\(Int(tx)) ty=\(Int(ty))"
+		let t = view.affineTransform
+		let tx = t.tx
+		let ty = t.ty
+		let sx = sqrt(t.a * t.a + t.c * t.c)
+		let sy = sqrt(t.b * t.b + t.d * t.d)
+		var parts: [String] = []
+		if tx != 0 { parts.append("tx=\(Int(tx))") }
+		if ty != 0 { parts.append("ty=\(Int(ty))") }
+		if abs(sx - 1) > 0.001 || abs(sy - 1) > 0.001 {
+			parts.append("sx=\(String(format: "%.3f", sx)) sy=\(String(format: "%.3f", sy))")
+		}
+		return parts.isEmpty ? "center" : parts.joined(separator: " ")
 	}
 
 	/// Logs safe area insets at each level of the view hierarchy for a controller.

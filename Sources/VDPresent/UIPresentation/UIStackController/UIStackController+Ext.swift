@@ -29,9 +29,9 @@ public extension UIStackController {
 		get { viewControllers.last }
 		set {
 			if let newValue {
-				show(newValue)
+				push(newValue)
 			} else {
-				hide(viewControllers.count)
+				pop(viewControllers.count)
 			}
 		}
 	}
@@ -39,7 +39,7 @@ public extension UIStackController {
 
 public extension UIStackController {
 
-	func show(
+	func push(
 		_ viewController: UIViewController,
 		as presentation: UIPresentation? = nil,
 		animated: Bool = true,
@@ -66,14 +66,14 @@ public extension UIStackController {
 		}
 	}
 
-	func hide(
+	func pop(
 		_ count: Int = 1,
 		as presentation: UIPresentation? = nil,
 		animated: Bool = true,
 		completion: (() -> Void)? = nil
 	) {
 		set(
-			viewControllers: Array(viewControllers.dropLast(count)),
+			viewControllers: count < 0 ? Array(viewControllers.prefix(-count)) : Array(viewControllers.dropLast(count)),
 			as: presentation,
 			animated: animated,
 			completion: completion

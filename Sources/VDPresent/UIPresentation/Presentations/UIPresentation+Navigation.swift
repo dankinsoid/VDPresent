@@ -3,16 +3,16 @@ import VDTransition
 
 public extension UIPresentation {
 
-	static var push: UIPresentation {
-		.push()
+	static var navigation: UIPresentation {
+		.navigation()
 	}
 
-	static func push(
+	static func navigation(
 		from edge: Edge = .trailing,
 		containerColor: UIColor = .black.withAlphaComponent(0.1)
 	) -> UIPresentation {
 		UIPresentation(
-			transition: .base(transitionID: "push")
+			transition: .base(transitionID: "navigation")
 				.environment(\.contentTransition) { _ in .move(edge: edge) }
 				.environment(\.recessTransition) { _, _ in .move(edge: edge.opposite, offset: .relative(0.3)) }
 				.environment(\.backEffectBarrier, true)
@@ -24,6 +24,5 @@ public extension UIPresentation {
 			\.backgroundTransition,
 			.value(\.backgroundColor, containerColor, default: containerColor.withAlphaComponent(0))
 		)
-		.environment(\.swipeFromEdge, true)
 	}
 }

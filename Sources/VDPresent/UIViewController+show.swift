@@ -74,13 +74,13 @@ public extension UIViewController {
 			result = UIStackController()
 			result.modalPresentationStyle = .overFullScreen
 			result.present(animated: false) {
-				result.show(self, as: presentation, animated: animated, completion: completion)
+				result.push(self, as: presentation, animated: animated, completion: completion)
 			}
 			return result
 		}
 		if result.stackController != nil {
 			var isCompleted = false
-			result.show(self, as: presentation, animated: animated) {
+			result.push(self, as: presentation, animated: animated) {
 				guard isCompleted else {
 					isCompleted = true
 					return
@@ -95,7 +95,7 @@ public extension UIViewController {
 				completion?()
 			}
 		} else {
-			result.show(self, as: presentation, animated: animated, completion: completion)
+			result.push(self, as: presentation, animated: animated, completion: completion)
 		}
 		return result
 	}

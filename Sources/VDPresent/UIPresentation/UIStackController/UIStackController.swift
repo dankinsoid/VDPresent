@@ -17,13 +17,19 @@ import VDTransition
 /// window.rootViewController = stack
 ///
 /// // Push
-/// stack.show(HomeViewController())
+/// stack.push(HomeViewController())
 ///
 /// // Push with a custom presentation
-/// stack.show(DetailViewController(), as: .sheet)
+/// stack.push(DetailViewController(), as: .sheet)
 ///
 /// // Pop one level
-/// stack.hide()
+/// stack.pop()
+///
+/// // Pop several levels at once
+/// stack.pop(2)
+///
+/// // Pop to root
+/// stack.pop(-1)
 ///
 /// // Replace the entire stack
 /// stack.set(viewControllers: [RootViewController(), ListViewController()])
@@ -45,7 +51,7 @@ import VDTransition
 /// // Show from anywhere — VDPresent resolves the right stack automatically.
 /// myViewController.show()
 /// myViewController.show(as: .pageSheet)
-/// myViewController.show(as: .push, animated: true) {
+/// myViewController.show(as: .navigation, animated: true) {
 ///     print("presented")
 /// }
 ///
@@ -57,8 +63,8 @@ import VDTransition
 /// myViewController.isShown = false  // calls hide() if currently visible
 ///
 /// // Set a per-controller default so show() always uses it without arguments.
-/// myViewController.defaultPresentation = .push
-/// myViewController.show()           // uses .push automatically
+/// myViewController.defaultPresentation = .navigation
+/// myViewController.show()           // uses .navigation automatically
 /// ```
 ///
 /// ## Finding the stack from within a child
@@ -76,7 +82,7 @@ import VDTransition
 /// driven transitions for free:
 ///
 /// ```swift
-/// stack.show(DetailViewController(), as: .sheet)
+/// stack.push(DetailViewController(), as: .sheet)
 /// // The sheet presentation ships with an edge-pan recogniser out of the box.
 /// ```
 ///
@@ -120,13 +126,12 @@ open class UIStackController: UIViewController {
 		view.backgroundColor = .clear
 	}
 
-
 	override open func show(_ vc: UIViewController, sender: Any?) {
-		show(vc)
+		push(vc)
 	}
 
 	override open func showDetailViewController(_ vc: UIViewController, sender: Any?) {
-		show(vc)
+		push(vc)
 	}
 
 	override open func targetViewController(forAction action: Selector, sender: Any?) -> UIViewController? {
@@ -269,6 +274,13 @@ private extension UIStackController {
 				presentations[toViewController] = toViewController.defaultPresentation ?? presentation
 			}
 		}
+
+		// Resolve container layout before adding child views.
+		// New containers are pinned to content via constraints but haven't
+		// received a layout pass yet, so their frames are still zero.
+		// Without this, convert(_:to:) inside PageSheetModifier returns
+		// wrong window coordinates (e.g. x=-201 instead of 0).
+		content.layoutIfNeeded()
 
 		// Add views to the hierarchy before addChild so UIKit can
 		// compute safe area insets from the view's actual position.

@@ -1,6 +1,6 @@
 import UIKit
 
-public protocol UIStackControllerDataSource {
+protocol UIStackControllerDataSource {
 
 	func nextController(after current: UIViewController?) -> UIViewController?
 	func previousController(before current: UIViewController?) -> UIViewController?
