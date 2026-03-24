@@ -59,15 +59,6 @@ public extension UIPresentation.Transition {
 				logHierarchy(context: context, phase: "animate")
 				#endif
 
-				if !context.isChangingController || context.isBehindFrozen {
-					// Remaining and frozen controllers: own state doesn't change
-					// between prepare and animate (both insertion(1)). Only backEffects
-					// from changing controllers above will update them — those
-					// controllers' animate blocks call applyBackEffects on views below.
-					// Resetting here would flash the view to identity mid-animation.
-					return
-				}
-
 				// Reset to identity, then apply the post-animation state.
 				resetView(context: context)
 				animateOwn(context: context, progress: progress, animation: additionalAnimation)
@@ -79,10 +70,10 @@ public extension UIPresentation.Transition {
 			},
 			completion: { context, completed in
 				let finalContext = completed ? context : context.reversed
-//				cleanupTransitions(context: finalContext)
-//				if finalContext.needHide {
-//					finalContext.container.isHidden = true
-//				}
+				cleanupTransitions(context: finalContext)
+				if finalContext.needHide {
+					finalContext.container.isHidden = true
+				}
 				completeBackground(context: finalContext)
 				#if VDPRESENT_LOG
 				logSafeArea(context: finalContext)
