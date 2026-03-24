@@ -222,122 +222,79 @@ final class MainMenuViewController: UITableViewController {
 
 // MARK: - Stack section
 
+/// Builds a 4-screen demo where each screen can push one, push all, pop back, pop to root, or replace the stack.
+/// @ai-generated(solo)
+private func stackNavigationDemo(title: String, presentation: UIPresentation) -> DemoItem {
+	let presentationName = title.components(separatedBy: "— ").last ?? "presentation"
+	return .init(
+		title: title,
+		description: "Four screens with \(presentationName). Push one, push all, pop back, pop to root, or replace.",
+		code: "vc.show(as: \(presentationName))\nvc.hide()\nstack.pop(_:)\nstack.set(viewControllers:)",
+		presentation: presentation,
+		tapAction: { _ in
+			let total = 4
+
+			let screens = (1...total).map { i in
+				StackStepViewController(
+					stepTitle: "Screen \(i) / \(total)",
+					description: i < total
+						? "Push next, push all remaining, go back, or jump to root."
+						: "Last screen. Go back, pop to root, or replace the stack.",
+					code: "",
+					actions: []
+				)
+			}
+
+			for (i, screen) in screens.enumerated() {
+				let index = i + 1
+				let remaining = Array(screens[(i + 1)...])
+				let actions: [StackAction?] = [
+					index < total
+						? .init(title: "Push Screen \(index + 1)", style: .primary, handler: { _ in
+							_ = screens[i + 1].show(as: presentation)
+						})
+						: nil,
+					remaining.count > 1
+						? .init(title: "Push all \(remaining.count) at once", style: .primary, handler: { vc in
+							guard let stack = vc.stackController else { return }
+							stack.set(viewControllers: stack.viewControllers + remaining, as: presentation)
+						})
+						: nil,
+					.init(title: "set() — replace stack", style: .primary, handler: { vc in
+						guard let stack = vc.stackController else { return }
+						let menu = stack.viewControllers.first.map { [$0] } ?? []
+						let fresh = StackStepViewController(
+							stepTitle: "Replaced",
+							description: "The entire stack was replaced with set(viewControllers:).",
+							code: "stack.set(viewControllers: [menu, this], as: \(presentationName))",
+							actions: [
+								.init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
+							]
+						)
+						stack.set(viewControllers: menu + [fresh], as: presentation)
+					}),
+					index > 1
+						? .init(title: "pop(\(index)) — to root", style: .secondary, handler: { vc in
+							vc.stackController?.pop(index)
+						})
+						: nil,
+					.init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
+				]
+				screen.setActions(actions.compactMap { $0 })
+			}
+
+			_ = screens[0].show(as: presentation)
+		}
+	)
+}
+
 /// Builds the Stack demo items. Extracted to a free function to keep the sections array readable.
 /// @ai-generated(solo)
 private func stackSectionItems() -> [DemoItem] {
 	[
-		// Demo: unified show/hide/set — every screen can go forward and backward
 		/// @ai-generated(solo)
-		.init(
-			title: "show / hide / set — stack navigation",
-			description: "Four screens. Each can push one, push all remaining, pop back, pop to root, or replace the stack.",
-			code: "vc.show(as:)\nvc.hide()\nstack.pop(_:)\nstack.set(viewControllers:)",
-			presentation: .navigation,
-			tapAction: { _ in
-				let total = 4
-
-				// Create all screens up front so each one can reference the rest
-				let screens = (1...total).map { i in
-					StackStepViewController(
-						stepTitle: "Screen \(i) / \(total)",
-						description: i < total
-							? "Push next, push all remaining, go back, or jump to root."
-							: "Last screen. Go back, pop to root, or replace the stack.",
-						code: "",
-						actions: [] // configured below
-					)
-				}
-
-				for (i, screen) in screens.enumerated() {
-					let index = i + 1 // 1-based
-					let remaining = Array(screens[(i + 1)...])
-					var actions: [StackAction?] = [
-						// Push next one (show)
-						index < total
-							? .init(title: "Push Screen \(index + 1)", style: .primary, handler: { _ in
-								_ = screens[i + 1].show(as: .navigation)
-							})
-							: nil,
-						// Push all remaining at once (set)
-						remaining.count > 1
-							? .init(title: "Push all \(remaining.count) at once", style: .primary, handler: { vc in
-								guard let stack = vc.stackController else { return }
-								stack.set(viewControllers: stack.viewControllers + remaining, as: .navigation)
-							})
-							: nil,
-						// Replace entire stack (set)
-						.init(title: "set() — replace stack", style: .primary, handler: { vc in
-							guard let stack = vc.stackController else { return }
-							let menu = stack.viewControllers.first.map { [$0] } ?? []
-							let fresh = StackStepViewController(
-								stepTitle: "Replaced",
-								description: "The entire stack was replaced with set(viewControllers:).",
-								code: "stack.set(viewControllers: [menu, this], as: .navigation)",
-								actions: [
-									.init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
-								]
-							)
-							stack.set(viewControllers: menu + [fresh], as: .navigation)
-						}),
-						// Pop to root
-						index > 1
-							? .init(title: "pop(\(index)) — to root", style: .secondary, handler: { vc in
-								vc.stackController?.pop(index)
-							})
-							: nil,
-						// Back one step
-						.init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
-					]
-					screen.setActions(actions.compactMap { $0 })
-				}
-
-				screens[0].show(as: .navigation)
-			}
-		),
-
-		// Demo: multiple pageSheets stacked
-		.init(
-			title: "Multiple .pageSheet",
-			description: "Three pageSheets stacked on top of each other. Each scales the previous one.",
-			code: "a.show(as: .pageSheet)\nb.show(as: .pageSheet)\nc.show(as: .pageSheet)",
-			presentation: .pageSheet,
-			tapAction: { _ in
-				let sheetC = StackStepViewController(
-					stepTitle: "Sheet C",
-					description: "Third pageSheet. Notice how each layer scales the one below.",
-					code: "c.show(as: .pageSheet)",
-					actions: [
-						.init(title: "Dismiss all sheets", style: .primary, handler: { vc in
-							vc.stackController?.pop(3)
-						}),
-						.init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
-					]
-				)
-				let sheetB = StackStepViewController(
-					stepTitle: "Sheet B",
-					description: "Second pageSheet stacked on A.",
-					code: "b.show(as: .pageSheet)",
-					actions: [
-						.init(title: "Show Sheet C", style: .primary, handler: { _ in
-							sheetC.show(as: .pageSheet)
-						}),
-						.init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
-					]
-				)
-				let sheetA = StackStepViewController(
-					stepTitle: "Sheet A",
-					description: "First pageSheet. Push another on top.",
-					code: "a.show(as: .pageSheet)",
-					actions: [
-						.init(title: "Show Sheet B", style: .primary, handler: { _ in
-							sheetB.show(as: .pageSheet)
-						}),
-						.init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
-					]
-				)
-				sheetA.show(as: .pageSheet)
-			}
-		),
+		stackNavigationDemo(title: "Stack — .navigation", presentation: .navigation),
+		stackNavigationDemo(title: "Stack — .pageSheet", presentation: .pageSheet),
 
 		// Demo: push after pageSheet
 		.init(
