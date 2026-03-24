@@ -316,7 +316,9 @@ private extension UIPresentation.Transition {
 	/// for everything below it.
 	/// @ai-generated(guided)
 	static func applyBackEffects(context: UIPresentation.Context, progress: Progress) {
-		let allControllers = context.viewControllers.all(context.direction)
+		// Use visible controllers so barriers from non-visible departing VCs
+		// don't block recess propagation to re-entering controllers (e.g. pop-to-root).
+		let allControllers = context.visibleViewControllers.all(context.direction)
 		guard let myIndex = allControllers.firstIndex(of: context.viewController), myIndex > 0 else { return }
 
 		let backControllers = allControllers[..<myIndex].reversed()

@@ -330,6 +330,12 @@ private extension UIStackController {
 			item.willMove(toParent: nil)
 		}
 
+		// Store visible slice in shared cache so applyBackEffects iterates
+		// only visible controllers (skipping barriers from non-visible departing VCs).
+		if let first = allVisible.first {
+			context(first).visibleViewControllers = visibleControllers
+		}
+
 		// Animation pipeline: only visible controllers.
 		for controller in allVisible {
 			let currentPresentation = presentations[controller, default: presentation]

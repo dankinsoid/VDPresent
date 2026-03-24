@@ -277,6 +277,14 @@ public extension UIPresentation.Context {
 
 extension UIPresentation.Context {
 
+	/// Visible slice of the stack, set by UIStackController before the animation pipeline.
+	/// Used by `applyBackEffects` so barriers from non-visible departing controllers
+	/// don't block recess propagation to re-entering controllers.
+	var visibleViewControllers: Controllers {
+		get { cache[\.visibleViewControllers] ?? viewControllers }
+		nonmutating set { cache[\.visibleViewControllers] = newValue }
+	}
+
 	var isChangingController: Bool {
 		!viewControllers.to.contains(viewController) || !viewControllers.from.contains(viewController)
 	}
