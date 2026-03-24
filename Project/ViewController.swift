@@ -281,7 +281,8 @@ private func stackSectionItems() -> [DemoItem] {
 				var next: () -> Void = {}
 				for i in stride(from: total, through: 1, by: -1) {
 					let step = makeStep(i, total: total, next: next)
-					let showStep = { step.show(as: .navigation) }
+					// @discardableResult not propagated through closures — discard explicitly
+				let showStep = { _ = step.show(as: .navigation) }
 					next = showStep
 				}
 				next()
