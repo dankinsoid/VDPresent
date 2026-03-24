@@ -53,7 +53,7 @@ public extension UIViewController {
 	func show(
 		as presentation: UIPresentation? = nil,
 		animated: Bool = true,
-		completion: (() -> Void)? = nil
+		completion: (@MainActor () -> Void)? = nil
 	) -> UIStackController {
 		let result: UIStackController
 		if
@@ -103,7 +103,7 @@ public extension UIViewController {
 	func hide(
 		as presentation: UIPresentation? = nil,
 		animated: Bool = true,
-		completion: (() -> Void)? = nil
+		completion: (@MainActor () -> Void)? = nil
 	) {
 		guard let stackController else {
 			guard UIWindow.root?.rootViewController !== self else {

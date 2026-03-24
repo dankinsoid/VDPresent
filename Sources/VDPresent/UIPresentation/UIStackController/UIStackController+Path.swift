@@ -1,7 +1,5 @@
 import UIKit
 
-// @ai-generated(paired)
-
 extension UIStackController {
 
 	/// Declaratively sets the stack to match a collection of `Identifiable` path elements.

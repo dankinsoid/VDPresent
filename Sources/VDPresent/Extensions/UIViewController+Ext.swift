@@ -33,4 +33,13 @@ extension UIViewController {
 	func isDescendant(of controller: UIViewController) -> Bool {
 		self === controller || parent?.isDescendant(of: controller) == true
 	}
+
+	/// Stable identity used by ``UIStackController/set(path:id:create:as:animated:completion:)``
+	/// to match path elements to existing view controllers across stack updates.
+	var idForPath: AnyHashable? {
+		get { objc_getAssociatedObject(self, &idForPathKey) as? AnyHashable }
+		set { objc_setAssociatedObject(self, &idForPathKey, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC) }
+	}
 }
+
+private var idForPathKey = 0

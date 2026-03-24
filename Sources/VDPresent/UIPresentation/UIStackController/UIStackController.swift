@@ -148,7 +148,7 @@ open class UIStackController: UIViewController {
 		as presentation: UIPresentation? = nil,
 		direction: TransitionDirection? = nil,
 		animated: Bool = true,
-		completion: (() -> Void)? = nil
+		completion: (@MainActor () -> Void)? = nil
 	) {
 		guard !isSettingControllers else {
 			queue.append(
