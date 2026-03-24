@@ -477,15 +477,19 @@ private extension UIStackController {
 					switch state {
 					case .begin:
 						guard !self.isSettingControllers else { return .prevent }
-						// Interactive: context.viewControllers is the full stack.
-					// Pass it as both controllers and visibleControllers —
-					// interactive transitions operate on the visible portion.
-					self.transition(
+						let controllers = context.viewControllers
+						let resolve: (UIViewController) -> UIPresentation = {
+							self.presentations[$0] ?? $0.defaultPresentation ?? presentation
+						}
+						// Compute visible slice same as non-interactive path,
+						// so controllers behind an opaque one are excluded.
+						let visibleControllers = controllers.visible(resolve)
+						self.transition(
 							presentation: presentation,
 							direction: context.direction,
 							animated: context.animated,
-							controllers: context.viewControllers,
-							visibleControllers: context.viewControllers,
+							controllers: controllers,
+							visibleControllers: visibleControllers,
 							context: context.for,
 							completion: nil
 						)
