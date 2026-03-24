@@ -70,10 +70,10 @@ public extension UIPresentation.Transition {
 			},
 			completion: { context, completed in
 				let finalContext = completed ? context : context.reversed
-				cleanupTransitions(context: finalContext)
-				if finalContext.needHide {
-					finalContext.container.isHidden = true
-				}
+//				cleanupTransitions(context: finalContext)
+//				if finalContext.needHide {
+//					finalContext.container.isHidden = true
+//				}
 				completeBackground(context: finalContext)
 				#if VDPRESENT_LOG
 				logSafeArea(context: finalContext)
