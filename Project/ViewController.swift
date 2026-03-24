@@ -227,65 +227,71 @@ final class MainMenuViewController: UITableViewController {
 private func stackSectionItems() -> [DemoItem] {
 	[
 		// Demo: unified show/hide/set — every screen can go forward and backward
+		/// @ai-generated(solo)
 		.init(
 			title: "show / hide / set — stack navigation",
-			description: "Four screens. Each can push forward, pop back, pop to root, or replace the stack.",
+			description: "Four screens. Each can push one, push all remaining, pop back, pop to root, or replace the stack.",
 			code: "vc.show(as:)\nvc.hide()\nstack.pop(_:)\nstack.set(viewControllers:)",
 			presentation: .navigation,
 			tapAction: { _ in
-				/// @ai-generated(solo)
-				/// Builds a step screen that can navigate forward (show), back (hide),
-				/// pop multiple (pop), and replace the entire stack (set).
-				func makeStep(_ index: Int, total: Int, next: @escaping () -> Void) -> StackStepViewController {
+				let total = 4
+
+				// Create all screens up front so each one can reference the rest
+				let screens = (1...total).map { i in
 					StackStepViewController(
-						stepTitle: "Screen \(index) / \(total)",
-						description: index < total
-							? "Push the next screen, go back, or jump to root."
+						stepTitle: "Screen \(i) / \(total)",
+						description: i < total
+							? "Push next, push all remaining, go back, or jump to root."
 							: "Last screen. Go back, pop to root, or replace the stack.",
-						code: index < total
-							? "next.show(as: .navigation)"
-							: "stack.set(viewControllers: [menu, new], as: .navigation)",
-						actions: [
-							// Forward — only if not the last screen
-							index < total
-								? .init(title: "Push Screen \(index + 1)", style: .primary, handler: { _ in next() })
-								: nil,
-							// Replace stack from any screen
-							.init(title: "set() — replace stack", style: .primary, handler: { vc in
-								guard let stack = vc.stackController else { return }
-								let menu = stack.viewControllers.first.map { [$0] } ?? []
-								let fresh = StackStepViewController(
-									stepTitle: "Replaced",
-									description: "The entire stack was replaced with set(viewControllers:).",
-									code: "stack.set(viewControllers: [menu, this], as: .navigation)",
-									actions: [
-										.init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
-									]
-								)
-								stack.set(viewControllers: menu + [fresh], as: .navigation)
-							}),
-							// Pop to root — only if deeper than screen 1
-							index > 1
-								? .init(title: "pop(\(index)) — to root", style: .secondary, handler: { vc in
-									vc.stackController?.pop(index)
-								})
-								: nil,
-							// Back one step
-							.init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
-						].compactMap { $0 }
+						code: "",
+						actions: [] // configured below
 					)
 				}
 
-				let total = 4
-				// Build chain in reverse so each screen captures the next
-				var next: () -> Void = {}
-				for i in stride(from: total, through: 1, by: -1) {
-					let step = makeStep(i, total: total, next: next)
-					// @discardableResult not propagated through closures — discard explicitly
-				let showStep = { _ = step.show(as: .navigation) }
-					next = showStep
+				for (i, screen) in screens.enumerated() {
+					let index = i + 1 // 1-based
+					let remaining = Array(screens[(i + 1)...])
+					var actions: [StackAction?] = [
+						// Push next one (show)
+						index < total
+							? .init(title: "Push Screen \(index + 1)", style: .primary, handler: { _ in
+								_ = screens[i + 1].show(as: .navigation)
+							})
+							: nil,
+						// Push all remaining at once (set)
+						remaining.count > 1
+							? .init(title: "Push all \(remaining.count) at once", style: .primary, handler: { vc in
+								guard let stack = vc.stackController else { return }
+								stack.set(viewControllers: stack.viewControllers + remaining, as: .navigation)
+							})
+							: nil,
+						// Replace entire stack (set)
+						.init(title: "set() — replace stack", style: .primary, handler: { vc in
+							guard let stack = vc.stackController else { return }
+							let menu = stack.viewControllers.first.map { [$0] } ?? []
+							let fresh = StackStepViewController(
+								stepTitle: "Replaced",
+								description: "The entire stack was replaced with set(viewControllers:).",
+								code: "stack.set(viewControllers: [menu, this], as: .navigation)",
+								actions: [
+									.init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
+								]
+							)
+							stack.set(viewControllers: menu + [fresh], as: .navigation)
+						}),
+						// Pop to root
+						index > 1
+							? .init(title: "pop(\(index)) — to root", style: .secondary, handler: { vc in
+								vc.stackController?.pop(index)
+							})
+							: nil,
+						// Back one step
+						.init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
+					]
+					screen.setActions(actions.compactMap { $0 })
 				}
-				next()
+
+				screens[0].show(as: .navigation)
 			}
 		),
 
@@ -578,7 +584,7 @@ final class StackStepViewController: UIViewController {
 	private let stepTitle: String
 	private let stepDescription: String
 	private let code: String
-	private let actions: [StackAction]
+	private var actions: [StackAction]
 
 	init(stepTitle: String, description: String, code: String, actions: [StackAction]) {
 		self.stepTitle = stepTitle
@@ -586,6 +592,11 @@ final class StackStepViewController: UIViewController {
 		self.code = code
 		self.actions = actions
 		super.init(nibName: nil, bundle: nil)
+	}
+
+	/// Allows configuring actions after init (e.g. when screens reference each other).
+	func setActions(_ newActions: [StackAction]) {
+		actions = newActions
 	}
 
 	@available(*, unavailable)
