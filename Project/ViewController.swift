@@ -226,180 +226,65 @@ final class MainMenuViewController: UITableViewController {
 /// @ai-generated(solo)
 private func stackSectionItems() -> [DemoItem] {
 	[
-		// Demo: show() — push controllers one by one, navigate with swipe
+		// Demo: unified show/hide/set — every screen can go forward and backward
 		.init(
-			title: "show(_:as:) — build a stack",
-			description: "Each controller is pushed individually. Swipe from the edge to go back.",
-			code: "controller.show(as: .navigation)",
+			title: "show / hide / set — stack navigation",
+			description: "Four screens. Each can push forward, pop back, pop to root, or replace the stack.",
+			code: "vc.show(as:)\nvc.hide()\nstack.pop(_:)\nstack.set(viewControllers:)",
 			presentation: .navigation,
 			tapAction: { _ in
-				let step3 = StackStepViewController(
-					stepTitle: "Step 3 / 3",
-					description: "Swipe from the right edge to go back through the stack.",
-					code: "",
-					actions: [
-						.init(title: "Dismiss all", style: .secondary, handler: { vc in
-							// hide(3): pops step3, step2, step1 back to menu
-							vc.stackController?.pop(3)
-						}),
-					]
-				)
-				let step2 = StackStepViewController(
-					stepTitle: "Step 2 / 3",
-					description: "One more push to go deeper.",
-					code: "controller.show(as: .navigation)",
-					actions: [
-						.init(title: "Push Step 3", style: .primary, handler: { _ in
-							step3.show(as: .navigation)
-						}),
-					]
-				)
-				let step1 = StackStepViewController(
-					stepTitle: "Step 1 / 3",
-					description: "Push another controller on top of this one.",
-					code: "controller.show(as: .navigation)",
-					actions: [
-						.init(title: "Push Step 2", style: .primary, handler: { _ in
-							step2.show(as: .navigation)
-						}),
-					]
-				)
-				step1.show(as: .navigation)
-			}
-		),
+				/// @ai-generated(solo)
+				/// Builds a step screen that can navigate forward (show), back (hide),
+				/// pop multiple (pop), and replace the entire stack (set).
+				func makeStep(_ index: Int, total: Int, next: @escaping () -> Void) -> StackStepViewController {
+					StackStepViewController(
+						stepTitle: "Screen \(index) / \(total)",
+						description: index < total
+							? "Push the next screen, go back, or jump to root."
+							: "Last screen. Go back, pop to root, or replace the stack.",
+						code: index < total
+							? "next.show(as: .navigation)"
+							: "stack.set(viewControllers: [menu, new], as: .navigation)",
+						actions: [
+							// Forward — only if not the last screen
+							index < total
+								? .init(title: "Push Screen \(index + 1)", style: .primary, handler: { _ in next() })
+								: nil,
+							// Replace stack from any screen
+							.init(title: "set() — replace stack", style: .primary, handler: { vc in
+								guard let stack = vc.stackController else { return }
+								let menu = stack.viewControllers.first.map { [$0] } ?? []
+								let fresh = StackStepViewController(
+									stepTitle: "Replaced",
+									description: "The entire stack was replaced with set(viewControllers:).",
+									code: "stack.set(viewControllers: [menu, this], as: .navigation)",
+									actions: [
+										.init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
+									]
+								)
+								stack.set(viewControllers: menu + [fresh], as: .navigation)
+							}),
+							// Pop to root — only if deeper than screen 1
+							index > 1
+								? .init(title: "pop(\(index)) — to root", style: .secondary, handler: { vc in
+									vc.stackController?.pop(index)
+								})
+								: nil,
+							// Back one step
+							.init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
+						].compactMap { $0 }
+					)
+				}
 
-		// Demo: hide(_ count:) — pop multiple controllers at once
-		.init(
-			title: "hide(_ count:) — pop multiple at once",
-			description: "Build a stack of 3, then call hide(3) to pop all of them at once.",
-			code: "stackController?.hide(3)",
-			presentation: .navigation,
-			tapAction: { _ in
-				let depth3 = StackStepViewController(
-					stepTitle: "Depth 3",
-					description: "The stack now has 3 demo controllers. Popping all at once jumps back to the menu.",
-					code: "stackController?.hide(3)",
-					actions: [
-						.init(title: "hide(3) — pop all", style: .primary, handler: { vc in
-							vc.stackController?.pop(3)
-						}),
-					]
-				)
-				let depth2 = StackStepViewController(
-					stepTitle: "Depth 2",
-					description: "Go one level deeper.",
-					code: "controller.show(as: .navigation)",
-					actions: [
-						.init(title: "Push to Depth 3", style: .primary, handler: { _ in
-							depth3.show(as: .navigation)
-						}),
-					]
-				)
-				let depth1 = StackStepViewController(
-					stepTitle: "Depth 1",
-					description: "Push two more controllers, then pop all three in a single call.",
-					code: "controller.show(as: .navigation)",
-					actions: [
-						.init(title: "Push to Depth 2", style: .primary, handler: { _ in
-							depth2.show(as: .navigation)
-						}),
-					]
-				)
-				depth1.show(as: .navigation)
-			}
-		),
-
-		// Demo: mixed presentations — each controller in the stack uses a different animation
-		.init(
-			title: "Mixed presentations in one stack",
-			description: "Each controller is shown with its own presentation: sheet → navigation → pageSheet → fullScreen.",
-			code: "a.show(as: .sheet)\nb.show(as: .navigation)\nc.show(as: .pageSheet)\nd.show(as: .fullScreen)",
-			presentation: .sheet,
-			tapAction: { _ in
-				let d = StackStepViewController(
-					stepTitle: "D — .fullScreen",
-					description: "Shown with .fullScreen on top of C.",
-					code: "d.show(as: .fullScreen)",
-					actions: [
-						.init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
-					]
-				)
-				let c = StackStepViewController(
-					stepTitle: "C — .pageSheet",
-					description: "Shown with .pageSheet on top of B. Notice B scales behind.",
-					code: "c.show(as: .pageSheet)",
-					actions: [
-						.init(title: "Show D (.fullScreen)", style: .primary, handler: { _ in d.show(as: .fullScreen) }),
-						.init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
-					]
-				)
-				let b = StackStepViewController(
-					stepTitle: "B — .navigation",
-					description: "Shown with .navigation on top of A. Swipe from right edge to go back.",
-					code: "b.show(as: .navigation)",
-					actions: [
-						.init(title: "Show C (.pageSheet)", style: .primary, handler: { _ in c.show(as: .pageSheet) }),
-						.init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
-					]
-				)
-				let a = StackStepViewController(
-					stepTitle: "A — .sheet",
-					description: "Shown with .sheet. All four controllers live in the same stack.",
-					code: "a.show(as: .sheet)",
-					actions: [
-						.init(title: "Show B (.navigation)", style: .primary, handler: { _ in b.show(as: .navigation) }),
-						.init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
-					]
-				)
-				a.show(as: .sheet)
-			}
-		),
-
-		// Demo: set(viewControllers:) — replace arbitrary stack state
-		.init(
-			title: "set(viewControllers:) — replace stack",
-			description: "Replace the entire stack with a new array of controllers in one call.",
-			code: "stack.set(viewControllers: [a, b, c], as: .navigation)",
-			presentation: .navigation,
-			tapAction: { _ in
-				let entry = StackStepViewController(
-					stepTitle: "set(viewControllers:)",
-					description: "Pressing the button replaces the current stack with [A, B, C] at once — animating to C.",
-					code: "stack.set(viewControllers: [menu, a, b, c], as: .navigation)",
-					actions: [
-						.init(title: "Replace stack with [A, B, C]", style: .primary, handler: { vc in
-							guard let stack = vc.stackController else { return }
-							// Keep the menu (first VC); swap everything else for A, B, C
-							let menu = stack.viewControllers.first.map { [$0] } ?? []
-							let a = StackStepViewController(
-								stepTitle: "Controller A",
-								description: "Part of the new stack set in one call.",
-								code: "",
-								actions: [
-									.init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
-								]
-							)
-							let b = StackStepViewController(
-								stepTitle: "Controller B",
-								description: "Part of the new stack set in one call.",
-								code: "",
-								actions: [
-									.init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
-								]
-							)
-							let c = StackStepViewController(
-								stepTitle: "Controller C",
-								description: "The stack was set to [menu, A, B, C] in one call.",
-								code: "",
-								actions: [
-									.init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
-								]
-							)
-							stack.set(viewControllers: menu + [a, b, c], as: .navigation)
-						}),
-					]
-				)
-				entry.show(as: .navigation)
+				let total = 4
+				// Build chain in reverse so each screen captures the next
+				var next: () -> Void = {}
+				for i in stride(from: total, through: 1, by: -1) {
+					let step = makeStep(i, total: total, next: next)
+					let showStep = { step.show(as: .navigation) }
+					next = showStep
+				}
+				next()
 			}
 		),
 
