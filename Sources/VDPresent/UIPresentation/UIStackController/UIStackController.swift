@@ -296,21 +296,6 @@ private extension UIStackController {
 			ctx.container.addSubview(ctx.view, layout: ctx.environment.contentLayout)
 		}
 
-		// Controllers leaving visible zone but staying in full stack:
-		// remove wrapper/container so they don't consume resources.
-		// Re-entering visible later will recreate them fresh.
-		let visibleToSet = Set(visibleControllers.to.map(ObjectIdentifier.init))
-		let fullToSet = Set(controllers.to.map(ObjectIdentifier.init))
-		for vc in visibleControllers.from {
-			let id = ObjectIdentifier(vc)
-			if !visibleToSet.contains(id) && fullToSet.contains(id) {
-				wrappers[vc]?.removeFromSuperview()
-				wrappers[vc] = nil
-				containers[vc]?.removeFromSuperview()
-				containers[vc] = nil
-			}
-		}
-
 		// Iterate only visible controllers for z-ordering and animation.
 		let allVisible = visibleControllers.all(direction)
 		allVisible.map(container).forEach(content.bringSubviewToFront)
@@ -423,6 +408,21 @@ private extension UIStackController {
 		}
 		#endif
 		if isCompleted {
+			// Controllers leaving visible zone but staying in full stack:
+			// remove wrapper/container so they don't consume resources.
+			// Done after animation so backEffects can still reach them during transition.
+			let visibleToSet = Set(visibleControllers.to.map(ObjectIdentifier.init))
+			let fullToSet = Set(controllers.to.map(ObjectIdentifier.init))
+			for vc in visibleControllers.from {
+				let id = ObjectIdentifier(vc)
+				if !visibleToSet.contains(id) && fullToSet.contains(id) {
+					wrappers[vc]?.removeFromSuperview()
+					wrappers[vc] = nil
+					containers[vc]?.removeFromSuperview()
+					containers[vc] = nil
+				}
+			}
+
 			for fromViewController in controllers.toRemove {
 				fromViewController.removeFromParent()
 				fromViewController.didMove(toParent: nil)
