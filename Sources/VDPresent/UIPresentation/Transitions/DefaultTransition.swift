@@ -52,7 +52,13 @@ public extension UIPresentation.Transition {
 					// moved only by backEffect from the new top controller.
 					return
 				}
-				guard context.isChangingController else { return }
+				if !context.isChangingController {
+					// Remaining controllers: no own animation, but must re-apply
+					// back effects so controllers below keep their recess state
+					// (e.g. PageSheet recess on Menu must persist when pushing on top).
+					applyBackEffects(context: context, progress: .insertion(1))
+					return
+				}
 				prepareInsertionTransition(context: context)
 				prepareBackground(context: context)
 				additionalPrepare?(context)
