@@ -471,6 +471,11 @@ private extension UIStackController {
 			presentations[item, default: presentation]
 				.interactivity?.uninstall(context: context(item))
 		}
+		#if VDPRESENT_LOG
+		if !additionalInstall.isEmpty {
+			print("🔁 configureInteractivity additionalInstall: \(additionalInstall.map { $0.view.accessibilityIdentifier ?? "?" })")
+		}
+		#endif
 		for controller in controllers.toInsert + additionalInstall {
 			let ctxt = context(controller)
 			presentations[controller, default: presentation]
