@@ -66,7 +66,7 @@ public extension UIPresentation.Transition {
 					if let myIndex = allControllers.firstIndex(of: context.viewController), myIndex > 0 {
 						for vc in allControllers[..<myIndex].reversed() {
 							let bv = context.for(vc).view
-							print("🔧 after remaining backEffect: \(viewId(vc)) view=\(fmt(bv))")
+							print("🔧 after remaining backEffect: \(viewId(vc)) view=\(fmt(bv)) id=\(ObjectIdentifier(bv)) transform=\(bv.affineTransform) layer=\(bv.layer.affineTransform())")
 						}
 					}
 					#endif
