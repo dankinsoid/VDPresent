@@ -23,12 +23,29 @@ enum AnimationDriver {
 		if !context.viewControllers.from.contains(context.viewController) {
 #if VDPRESENT_LOG
 			print("⚠️ AnimationDriver.prepare fallback addSubview for \(context.viewController.view.accessibilityIdentifier ?? "?")")
+			// Log all visible sibling views' transforms before addSubview
+			for vc in context.visibleViewControllers.all(context.direction) where vc !== context.viewController {
+				let v = context.for(vc).view
+				let t = v.affineTransform
+				if t != .identity {
+					print("   📋 before addSubview: \(vc.view.accessibilityIdentifier ?? "?") transform=\(t)")
+				}
+			}
 #endif
 			context.container
 				.addSubview(
 					context.view,
 					layout: context.environment.contentLayout
 				)
+#if VDPRESENT_LOG
+			for vc in context.visibleViewControllers.all(context.direction) where vc !== context.viewController {
+				let v = context.for(vc).view
+				let t = v.affineTransform
+				if t != .identity {
+					print("   📋 after addSubview: \(vc.view.accessibilityIdentifier ?? "?") transform=\(t)")
+				}
+			}
+#endif
 		}
 		transition.prepare(context)
 	}

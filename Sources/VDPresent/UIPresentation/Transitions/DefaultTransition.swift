@@ -36,6 +36,9 @@ public extension UIPresentation.Transition {
 		UIPresentation.Transition(
 			transitionID: transitionID,
 			prepare: { context in
+				#if VDPRESENT_LOG
+				print("🔧 prepare  vc=\(viewId(context.viewController)) changing=\(context.isChangingController) frozen=\(context.isBehindFrozen) view=\(fmt(context.view))")
+				#endif
 //				if !context.needHide || context.isTopController {
 //					context.container.isHidden = false
 //				}
@@ -57,6 +60,16 @@ public extension UIPresentation.Transition {
 					// back effects so controllers below keep their recess state
 					// (e.g. PageSheet recess on Menu must persist when pushing on top).
 					applyBackEffects(context: context, progress: .insertion(1))
+					#if VDPRESENT_LOG
+					// Check all back views to see if recess was applied
+					let allControllers = context.visibleViewControllers.all(context.direction)
+					if let myIndex = allControllers.firstIndex(of: context.viewController), myIndex > 0 {
+						for vc in allControllers[..<myIndex].reversed() {
+							let bv = context.for(vc).view
+							print("🔧 after remaining backEffect: \(viewId(vc)) view=\(fmt(bv))")
+						}
+					}
+					#endif
 					return
 				}
 				prepareInsertionTransition(context: context)
