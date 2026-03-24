@@ -120,24 +120,34 @@ public extension UIPresentation.Context {
 
 		/// Returns a new `Controllers` with visible slices.
 		///
-		/// `to` is filtered to the visible slice. `from` includes its own visible
-		/// slice united with any `from` controllers that also appear in visible `to`.
-		/// This ensures remaining controllers (present in both stacks) are not
-		/// mistaken for newly inserted.
+		/// Each stack is sliced independently. Then controllers present in
+		/// both full stacks are guaranteed to appear in both visible slices —
+		/// preventing them from being mistakenly treated as inserted or removed.
 		/// @ai-generated(paired)
 		func visible(
 			_ presentation: (UIViewController) -> UIPresentation
 		) -> Controllers {
-			let visibleTo = Self.visibleSlice(of: to, presentation: presentation)
-			let visibleFromSlice = Self.visibleSlice(of: from, presentation: presentation)
-			let visibleFromSet = Set(visibleFromSlice.map(ObjectIdentifier.init))
+			var visibleFrom = Self.visibleSlice(of: from, presentation: presentation)
+			var visibleTo = Self.visibleSlice(of: to, presentation: presentation)
+			// Controllers in both full stacks must appear in both visible slices.
+			// Otherwise a remaining controller shows up as toInsert/toRemove
+			// in the visible slice, getting wrong animation (cleanup or insertion).
+			let visibleFromSet = Set(visibleFrom.map(ObjectIdentifier.init))
 			let visibleToSet = Set(visibleTo.map(ObjectIdentifier.init))
-			// from controllers that are in visibleTo but missing from visibleFromSlice
-			let extra = from.filter {
-				visibleToSet.contains(ObjectIdentifier($0)) && !visibleFromSet.contains(ObjectIdentifier($0))
+			let fromFullSet = Set(from.map(ObjectIdentifier.init))
+			let toFullSet = Set(to.map(ObjectIdentifier.init))
+			for vc in visibleTo where fromFullSet.contains(ObjectIdentifier(vc))
+				&& !visibleFromSet.contains(ObjectIdentifier(vc))
+			{
+				visibleFrom.insert(vc, at: 0)
+			}
+			for vc in visibleFrom where toFullSet.contains(ObjectIdentifier(vc))
+				&& !visibleToSet.contains(ObjectIdentifier(vc))
+			{
+				visibleTo.insert(vc, at: 0)
 			}
 			return Controllers(
-				fromViewControllers: extra + visibleFromSlice,
+				fromViewControllers: visibleFrom,
 				toViewControllers: visibleTo
 			)
 		}
@@ -147,8 +157,7 @@ public extension UIPresentation.Context {
 		///
 		/// The controller directly below the first opaque one is included because
 		/// recessTransition from the opaque controller animates it (e.g. the
-		/// slide-left back-effect during a navigation push). Everything below
-		/// that is truly invisible.
+		/// slide-left back-effect during a navigation push).
 		/// @ai-generated(paired)
 		private static func visibleSlice(
 			of stack: [UIViewController],
@@ -160,12 +169,10 @@ public extension UIPresentation.Context {
 			for i in stride(from: stack.count - 1, through: 0, by: -1) {
 				startIndex = i
 				if foundOpaque {
-					// One level below the first opaque — include it, then stop.
 					break
 				}
 				if !presentation(stack[i]).environment.overCurrentContext {
 					foundOpaque = true
-					// Don't break yet — include the next one below if it exists.
 				}
 			}
 			return Array(stack[startIndex...])
