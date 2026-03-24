@@ -111,6 +111,12 @@ final class MainMenuViewController: UITableViewController {
 				code: "controller.show(as: .navigation(from: .leading))",
 				presentation: .navigation(from: .leading)
 			),
+			.init(
+				title: ".navigation(from: .bottom)",
+				description: "Navigation from the bottom.,
+				code: "controller.show(as: .navigation(from: .bottom))",
+				presentation: .navigation(from: .bottom)
+			),
 		]),
 		.init(title: "Interactivity", items: [
 			.init(
