@@ -537,7 +537,7 @@ private func stackSectionItems() -> [DemoItem] {
 					return vc
 				}
 
-				/// @ai-generated(guided)
+				/// @ai-generated(paired)
 				func randomize(from vc: UIViewController) {
 					guard let stack = vc.stackController else { return }
 					let menu = stack.viewControllers.first.map { [$0] } ?? []

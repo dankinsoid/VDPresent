@@ -208,7 +208,7 @@ private extension UIStackController {
 
 private extension UIStackController {
 
-	/// Builds `Controllers` with visible slices and creates per-VC context closures.
+	/// Computes visible slices and delegates to the structural transition method.
 	///
 	/// Visible slices are computed by walking each stack top-down, stopping after
 	/// the first controller with `overCurrentContext == false`. Controllers outside
@@ -223,18 +223,16 @@ private extension UIStackController {
 		isInteractive: Bool,
 		completion: (() -> Void)?
 	) {
-		let presentations = self.presentations
-		let resolve: (UIViewController) -> UIPresentation = { presentations[$0] ?? $0.defaultPresentation ?? presentation }
-
-		let visibleFrom = UIPresentation.Context.Controllers.visibleSlice(of: fromViewControllers, presentation: resolve)
-		let visibleTo = UIPresentation.Context.Controllers.visibleSlice(of: toViewControllers, presentation: resolve)
-
 		let controllers = UIPresentation.Context.Controllers(
-			fullFrom: fromViewControllers,
-			fullTo: toViewControllers,
-			visibleFrom: visibleFrom,
-			visibleTo: visibleTo
+			fromViewControllers: fromViewControllers,
+			toViewControllers: toViewControllers
 		)
+
+		let presentations = self.presentations
+		let resolve: (UIViewController) -> UIPresentation = {
+			presentations[$0] ?? $0.defaultPresentation ?? presentation
+		}
+		let visibleControllers = controllers.visible(resolve)
 
 		let context: (UIViewController) -> UIPresentation.Context = { [weak self, cache] in
 			let presentations = self?.presentations ?? [:]
@@ -242,7 +240,8 @@ private extension UIStackController {
 				direction: direction,
 				controller: $0,
 				container: { [weak self] in self?.container(for: $0) ?? UIStackControllerCanvas() },
-				controllers: controllers,
+				fromViewControllers: visibleControllers.from,
+				toViewControllers: visibleControllers.to,
 				views: { [weak self] in self?.wrapper(for: $0) ?? UIStackEffectView($0.view) },
 				animated: animated,
 				animation: (presentations[$0] ?? presentation).animation,
@@ -260,26 +259,30 @@ private extension UIStackController {
 			direction: direction,
 			animated: animated,
 			controllers: controllers,
+			visibleControllers: visibleControllers,
 			context: context,
 			completion: completion
 		)
 	}
 
-	/// Executes the transition: structural setup uses `full*` arrays, animation uses visible slices.
+	/// Executes the transition.
+	///
+	/// `controllers` (full stack) drives structural operations: addChild, removeFromParent,
+	/// viewControllers assignment, interactivity, safe area.
+	/// `visibleControllers` drives animation: prepare/animate/complete, z-ordering.
 	/// @ai-generated(solo)
 	func transition(
 		presentation: UIPresentation,
 		direction: TransitionDirection,
 		animated: Bool,
 		controllers: UIPresentation.Context.Controllers,
+		visibleControllers: UIPresentation.Context.Controllers,
 		context: @escaping (UIViewController) -> UIPresentation.Context,
 		completion: (() -> Void)?
 	) {
 		isSettingControllers = true
-		// Structural: set the full to-stack as current viewControllers.
-		viewControllers = controllers.fullTo
-		// Structural: create wrappers/containers/presentations for ALL new controllers.
-		for toViewController in controllers.fullToInsert {
+		viewControllers = controllers.to
+		for toViewController in controllers.toInsert {
 			if wrappers[toViewController] == nil {
 				wrappers[toViewController] = wrap(view: toViewController.view)
 			}
@@ -299,30 +302,26 @@ private extension UIStackController {
 		// wrong window coordinates (e.g. x=-201 instead of 0).
 		content.layoutIfNeeded()
 
-		// Structural: add views to the hierarchy for ALL new controllers so UIKit can
+		// Add views to the hierarchy for ALL new controllers so UIKit can
 		// compute safe area insets from the view's actual position.
-		for toViewController in controllers.fullToInsert {
+		for toViewController in controllers.toInsert {
 			let ctx = context(toViewController)
 			ctx.container.addSubview(ctx.view, layout: ctx.environment.contentLayout)
 		}
 
 		// Hide containers for non-visible inserted controllers — they exist in the
 		// hierarchy for structural correctness but should not be rendered.
-		let visibleToInsertSet = Set(controllers.toInsert.map(ObjectIdentifier.init))
-		for vc in controllers.fullToInsert where !visibleToInsertSet.contains(ObjectIdentifier(vc)) {
+		let visibleInsertSet = Set(visibleControllers.toInsert.map(ObjectIdentifier.init))
+		for vc in controllers.toInsert where !visibleInsertSet.contains(ObjectIdentifier(vc)) {
 			container(for: vc).isHidden = true
 		}
 
-		// Use zIndex order so animate phase processes controllers bottom-to-top:
-		// each controller first applies its own effect, then higher controllers
-		// apply recess on views below — no ordering conflicts.
-		// Only visible controllers participate in z-ordering and animation.
-		let allControllers = controllers.all(direction)
+		// Animation: z-order and iteration use visible controllers only.
+		let allVisible = visibleControllers.all(direction)
 
-		allControllers.map(container).forEach(content.bringSubviewToFront)
+		allVisible.map(container).forEach(content.bringSubviewToFront)
 
-		// Structural: addChild for ALL new controllers in the full to-stack.
-		for toViewController in controllers.fullTo where toViewController.parent == nil {
+		for toViewController in controllers.to where toViewController.parent == nil {
 			toViewController.willMove(toParent: self)
 			self.addChild(toViewController)
 			toViewController.didMove(toParent: self)
@@ -330,18 +329,16 @@ private extension UIStackController {
 
 		// Non-top children never receive appearance transitions, so UIKit
 		// blocks safe area propagation. Unlock it explicitly.
-		// Uses fullToInsert: all new controllers need safe area, checked against fullTo.last.
-		for vc in controllers.fullToInsert where vc !== controllers.fullTo.last {
+		for vc in controllers.toInsert where vc !== controllers.to.last {
 			vc.unlockSafeAreaPropagation()
 		}
 
-		// Structural: willMove(toParent: nil) for ALL controllers being removed.
-		for item in controllers.fullToRemove {
+		for item in controllers.toRemove {
 			item.willMove(toParent: nil)
 		}
 
 		// Animation: only visible controllers run prepare/animate/complete.
-		for controller in allControllers {
+		for controller in allVisible {
 			let currentPresentation = presentations[controller, default: presentation]
 			AnimationDriver.prepare(
 				transition: currentPresentation.transition,
@@ -350,29 +347,28 @@ private extension UIStackController {
 		}
 
 		#if VDPRESENT_LOG
-		print("[UIStackController] allControllers: \(allControllers.map { $0.view.accessibilityIdentifier ?? "nil" })")
+		print("[UIStackController] allVisible: \(allVisible.map { $0.view.accessibilityIdentifier ?? "nil" })")
 		#endif
 		AnimationDriver.animate(
-			allControllers.map { vc in
+			allVisible.map { vc in
 				(context(vc), presentations[vc, default: presentation].transition)
 			},
 			beginAppearance: {
-				// Appearance transitions use full stack tops — UIKit appearance is structural.
-				if !controllers.isFullTopTheSame {
-					if let vc = controllers.fullTo.last {
+				if !controllers.isTopTheSame {
+					if let vc = controllers.to.last {
 						 vc.beginAppearanceTransition(true, animated: animated)
 
  #if VDPRESENT_LOG
 			print("[UIStackController] appear safeArea vc=\(vc.view.accessibilityIdentifier ?? "view") vc.view=[t=\(vc.view.safeAreaInsets.top) b=\(vc.view.safeAreaInsets.bottom)] vcFrame=\(Int(vc.view.frame.minY))-\(Int(vc.view.frame.maxY))")
 	#endif
 					 }
-					 if let vc = controllers.fullFrom.last {
+					 if let vc = controllers.from.last {
 						 vc.beginAppearanceTransition(false, animated: animated)
 					 }
 				}
 			},
 			prepareInteractive: { [weak self] update in
-				for controller in allControllers {
+				for controller in allVisible {
 					self?.animators[controller] = update
 				}
 			},
@@ -381,6 +377,7 @@ private extension UIStackController {
 					presentation: presentation,
 					direction: direction,
 					controllers: controllers,
+					visibleControllers: visibleControllers,
 					context: context,
 					isCompleted: completed,
 					completion: completion
@@ -389,24 +386,22 @@ private extension UIStackController {
 		)
 	}
 
-	/// Completes the transition. Animation completion uses visible slices,
-	/// structural cleanup (removeFromParent, viewControllers) uses full arrays.
 	/// @ai-generated(solo)
 	func completionBlock(
 		presentation: UIPresentation,
 		direction: TransitionDirection,
 		controllers: UIPresentation.Context.Controllers,
+		visibleControllers: UIPresentation.Context.Controllers,
 		context: @escaping (UIViewController) -> UIPresentation.Context,
 		isCompleted: Bool,
 		completion: (() -> Void)?
 	) {
 		// Animation: completion for visible controllers only.
-		for controller in controllers.all(direction) {
+		for controller in visibleControllers.all(direction) {
 			let currentPresentation = presentations[controller, default: presentation]
 			currentPresentation.transition.completion(context(controller), isCompleted)
 		}
-		// Structural: restore full stacks.
-		viewControllers = isCompleted ? controllers.fullTo : controllers.fullFrom
+		viewControllers = isCompleted ? controllers.to : controllers.from
 		if isCompleted {
 			configureInteractivity(
 				presentation: presentation,
@@ -416,29 +411,25 @@ private extension UIStackController {
 		}
 
 		didSetViewControllers()
-		// Appearance transitions use full stack tops.
-		if !controllers.isFullTopTheSame {
-			controllers.fullTo.last?.endAppearanceTransition()
-			controllers.fullFrom.last?.endAppearanceTransition()
+		if !controllers.isTopTheSame {
+			controllers.to.last?.endAppearanceTransition()
+			controllers.from.last?.endAppearanceTransition()
 		}
 		#if VDPRESENT_LOG
-		// Log safe area for ALL fullToInsert right after endAppearanceTransition
-		for vc in controllers.fullToInsert {
+		for vc in controllers.toInsert {
 			let sa = vc.view.safeAreaInsets
-			let isTop = vc === controllers.fullTo.last
+			let isTop = vc === controllers.to.last
 			print("📐 postAppearance  vc=\(vc.view.accessibilityIdentifier ?? "?") isTop=\(isTop) safeArea=t=\(Int(sa.top)) b=\(Int(sa.bottom))")
 		}
 		#endif
 		if isCompleted {
-			// Structural: remove ALL departing controllers.
-			for fromViewController in controllers.fullToRemove {
+			for fromViewController in controllers.toRemove {
 				fromViewController.removeFromParent()
 				fromViewController.didMove(toParent: nil)
 			}
 		} else {
-			statusBarStyle = controllers.fullFrom.last?.preferredStatusBarStyle ?? statusBarStyle
-			// Rollback: remove ALL inserted controllers on cancel.
-			for toViewController in controllers.fullToInsert {
+			statusBarStyle = controllers.from.last?.preferredStatusBarStyle ?? statusBarStyle
+			for toViewController in controllers.toInsert {
 				toViewController.willMove(toParent: nil)
 				toViewController.removeFromParent()
 				toViewController.didMove(toParent: nil)
@@ -458,18 +449,16 @@ private extension UIStackController {
 		}
 	}
 
-	/// Gesture recognizers are structural — use full arrays, not visible slices.
-	/// @ai-generated(solo)
 	func configureInteractivity(
 		presentation: UIPresentation,
 		controllers: UIPresentation.Context.Controllers,
 		context: @escaping (UIViewController) -> UIPresentation.Context
 	) {
-		for item in controllers.fullToRemove {
+		for item in controllers.toRemove {
 			presentations[item, default: presentation]
 				.interactivity?.uninstall(context: context(item))
 		}
-		for controller in controllers.fullToInsert {
+		for controller in controllers.toInsert {
 			let ctxt = context(controller)
 			presentations[controller, default: presentation]
 				.interactivity?.install(context: ctxt) { [weak self] context, state in
@@ -482,6 +471,7 @@ private extension UIStackController {
 							direction: context.direction,
 							animated: context.animated,
 							controllers: context.viewControllers,
+							visibleControllers: context.viewControllers,
 							context: context.for,
 							completion: nil
 						)

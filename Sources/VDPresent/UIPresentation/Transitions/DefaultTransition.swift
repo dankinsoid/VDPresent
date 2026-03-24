@@ -26,7 +26,6 @@ public extension UIPresentation.Transition {
 	///     Runs in the same `UIView.animate` batch as the built-in transitions.
 	///   - completion: Called after the transition finishes. `completed` is `false` when the
 	///     transition was cancelled (e.g. interactive gesture reversed).
-	/// @ai-generated(guided)
 	static func base(
 		transitionID: AnyHashable,
 		additionalPrepare: ((UIPresentation.Context) -> Void)? = nil,
@@ -173,7 +172,7 @@ public enum BehindBehavior {
 /// `setOwn` must be called before `addBackEffect`.
 ///
 /// `reset` undoes all effects in reverse order, returning the view to identity.
-/// @ai-generated(guided)
+/// @ai-generated(paired)
 struct ViewTransitions {
 
 	private(set) var all: [UITransition<UIView>] = []
@@ -256,7 +255,7 @@ private extension UIPresentation.Transition {
 	/// in reverse order, then own), then clears the list. After reset the view
 	/// is in identity state — `animateOwn` will recreate the own transition
 	/// with fresh initial states captured from this clean state.
-	/// @ai-generated(guided)
+	/// @ai-generated(paired)
 	static func resetView(context: UIPresentation.Context) {
 		let view = context.view
 		#if VDPRESENT_LOG
@@ -272,7 +271,7 @@ private extension UIPresentation.Transition {
 	/// Applies this controller's own content transition to `progress`.
 	/// After reset, the view is in identity — a fresh transition is created
 	/// capturing identity as initial state, then driven to `progress`.
-	/// @ai-generated(guided)
+	/// @ai-generated(paired)
 	static func animateOwn(
 		context: UIPresentation.Context,
 		progress: Progress,
@@ -306,7 +305,7 @@ private extension UIPresentation.Transition {
 	///
 	/// Stops at a controller with `backEffectBarrier == true` — it owns back effects
 	/// for everything below it.
-	/// @ai-generated(guided)
+	/// @ai-generated(paired)
 	static func applyBackEffects(context: UIPresentation.Context, progress: Progress) {
 		let allControllers = context.viewControllers.all(context.direction)
 		guard let myIndex = allControllers.firstIndex(of: context.viewController), myIndex > 0 else { return }
@@ -341,7 +340,7 @@ private extension UIPresentation.Transition {
 	}
 
 	/// Resets all transitions and clears cache for controllers being removed from the stack.
-	/// @ai-generated(guided)
+	/// @ai-generated(paired)
 	static func cleanupTransitions(context: UIPresentation.Context) {
 		guard context.viewControllers.toRemove.contains(context.viewController) else { return }
 		let view = context.view

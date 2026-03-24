@@ -111,13 +111,11 @@ public extension UIPresentation.Interactivity {
 					direction: .removal,
 					controller: controller,
 					container: { context.for($0).container },
-					controllers: UIPresentation.Context.Controllers(
-						fromViewControllers: context.viewControllers.to,
-						toViewControllers: Array(
-							context.viewControllers.to.prefix(
-								upTo: context.viewControllers.to.firstIndex(where: controller.isDescendant)
-									?? context.viewControllers.to.count - 1
-							)
+					fromViewControllers: context.viewControllers.to,
+					toViewControllers: Array(
+						context.viewControllers.to.prefix(
+							upTo: context.viewControllers.to.firstIndex(where: controller.isDescendant)
+								?? context.viewControllers.to.count - 1
 						)
 					),
 					views: { context.for($0).view },

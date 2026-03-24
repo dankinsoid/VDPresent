@@ -52,7 +52,7 @@ public final class UIStackEffectView: UIStackControllerCanvas {
 /// The bit is validated at launch: if the ivar layout changes in a future
 /// iOS version, the function silently does nothing (safe area stays zero
 /// rather than corrupting memory).
-/// @ai-generated(guided)
+/// @ai-generated(paired)
 extension UIViewController {
 
 	private static let appearStateBitInfo: (offset: Int, ok: Bool) = {

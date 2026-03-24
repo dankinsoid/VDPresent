@@ -7,7 +7,7 @@ import UIKit
 /// This separation lets the same transition description be driven by different
 /// mechanisms (standard animation, interactive gesture, instant snap) without
 /// changing the transition itself.
-/// @ai-generated(guided)
+/// @ai-generated(paired)
 enum AnimationDriver {
 
 	/// Runs the prepare phase: adds the view to the container if needed,
