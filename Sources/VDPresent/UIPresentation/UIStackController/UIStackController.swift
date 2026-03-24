@@ -321,7 +321,7 @@ private extension UIStackController {
 
 		// Non-top children never receive appearance transitions, so UIKit
 		// blocks safe area propagation. Unlock it explicitly.
-		for vc in controllers.toInsert where vc !== controllers.to.last {
+		for vc in visibleControllers.toInsert where vc !== visibleControllers.to.last {
 			vc.unlockSafeAreaPropagation()
 		}
 
