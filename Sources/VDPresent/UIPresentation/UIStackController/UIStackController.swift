@@ -282,7 +282,7 @@ private extension UIStackController {
 	) {
 		isSettingControllers = true
 		viewControllers = controllers.to
-		for toViewController in controllers.toInsert {
+		for toViewController in visibleControllers.toInsert {
 			if wrappers[toViewController] == nil {
 				wrappers[toViewController] = wrap(view: toViewController.view)
 			}
@@ -302,21 +302,13 @@ private extension UIStackController {
 		// wrong window coordinates (e.g. x=-201 instead of 0).
 		content.layoutIfNeeded()
 
-		// Add views to the hierarchy for ALL new controllers so UIKit can
+		// Add views to the hierarchy before addChild so UIKit can
 		// compute safe area insets from the view's actual position.
-		for toViewController in controllers.toInsert {
+		for toViewController in visibleControllers.toInsert {
 			let ctx = context(toViewController)
 			ctx.container.addSubview(ctx.view, layout: ctx.environment.contentLayout)
 		}
 
-		// Hide containers for non-visible inserted controllers — they exist in the
-		// hierarchy for structural correctness but should not be rendered.
-		let visibleInsertSet = Set(visibleControllers.toInsert.map(ObjectIdentifier.init))
-		for vc in controllers.toInsert where !visibleInsertSet.contains(ObjectIdentifier(vc)) {
-			container(for: vc).isHidden = true
-		}
-
-		// Animation: z-order and iteration use visible controllers only.
 		let allVisible = visibleControllers.all(direction)
 
 		allVisible.map(container).forEach(content.bringSubviewToFront)
