@@ -48,6 +48,10 @@ public extension UIPresentation.Transition {
 					prepareInsertionTransition(context: context)
 					prepareBackground(context: context)
 					additionalPrepare?(context)
+				} else if context.backgroundView == nil {
+					// Re-entered visible zone: container was recreated but
+					// background view was lost — recreate it.
+					prepareBackground(context: context)
 				}
 
 				animateOwn(context: context, progress: progress, animation: additionalAnimation)
@@ -301,13 +305,6 @@ private extension UIPresentation.Transition {
 		#endif
 		if let bgView = context.backgroundView {
 			context.backgroundTransitions[bgView]?.update(progress: progress, view: bgView)
-			#if VDPRESENT_LOG
-			print("🎨 bg  vc=\(viewId(context.viewController)) alpha=\(bgView.alpha) color=\(bgView.backgroundColor?.description ?? "nil") hidden=\(bgView.isHidden) superview=\(bgView.superview != nil) frame=\(Int(bgView.frame.width))x\(Int(bgView.frame.height)) @\(progress)")
-			#endif
-		} else {
-			#if VDPRESENT_LOG
-			print("🎨 bg  vc=\(viewId(context.viewController)) NO backgroundView")
-			#endif
 		}
 		animation?(context, progress)
 	}

@@ -275,9 +275,13 @@ private extension UIStackController {
 		isSettingControllers = true
 		viewControllers = controllers.to
 
-		// Wrappers/containers/presentations only for visible new controllers.
-		for toViewController in visibleControllers.toInsert {
-			if wrappers[toViewController] == nil {
+		// Ensure all visible `to` controllers have wrappers/containers.
+		// Controllers re-entering the visible zone (after their container was
+		// removed while off-screen) need these recreated, not just toInsert.
+		var reenteredVisible: [UIViewController] = []
+		for toViewController in visibleControllers.to {
+			let needsSetup = wrappers[toViewController] == nil
+			if needsSetup {
 				wrappers[toViewController] = wrap(view: toViewController.view)
 			}
 			if containers[toViewController] == nil {
@@ -286,12 +290,15 @@ private extension UIStackController {
 			if presentations[toViewController] == nil {
 				presentations[toViewController] = toViewController.defaultPresentation ?? presentation
 			}
+			if needsSetup && !visibleControllers.toInsert.contains(toViewController) {
+				reenteredVisible.append(toViewController)
+			}
 		}
 
 		content.layoutIfNeeded()
 
-		// Add views only for visible new controllers.
-		for toViewController in visibleControllers.toInsert {
+		// Add views for new visible controllers (toInsert + re-entered).
+		for toViewController in visibleControllers.toInsert + reenteredVisible {
 			let ctx = context(toViewController)
 			ctx.container.addSubview(ctx.view, layout: ctx.environment.contentLayout)
 		}
@@ -362,6 +369,7 @@ private extension UIStackController {
 					direction: direction,
 					controllers: controllers,
 					visibleControllers: visibleControllers,
+					reenteredVisible: reenteredVisible,
 					context: context,
 					isCompleted: completed,
 					completion: completion
@@ -376,6 +384,7 @@ private extension UIStackController {
 		direction: TransitionDirection,
 		controllers: UIPresentation.Context.Controllers,
 		visibleControllers: UIPresentation.Context.Controllers,
+		reenteredVisible: [UIViewController],
 		context: @escaping (UIViewController) -> UIPresentation.Context,
 		isCompleted: Bool,
 		completion: (() -> Void)?
@@ -390,6 +399,8 @@ private extension UIStackController {
 			configureInteractivity(
 				presentation: presentation,
 				controllers: controllers,
+				// Re-entered controllers got new containers — need interactivity reinstalled.
+				additionalInstall: reenteredVisible,
 				context: context
 			)
 
@@ -453,13 +464,14 @@ private extension UIStackController {
 	func configureInteractivity(
 		presentation: UIPresentation,
 		controllers: UIPresentation.Context.Controllers,
+		additionalInstall: [UIViewController] = [],
 		context: @escaping (UIViewController) -> UIPresentation.Context
 	) {
 		for item in controllers.toRemove {
 			presentations[item, default: presentation]
 				.interactivity?.uninstall(context: context(item))
 		}
-		for controller in controllers.toInsert {
+		for controller in controllers.toInsert + additionalInstall {
 			let ctxt = context(controller)
 			presentations[controller, default: presentation]
 				.interactivity?.install(context: ctxt) { [weak self] context, state in
