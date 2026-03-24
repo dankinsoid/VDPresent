@@ -392,6 +392,22 @@ private extension UIStackController {
 				controllers: controllers,
 				context: context
 			)
+
+			// Controllers leaving visible zone but staying in full stack:
+			// remove wrapper/container so they don't consume resources.
+			// Must run before didSetViewControllers which calls updateContainers
+			// (otherwise container(for:) would recreate a container we just removed).
+			let visibleToSet = Set(visibleControllers.to.map(ObjectIdentifier.init))
+			let fullToSet = Set(controllers.to.map(ObjectIdentifier.init))
+			for vc in visibleControllers.from {
+				let id = ObjectIdentifier(vc)
+				if !visibleToSet.contains(id) && fullToSet.contains(id) {
+					wrappers[vc]?.removeFromSuperview()
+					wrappers[vc] = nil
+					containers[vc]?.removeFromSuperview()
+					containers[vc] = nil
+				}
+			}
 		}
 
 		didSetViewControllers()
@@ -408,21 +424,6 @@ private extension UIStackController {
 		}
 		#endif
 		if isCompleted {
-			// Controllers leaving visible zone but staying in full stack:
-			// remove wrapper/container so they don't consume resources.
-			// Done after animation so backEffects can still reach them during transition.
-			let visibleToSet = Set(visibleControllers.to.map(ObjectIdentifier.init))
-			let fullToSet = Set(controllers.to.map(ObjectIdentifier.init))
-			for vc in visibleControllers.from {
-				let id = ObjectIdentifier(vc)
-				if !visibleToSet.contains(id) && fullToSet.contains(id) {
-					wrappers[vc]?.removeFromSuperview()
-					wrappers[vc] = nil
-					containers[vc]?.removeFromSuperview()
-					containers[vc] = nil
-				}
-			}
-
 			for fromViewController in controllers.toRemove {
 				fromViewController.removeFromParent()
 				fromViewController.didMove(toParent: nil)
@@ -519,7 +520,9 @@ private extension UIStackController {
 	}
 
 	func updateContainers() {
-		content.containers = viewControllers.map(container)
+		// Only include containers that already exist — non-visible controllers
+		// may have had their containers intentionally removed.
+		content.containers = viewControllers.compactMap { containers[$0] }
 	}
 }
 
