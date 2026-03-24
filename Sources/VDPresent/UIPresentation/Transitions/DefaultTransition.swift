@@ -40,14 +40,15 @@ public extension UIPresentation.Transition {
 				print("🔧 prepare  vc=\(viewId(context.viewController)) changing=\(context.isChangingController) frozen=\(context.isBehindFrozen) progress=\(progress) view=\(fmt(context.view))")
 				#endif
 
+				// Reset to identity, then apply the pre-animation state.
+				resetView(context: context)
+
 				if context.isChangingController {
 					prepareInsertionTransition(context: context)
 					prepareBackground(context: context)
 					additionalPrepare?(context)
 				}
 
-				// Reset to identity, then apply the pre-animation state.
-				resetView(context: context)
 				animateOwn(context: context, progress: progress, animation: additionalAnimation)
 				applyBackEffects(context: context, progress: progress)
 			},
@@ -213,21 +214,13 @@ private extension UIPresentation.Transition {
 
 	/// Progress for the prepare phase (pre-animation state).
 	///
-	/// - Remaining controllers: `.insertion(1)` — fully appeared, no own animation.
-	/// - Frozen behind (departing): `.removal(1)` — snapped to removed state.
-	/// - Frozen behind (arriving): `.insertion(1)` — sit fully appeared, moved only by back effects.
+	/// - Remaining / frozen behind: `.insertion(1)` — fully appeared, no own animation.
+	///   Frozen controllers sit in place and are moved only by back effects from above.
 	/// - Top / animating controller: `ownDirection.at(.start)` — animation start point.
 	/// @ai-generated(solo)
 	static func prepareProgress(context: UIPresentation.Context) -> Progress {
-		if !context.isChangingController {
+		if !context.isChangingController || context.isBehindFrozen {
 			return .insertion(1)
-		}
-		if context.isBehindFrozen {
-			// Departing frozen controllers snap to removed; arriving frozen stay appeared.
-			// Both are at their final state already — no own animation, only back effects.
-			return context.viewControllers.toRemove.contains(context.viewController)
-				? .removal(1)
-				: .insertion(1)
 		}
 		return context.ownDirection.at(.start)
 	}
@@ -296,7 +289,7 @@ private extension UIPresentation.Transition {
 		#endif
 		var transition = context.environment.contentTransition(context)
 		// Capture current (identity) state as initial for this transition.
-		transition.beforeTransition(view: view)
+		transition.beforeTransitionIfNeeded(view: view)
 		transition.update(progress: progress, view: view)
 		context.viewTransitions.setOwn(transition)
 		#if VDPRESENT_LOG
@@ -334,7 +327,7 @@ private extension UIPresentation.Transition {
 			var transition = context.environment.recessTransition(depthIndex, context).reversed
 			// Capture current state (after own contentTransition + any earlier back effects)
 			// as initial, so this recess composes on top rather than overwriting.
-			transition.beforeTransition(view: backView)
+			transition.beforeTransitionIfNeeded(view: backView)
 			#if VDPRESENT_LOG
 			let before = fmt(backView)
 			#endif
