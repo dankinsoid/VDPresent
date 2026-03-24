@@ -139,18 +139,16 @@ public extension UIPresentation.Context {
 			presentation: (UIViewController) -> UIPresentation
 		) -> [UIViewController] {
 			guard !stack.isEmpty else { return [] }
-			var startIndex = stack.count - 1
-			var foundOpaque = false
+			// Walk backward from top until we find an opaque controller
+			// (one without overCurrentContext). That controller and everything
+			// above it form the visible slice.
 			for i in stride(from: stack.count - 1, through: 0, by: -1) {
-				startIndex = i
-				if foundOpaque {
-					break
-				}
 				if !presentation(stack[i]).environment.overCurrentContext {
-					foundOpaque = true
+					return Array(stack[i...])
 				}
 			}
-			return Array(stack[startIndex...])
+			// All controllers are overCurrentContext — entire stack is visible.
+			return stack
 		}
 	}
 }
