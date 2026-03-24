@@ -117,6 +117,41 @@ public extension UIPresentation.Context {
 			default: return []
 			}
 		}
+
+		/// Returns a new `Controllers` containing only the visible slice of each stack.
+		///
+		/// Walks each stack top-down. Includes every controller until one level
+		/// below the first `overCurrentContext == false` (opaque) controller.
+		/// The opaque controller and one below it are included because
+		/// recessTransition from the opaque one animates the view below.
+		/// @ai-generated(paired)
+		func visible(
+			_ presentation: (UIViewController) -> UIPresentation
+		) -> Controllers {
+			Controllers(
+				fromViewControllers: Self.visibleSlice(of: from, presentation: presentation),
+				toViewControllers: Self.visibleSlice(of: to, presentation: presentation)
+			)
+		}
+
+		private static func visibleSlice(
+			of stack: [UIViewController],
+			presentation: (UIViewController) -> UIPresentation
+		) -> [UIViewController] {
+			guard !stack.isEmpty else { return [] }
+			var startIndex = stack.count - 1
+			var foundOpaque = false
+			for i in stride(from: stack.count - 1, through: 0, by: -1) {
+				startIndex = i
+				if foundOpaque {
+					break
+				}
+				if !presentation(stack[i]).environment.overCurrentContext {
+					foundOpaque = true
+				}
+			}
+			return Array(stack[startIndex...])
+		}
 	}
 }
 
@@ -266,7 +301,7 @@ extension UIPresentation.Context {
 				return false
 			}
 			let context = self.for(vc)
-			if !context.environment.overCurrentContext(context) {
+			if !context.environment.overCurrentContext {
 				return true
 			}
 		}
@@ -294,7 +329,7 @@ extension UIPresentation.Context {
 		guard let top else { return true }
 		let topContext = self.for(top)
 		// overCurrentContext top means behind controllers are visible — they must animate, not freeze.
-		if topContext.environment.overCurrentContext(topContext) { return false }
+		if topContext.environment.overCurrentContext { return false }
 		switch topContext.environment.behindBehavior {
 		case .freeze:
 			return true

@@ -40,7 +40,7 @@ public extension UIPresentation {
 					)
 					return result
 				})
-				.environment(\.overCurrentContext) { _ in true }
+				.environment(\.overCurrentContext, true)
 				.withBackground(containerColor),
 			interactivity: .swipe(to: edge),
 			animation: .default

@@ -208,6 +208,7 @@ private extension UIStackController {
 
 private extension UIStackController {
 
+	/// @ai-generated(paired)
 	func transition(
 		direction: TransitionDirection,
 		to toViewControllers: [UIViewController],
@@ -221,6 +222,12 @@ private extension UIStackController {
 			fromViewControllers: fromViewControllers,
 			toViewControllers: toViewControllers
 		)
+
+		let presentations = self.presentations
+		let resolve: (UIViewController) -> UIPresentation = {
+			presentations[$0] ?? $0.defaultPresentation ?? presentation
+		}
+		let visibleControllers = controllers.visible(resolve)
 
 		let context: (UIViewController) -> UIPresentation.Context = { [weak self, cache] in
 			let presentations = self?.presentations ?? [:]
@@ -247,22 +254,29 @@ private extension UIStackController {
 			direction: direction,
 			animated: animated,
 			controllers: controllers,
+			visibleControllers: visibleControllers,
 			context: context,
 			completion: completion
 		)
 	}
 
+	/// `controllers` — full stack for structural ops (addChild, removeFromParent).
+	/// `visibleControllers` — visible slice for animation pipeline.
+	/// @ai-generated(paired)
 	func transition(
 		presentation: UIPresentation,
 		direction: TransitionDirection,
 		animated: Bool,
 		controllers: UIPresentation.Context.Controllers,
+		visibleControllers: UIPresentation.Context.Controllers,
 		context: @escaping (UIViewController) -> UIPresentation.Context,
 		completion: (() -> Void)?
 	) {
 		isSettingControllers = true
 		viewControllers = controllers.to
-		for toViewController in controllers.toInsert {
+
+		// Wrappers/containers/presentations only for visible new controllers.
+		for toViewController in visibleControllers.toInsert {
 			if wrappers[toViewController] == nil {
 				wrappers[toViewController] = wrap(view: toViewController.view)
 			}
@@ -270,71 +284,79 @@ private extension UIStackController {
 				container(for: toViewController)
 			}
 			if presentations[toViewController] == nil {
-				// Prefer controller's own defaultPresentation over the transition-wide one
 				presentations[toViewController] = toViewController.defaultPresentation ?? presentation
 			}
 		}
 
-		// Resolve container layout before adding child views.
-		// New containers are pinned to content via constraints but haven't
-		// received a layout pass yet, so their frames are still zero.
-		// Without this, convert(_:to:) inside PageSheetModifier returns
-		// wrong window coordinates (e.g. x=-201 instead of 0).
 		content.layoutIfNeeded()
 
-		// Add views to the hierarchy before addChild so UIKit can
-		// compute safe area insets from the view's actual position.
-		// Without this, adding multiple children at once leaves
-		// safe area at zero because UIKit snapshots it at addChild
-		// time when the view is not yet in a window.
-		for toViewController in controllers.toInsert {
+		// Add views only for visible new controllers.
+		for toViewController in visibleControllers.toInsert {
 			let ctx = context(toViewController)
 			ctx.container.addSubview(ctx.view, layout: ctx.environment.contentLayout)
 		}
-		
-		// Use zIndex order so animate phase processes controllers bottom-to-top:
-		// each controller first applies its own effect, then higher controllers
-		// apply recess on views below — no ordering conflicts.
-		let allControllers = controllers.all(direction)
 
-		allControllers.map(container).forEach(content.bringSubviewToFront)
+		// Controllers re-entering visible: unhide container.
+		// View is already in identity after previous cleanup.
+		let reallyInserted = Set(controllers.toInsert.map(ObjectIdentifier.init))
+		for vc in visibleControllers.toInsert where !reallyInserted.contains(ObjectIdentifier(vc)) {
+			container(for: vc).isHidden = false
+		}
 
+		// Controllers leaving visible zone but staying in full stack:
+		// reset transitions to identity and hide container.
+		let visibleToSet = Set(visibleControllers.to.map(ObjectIdentifier.init))
+		let fullToSet = Set(controllers.to.map(ObjectIdentifier.init))
+		for vc in visibleControllers.from {
+			let id = ObjectIdentifier(vc)
+			if !visibleToSet.contains(id) && fullToSet.contains(id) {
+				let ctx = context(vc)
+				ctx.viewTransitions.reset(view: ctx.view)
+				ctx.viewTransitions.removeAll()
+				ctx.container.isHidden = true
+			}
+		}
+
+		// Iterate only visible controllers for z-ordering and animation.
+		let allVisible = visibleControllers.all(direction)
+		allVisible.map(container).forEach(content.bringSubviewToFront)
+
+		// Structural: addChild for ALL new controllers.
 		for toViewController in controllers.to where toViewController.parent == nil {
 			toViewController.willMove(toParent: self)
 			self.addChild(toViewController)
 			toViewController.didMove(toParent: self)
 		}
 
-		// Non-top children never receive appearance transitions, so UIKit
-		// blocks safe area propagation. Unlock it explicitly.
-		for vc in controllers.toInsert where vc !== controllers.to.last {
+		for vc in visibleControllers.toInsert where vc !== visibleControllers.to.last {
 			vc.unlockSafeAreaPropagation()
 		}
 
 		for item in controllers.toRemove {
 			item.willMove(toParent: nil)
 		}
-		
-		for controller in allControllers {
+
+		// Animation pipeline: only visible controllers.
+		for controller in allVisible {
 			let currentPresentation = presentations[controller, default: presentation]
 			AnimationDriver.prepare(
 				transition: currentPresentation.transition,
 				context: context(controller)
 			)
 		}
-		
+
 		#if VDPRESENT_LOG
-		print("[UIStackController] allControllers: \(allControllers.map { $0.view.accessibilityIdentifier ?? "nil" })")
+		print("[UIStackController] allVisible: \(allVisible.map { $0.view.accessibilityIdentifier ?? "nil" })")
 		#endif
 		AnimationDriver.animate(
-			allControllers.map { vc in
+			allVisible.map { vc in
 				(context(vc), presentations[vc, default: presentation].transition)
 			},
 			beginAppearance: {
 				if !controllers.isTopTheSame {
 					if let vc = controllers.to.last {
 						 vc.beginAppearanceTransition(true, animated: animated)
-						
+
  #if VDPRESENT_LOG
 			print("[UIStackController] appear safeArea vc=\(vc.view.accessibilityIdentifier ?? "view") vc.view=[t=\(vc.view.safeAreaInsets.top) b=\(vc.view.safeAreaInsets.bottom)] vcFrame=\(Int(vc.view.frame.minY))-\(Int(vc.view.frame.maxY))")
 	#endif
@@ -345,15 +367,16 @@ private extension UIStackController {
 				}
 			},
 			prepareInteractive: { [weak self] update in
-				for controller in allControllers {
+				for controller in allVisible {
 					self?.animators[controller] = update
 				}
 			},
 			completion: { [weak self] completed in
 				self?.completionBlock(
-					presentation: presentation, // currentPresentation,
+					presentation: presentation,
 					direction: direction,
 					controllers: controllers,
+					visibleControllers: visibleControllers,
 					context: context,
 					isCompleted: completed,
 					completion: completion
@@ -362,15 +385,18 @@ private extension UIStackController {
 		)
 	}
 
+	/// @ai-generated(paired)
 	func completionBlock(
 		presentation: UIPresentation,
 		direction: TransitionDirection,
 		controllers: UIPresentation.Context.Controllers,
+		visibleControllers: UIPresentation.Context.Controllers,
 		context: @escaping (UIViewController) -> UIPresentation.Context,
 		isCompleted: Bool,
 		completion: (() -> Void)?
 	) {
-		for controller in controllers.all(direction) {
+		// Completion for visible controllers only.
+		for controller in visibleControllers.all(direction) {
 			let currentPresentation = presentations[controller, default: presentation]
 			currentPresentation.transition.completion(context(controller), isCompleted)
 		}
@@ -440,11 +466,15 @@ private extension UIStackController {
 					switch state {
 					case .begin:
 						guard !self.isSettingControllers else { return .prevent }
-						self.transition(
+						// Interactive: context.viewControllers is the full stack.
+					// Pass it as both controllers and visibleControllers —
+					// interactive transitions operate on the visible portion.
+					self.transition(
 							presentation: presentation,
 							direction: context.direction,
 							animated: context.animated,
 							controllers: context.viewControllers,
+							visibleControllers: context.viewControllers,
 							context: context.for,
 							completion: nil
 						)

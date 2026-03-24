@@ -42,7 +42,7 @@ public extension UIPresentation {
 						up: i == 1
 					)
 				}
-				.environment(\.overCurrentContext) { _ in true }
+				.environment(\.overCurrentContext, true)
 				.withBackground(containerColor)
 				.environment(\.backgroundPlacement, .behindController),
 			interactivity: .swipe(to: edge),

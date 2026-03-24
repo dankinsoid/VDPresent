@@ -122,8 +122,8 @@ public extension UIPresentation.Environment {
 
 	/// Whether this presentation renders over the current context (like a sheet) rather than
 	/// replacing it. Affects how the view hierarchy is structured. Default: `false`.
-	var overCurrentContext: (UIPresentation.Context) -> Bool {
-		get { self[\.overCurrentContext] ?? { _ in false } }
+	var overCurrentContext: Bool {
+		get { self[\.overCurrentContext] ?? false }
 		set { self[\.overCurrentContext] = newValue }
 	}
 
