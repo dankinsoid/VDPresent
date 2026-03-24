@@ -10,14 +10,13 @@ public extension UIPresentation.Transition {
 	/// result to set `contentTransition`, `recessTransition`, `contentLayout`, etc.
 	///
 	/// Three lifecycle phases, executed in order:
-	/// - **prepare** — layout, initial states for changing controllers, snap to `.start`
-	/// - **animation** — reset all views to identity, then apply own + back-view effects to `.end`
+	/// - **prepare** — reset to identity, then apply pre-animation state (own + back effects)
+	/// - **animate** — reset to identity, then apply post-animation state (own + back effects)
 	/// - **completion** — state reset/cleanup, container visibility, `completion` callback
 	///
-	/// The animate phase eliminates ordering conflicts by always resetting each view before
-	/// applying effects. Controllers are iterated in z-index order (bottom to top), so each
-	/// view first applies its own contentTransition, then higher controllers apply recess
-	/// on top. `UIView.animate` only sees the before/after states, not intermediate resets.
+	/// Both prepare and animate follow the same pattern: reset → apply own → apply back effects.
+	/// The only difference is the progress value. `UIView.animate` sees the prepare state as
+	/// "before" and the animate state as "after".
 	///
 	/// - Parameters:
 	///   - additionalPrepare: Called at the end of the prepare phase. Use to set up any state
@@ -36,79 +35,31 @@ public extension UIPresentation.Transition {
 		UIPresentation.Transition(
 			transitionID: transitionID,
 			prepare: { context in
+				let progress = prepareProgress(context: context)
 				#if VDPRESENT_LOG
-				print("🔧 prepare  vc=\(viewId(context.viewController)) changing=\(context.isChangingController) frozen=\(context.isBehindFrozen) view=\(fmt(context.view))")
+				print("🔧 prepare  vc=\(viewId(context.viewController)) changing=\(context.isChangingController) frozen=\(context.isBehindFrozen) progress=\(progress) view=\(fmt(context.view))")
 				#endif
-//				if !context.needHide || context.isTopController {
-//					context.container.isHidden = false
-//				}
-				if context.isBehindFrozen,
-				   context.direction == .removal,
-				   context.viewControllers.toRemove.contains(context.viewController)
-				{
-					// Removal frozen departing: snap to removed state before top animates.
-					// Back effects at removal(1) = identity, so remaining views stay in place.
-//					context.container.isHidden = true
-					animateOwn(context: context, progress: .removal(1), animation: additionalAnimation)
-					applyBackEffects(context: context, progress: .removal(1))
-					// Insertion frozen: no prepare — stays at current state (insertion(1)),
-					// moved only by backEffect from the new top controller.
-					return
-				}
-				if !context.isChangingController {
-					// Remaining controllers: no own animation, but must re-apply
-					// back effects so controllers below keep their recess state
-					// (e.g. PageSheet recess on Menu must persist when pushing on top).
-					applyBackEffects(context: context, progress: .insertion(1))
-					#if VDPRESENT_LOG
-					// Check all back views to see if recess was applied
-					let allControllers = context.visibleViewControllers.all(context.direction)
-					if let myIndex = allControllers.firstIndex(of: context.viewController), myIndex > 0 {
-						for vc in allControllers[..<myIndex].reversed() {
-							let bv = context.for(vc).view
-							print("🔧 after remaining backEffect: \(viewId(vc)) view=\(fmt(bv)) id=\(ObjectIdentifier(bv)) transform=\(bv.affineTransform) layer=\(bv.layer.affineTransform())")
-						}
-					}
-					#endif
-					return
-				}
-				prepareInsertionTransition(context: context)
-				prepareBackground(context: context)
-				additionalPrepare?(context)
 
-				// Frozen behind-controllers don't play own animation — they sit at
-				// fully-appeared state and are moved only by back effects from above.
-				// Without this, a re-entering controller (dismiss) would start offscreen,
-				// and a newly-inserted frozen controller (push) would animate in visibly.
-				let startProgress: Progress
-				if context.isBehindFrozen {
-					startProgress = .insertion(1)
-				} else {
-					startProgress = context.ownDirection.at(.start)
+				if context.isChangingController {
+					prepareInsertionTransition(context: context)
+					prepareBackground(context: context)
+					additionalPrepare?(context)
 				}
-				animateOwn(context: context, progress: startProgress, animation: additionalAnimation)
-				applyBackEffects(context: context, progress: startProgress)
+
+				// Reset to identity, then apply the pre-animation state.
+				resetView(context: context)
+				animateOwn(context: context, progress: progress, animation: additionalAnimation)
+				applyBackEffects(context: context, progress: progress)
 			},
 			animation: { context in
-				// Reset this view to identity by undoing any previously applied effects
-				// (own contentTransition + recess from controllers above).
-				// This is safe inside UIView.animate — only the final state matters.
+				let progress = animateProgress(context: context)
+
+				// Reset to identity, then apply the post-animation state.
 				resetView(context: context)
-
-				// Frozen behind-controllers stay at fully-appeared — no own animation,
-				// moved only by back effects from the top controller.
-				// Departing frozen controllers already snapped to removal(1) in prepare
-				// and were excluded from visible slice, so they don't reach here.
-				let ownProgress: Progress = context.isBehindFrozen
-					? .insertion(1)
-					: context.ownDirection.at(.end)
-				animateOwn(context: context, progress: ownProgress, animation: additionalAnimation)
-
-				// Apply recess effects on views below this controller.
-				applyBackEffects(context: context, progress: ownProgress)
+				animateOwn(context: context, progress: progress, animation: additionalAnimation)
+				applyBackEffects(context: context, progress: progress)
 
 				if context.isTopController {
-					// do we need this? ios seems to update the status bar automatically, need to figure out if there are ios versions that don't do this or if there are edge cases where it doesn't work
 					context.updateStatusBar(style: context.viewController.preferredStatusBarStyle)
 				}
 			},
@@ -259,6 +210,40 @@ extension UIPresentation.Context {
 }
 
 private extension UIPresentation.Transition {
+
+	/// Progress for the prepare phase (pre-animation state).
+	///
+	/// - Remaining controllers: `.insertion(1)` — fully appeared, no own animation.
+	/// - Frozen behind (departing): `.removal(1)` — snapped to removed state.
+	/// - Frozen behind (arriving): `.insertion(1)` — sit fully appeared, moved only by back effects.
+	/// - Top / animating controller: `ownDirection.at(.start)` — animation start point.
+	/// @ai-generated(solo)
+	static func prepareProgress(context: UIPresentation.Context) -> Progress {
+		if !context.isChangingController {
+			return .insertion(1)
+		}
+		if context.isBehindFrozen {
+			// Departing frozen controllers snap to removed; arriving frozen stay appeared.
+			// Both are at their final state already — no own animation, only back effects.
+			return context.viewControllers.toRemove.contains(context.viewController)
+				? .removal(1)
+				: .insertion(1)
+		}
+		return context.ownDirection.at(.start)
+	}
+
+	/// Progress for the animate phase (post-animation state).
+	///
+	/// - Remaining controllers: `.insertion(1)` — stay fully appeared.
+	/// - Frozen behind: `.insertion(1)` — stay fully appeared, moved only by back effects.
+	/// - Top / animating controller: `ownDirection.at(.end)` — animation end point.
+	/// @ai-generated(solo)
+	static func animateProgress(context: UIPresentation.Context) -> Progress {
+		if !context.isChangingController || context.isBehindFrozen {
+			return .insertion(1)
+		}
+		return context.ownDirection.at(.end)
+	}
 
 	/// Configures the content transition for the view being inserted or removed.
 	/// Stores it as the `own` transition in `viewTransitions`.
