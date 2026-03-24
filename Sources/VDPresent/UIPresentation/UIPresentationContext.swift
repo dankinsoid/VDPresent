@@ -118,21 +118,27 @@ public extension UIPresentation.Context {
 			}
 		}
 
-		/// Returns a new `Controllers` containing only the visible slice of each stack.
+		/// Returns a new `Controllers` with visible slices.
 		///
-		/// Walks each stack top-down, including controllers until hitting one with
-		/// `overCurrentContext == false` (opaque/fullscreen). That controller is included
-		/// but iteration stops — everything below is invisible and excluded.
-		///
-		/// - Parameter presentation: Resolves a controller to its presentation.
-		/// - Returns: A `Controllers` with filtered `from`/`to`.
-		/// @ai-generated(solo)
+		/// `to` is filtered to the visible slice. `from` includes its own visible
+		/// slice united with any `from` controllers that also appear in visible `to`.
+		/// This ensures remaining controllers (present in both stacks) are not
+		/// mistaken for newly inserted.
+		/// @ai-generated(paired)
 		func visible(
 			_ presentation: (UIViewController) -> UIPresentation
 		) -> Controllers {
-			Controllers(
-				fromViewControllers: Self.visibleSlice(of: from, presentation: presentation),
-				toViewControllers: Self.visibleSlice(of: to, presentation: presentation)
+			let visibleTo = Self.visibleSlice(of: to, presentation: presentation)
+			let visibleFromSlice = Self.visibleSlice(of: from, presentation: presentation)
+			let visibleFromSet = Set(visibleFromSlice.map(ObjectIdentifier.init))
+			let visibleToSet = Set(visibleTo.map(ObjectIdentifier.init))
+			// from controllers that are in visibleTo but missing from visibleFromSlice
+			let extra = from.filter {
+				visibleToSet.contains(ObjectIdentifier($0)) && !visibleFromSet.contains(ObjectIdentifier($0))
+			}
+			return Controllers(
+				fromViewControllers: extra + visibleFromSlice,
+				toViewControllers: visibleTo
 			)
 		}
 
