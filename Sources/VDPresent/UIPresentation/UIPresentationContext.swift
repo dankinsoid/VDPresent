@@ -136,21 +136,30 @@ public extension UIPresentation.Context {
 			)
 		}
 
-		/// Walks the stack top-down, including each controller until hitting one
-		/// whose presentation has `overCurrentContext == false`.
-		/// That controller is included but iteration stops — everything below is invisible.
-		/// @ai-generated(solo)
+		/// Walks the stack top-down, including each controller until one level
+		/// below the first `overCurrentContext == false` controller.
+		///
+		/// The controller directly below the first opaque one is included because
+		/// recessTransition from the opaque controller animates it (e.g. the
+		/// slide-left back-effect during a navigation push). Everything below
+		/// that is truly invisible.
+		/// @ai-generated(paired)
 		private static func visibleSlice(
 			of stack: [UIViewController],
 			presentation: (UIViewController) -> UIPresentation
 		) -> [UIViewController] {
 			guard !stack.isEmpty else { return [] }
 			var startIndex = stack.count - 1
-			// Walk from top downward. Always include top. Stop after first non-overCurrentContext.
+			var foundOpaque = false
 			for i in stride(from: stack.count - 1, through: 0, by: -1) {
 				startIndex = i
-				if !presentation(stack[i]).environment.overCurrentContext {
+				if foundOpaque {
+					// One level below the first opaque — include it, then stop.
 					break
+				}
+				if !presentation(stack[i]).environment.overCurrentContext {
+					foundOpaque = true
+					// Don't break yet — include the next one below if it exists.
 				}
 			}
 			return Array(stack[startIndex...])
