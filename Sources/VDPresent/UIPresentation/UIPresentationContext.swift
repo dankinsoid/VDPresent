@@ -334,15 +334,8 @@ extension UIPresentation.Context {
 		let top = direction == .insertion ? viewControllers.to.last : viewControllers.from.last
 		guard let top else { return true }
 		let topContext = self.for(top)
-		// Departing behind-controllers are always frozen during removal:
-		// they sit behind the top departing controller and their own
-		// contentTransition would cause visual noise (multiple sheets
-		// all sliding away simultaneously). Only remaining/inserting
-		// behind-controllers may animate (e.g. recess during push).
-		if topContext.environment.overCurrentContext {
-			let isDeparting = !viewControllers.to.contains(viewController)
-			return isDeparting
-		}
+		// overCurrentContext top means behind controllers are visible — they must animate, not freeze.
+		if topContext.environment.overCurrentContext { return false }
 		switch topContext.environment.behindBehavior {
 		case .freeze:
 			return true
