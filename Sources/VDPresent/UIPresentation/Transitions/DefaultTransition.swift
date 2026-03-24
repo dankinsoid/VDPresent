@@ -301,6 +301,13 @@ private extension UIPresentation.Transition {
 		#endif
 		if let bgView = context.backgroundView {
 			context.backgroundTransitions[bgView]?.update(progress: progress, view: bgView)
+			#if VDPRESENT_LOG
+			print("🎨 bg  vc=\(viewId(context.viewController)) alpha=\(bgView.alpha) color=\(bgView.backgroundColor?.description ?? "nil") hidden=\(bgView.isHidden) superview=\(bgView.superview != nil) frame=\(Int(bgView.frame.width))x\(Int(bgView.frame.height)) @\(progress)")
+			#endif
+		} else {
+			#if VDPRESENT_LOG
+			print("🎨 bg  vc=\(viewId(context.viewController)) NO backgroundView")
+			#endif
 		}
 		animation?(context, progress)
 	}
