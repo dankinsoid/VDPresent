@@ -369,7 +369,6 @@ private extension UIStackController {
 					direction: direction,
 					controllers: controllers,
 					visibleControllers: visibleControllers,
-					reenteredVisible: reenteredVisible,
 					context: context,
 					isCompleted: completed,
 					completion: completion
@@ -384,7 +383,6 @@ private extension UIStackController {
 		direction: TransitionDirection,
 		controllers: UIPresentation.Context.Controllers,
 		visibleControllers: UIPresentation.Context.Controllers,
-		reenteredVisible: [UIViewController],
 		context: @escaping (UIViewController) -> UIPresentation.Context,
 		isCompleted: Bool,
 		completion: (() -> Void)?
@@ -399,8 +397,6 @@ private extension UIStackController {
 			configureInteractivity(
 				presentation: presentation,
 				controllers: controllers,
-				// Re-entered controllers got new containers — need interactivity reinstalled.
-				additionalInstall: reenteredVisible,
 				context: context
 			)
 
@@ -464,19 +460,16 @@ private extension UIStackController {
 	func configureInteractivity(
 		presentation: UIPresentation,
 		controllers: UIPresentation.Context.Controllers,
-		additionalInstall: [UIViewController] = [],
 		context: @escaping (UIViewController) -> UIPresentation.Context
 	) {
 		for item in controllers.toRemove {
 			presentations[item, default: presentation]
 				.interactivity?.uninstall(context: context(item))
 		}
-		#if VDPRESENT_LOG
-		if !additionalInstall.isEmpty {
-			print("🔁 configureInteractivity additionalInstall: \(additionalInstall.map { $0.view.accessibilityIdentifier ?? "?" })")
-		}
-		#endif
-		for controller in controllers.toInsert + additionalInstall {
+		// Install for all `to` controllers, not just toInsert.
+		// Controllers re-entering the visible zone get new containers,
+		// so their gesture recognizers must be reinstalled.
+		for controller in controllers.to {
 			let ctxt = context(controller)
 			presentations[controller, default: presentation]
 				.interactivity?.install(context: ctxt) { [weak self] context, state in
