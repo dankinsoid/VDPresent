@@ -38,6 +38,7 @@ public extension UIPresentation.Transition {
 				let progress = prepareProgress(context: context)
 				#if VDPRESENT_LOG
 				print("🔧 prepare  vc=\(viewId(context.viewController)) changing=\(context.isChangingController) frozen=\(context.isBehindFrozen) progress=\(progress) view=\(fmt(context.view))")
+				logHierarchy(context: context, phase: "prepare")
 				#endif
 
 				// Reset to identity, then apply the pre-animation state.
@@ -54,6 +55,9 @@ public extension UIPresentation.Transition {
 			},
 			animation: { context in
 				let progress = animateProgress(context: context)
+				#if VDPRESENT_LOG
+				logHierarchy(context: context, phase: "animate")
+				#endif
 
 				// Reset to identity, then apply the post-animation state.
 				resetView(context: context)
@@ -327,7 +331,7 @@ private extension UIPresentation.Transition {
 			var transition = context.environment.recessTransition(depthIndex, context).reversed
 			// Capture current state (after own contentTransition + any earlier back effects)
 			// as initial, so this recess composes on top rather than overwriting.
-			transition.beforeTransitionIfNeeded(view: backView)
+			transition.beforeTransition(view: backView)
 			#if VDPRESENT_LOG
 			let before = fmt(backView)
 			#endif
@@ -386,6 +390,41 @@ private extension UIPresentation.Transition {
 			parts.append("sx=\(String(format: "%.3f", sx)) sy=\(String(format: "%.3f", sy))")
 		}
 		return parts.isEmpty ? "center" : parts.joined(separator: " ")
+	}
+
+	/// Logs the view hierarchy around this controller: wrapper superview chain,
+	/// container subviews, and all sibling containers in content view.
+	static func logHierarchy(context: UIPresentation.Context, phase: String) {
+		let vc = context.viewController
+		let name = viewId(vc)
+		let wrapper = context.view
+		let container = context.container
+
+		// Superview chain: wrapper → container → content
+		var chain: [String] = []
+		var current: UIView? = wrapper
+		for _ in 0..<5 {
+			guard let v = current else { break }
+			let id = viewName(v)
+			let frame = "(\(Int(v.frame.minX)),\(Int(v.frame.minY)) \(Int(v.frame.width))x\(Int(v.frame.height)))"
+			let hidden = v.isHidden ? " HIDDEN" : ""
+			let alpha = v.alpha < 1 ? " alpha=\(String(format: "%.2f", v.alpha))" : ""
+			let tf = fmt(v)
+			chain.append("\(id)\(frame)\(hidden)\(alpha) \(tf)")
+			current = v.superview
+		}
+		print("📎 \(phase) hierarchy vc=\(name): \(chain.joined(separator: " → "))")
+
+		// All sibling containers in content (the parent of container)
+		if let content = container.superview {
+			let siblings = content.subviews.map { sub -> String in
+				let id = viewName(sub)
+				let hidden = sub.isHidden ? " HIDDEN" : ""
+				let tf = fmt(sub)
+				return "\(id)\(hidden) \(tf)"
+			}
+			print("📎 \(phase) content subviews: [\(siblings.joined(separator: ", "))]")
+		}
 	}
 
 	/// Logs safe area insets at each level of the view hierarchy for a controller.
