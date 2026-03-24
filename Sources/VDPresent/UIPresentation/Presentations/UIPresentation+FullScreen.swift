@@ -37,7 +37,7 @@ public extension UIPresentation {
 		UIPresentation(
 			transition: .base(transitionID: "fullScreen")
 				.environment(\.contentTransition) { _ in transition }
-				.environment(\.overCurrentContext) { _ in overCurrentContext }
+				.environment(\.overCurrentContext, overCurrentContext)
 				.withBackground(.identity),
 			interactivity: interactivity,
 			animation: .default

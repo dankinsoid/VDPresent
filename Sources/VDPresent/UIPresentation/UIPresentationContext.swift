@@ -43,12 +43,26 @@ public extension UIPresentation {
 		private let _presentation: (UIViewController) -> UIPresentation
 		private let _updateStatusBar: (UIStatusBarStyle, UIStatusBarAnimation) -> Void
 
+		/// Creates a context from a pre-built `Controllers` struct.
+		///
+		/// - Parameters:
+		///   - direction: Whether the transition is an insertion or removal.
+		///   - controller: The view controller this context represents.
+		///   - container: Closure resolving a controller to its container canvas.
+		///   - controllers: Pre-built `Controllers` with full and visible slices.
+		///   - views: Closure resolving a controller to its effect wrapper view.
+		///   - animated: Whether the transition is animated.
+		///   - animation: The UIKit animation configuration.
+		///   - isInteractive: Whether the transition is driven by a gesture.
+		///   - cache: Shared cache for per-transition state.
+		///   - updateStatusBar: Callback to update the status bar appearance.
+		///   - presentation: Closure resolving a controller to its presentation.
+		/// @ai-generated(solo)
 		public init(
 			direction: TransitionDirection,
 			controller: UIViewController,
 			container: @escaping (UIViewController) -> UIStackControllerCanvas,
-			fromViewControllers: [UIViewController],
-			toViewControllers: [UIViewController],
+			controllers: Controllers,
 			views: @escaping (UIViewController) -> UIStackEffectView,
 			animated: Bool,
 			animation: UIKitAnimation,
@@ -60,10 +74,7 @@ public extension UIPresentation {
 			self.direction = direction
 			_controller = controller
 			_container = container
-			viewControllers = Controllers(
-				fromViewControllers: fromViewControllers,
-				toViewControllers: toViewControllers
-			)
+			viewControllers = controllers
 			self.views = views
 			self.animated = animated
 			self.isInteractive = isInteractive
@@ -87,27 +98,76 @@ public extension UIPresentation {
 
 public extension UIPresentation.Context {
 
+	/// Holds both the full stack arrays and the visible slices used for transitions.
+	///
+	/// `fullFrom`/`fullTo` contain every controller in the stack before/after the transition.
+	/// `from`/`to` contain only the "visible slice" — controllers relevant to animation,
+	/// computed by walking from the top downward and stopping after the first controller
+	/// whose presentation has `overCurrentContext == false`. This avoids running the
+	/// prepare/animate/complete pipeline for deeply buried controllers that are hidden
+	/// both before and after the transition.
+	///
+	/// Structural operations (addChild, removeFromParent, viewControllers assignment)
+	/// use the `full*` arrays. Animation operations (prepare, animate, complete, z-ordering)
+	/// use the visible `from`/`to` arrays.
+	/// @ai-generated(solo)
 	struct Controllers {
 
+		/// Visible slice of the from-stack — only controllers relevant to animation.
 		public var from: [UIViewController] {
 			get { _fromViewControllers.compactMap(\.value) }
 			set { _fromViewControllers = newValue.map { Weak($0) } }
 		}
 
+		/// Visible slice of the to-stack — only controllers relevant to animation.
 		public var to: [UIViewController] {
 			get { _toViewControllers.compactMap(\.value) }
 			set { _toViewControllers = newValue.map { Weak($0) } }
 		}
 
+		/// Full from-stack — every controller before the transition.
+		public var fullFrom: [UIViewController] {
+			get { _fullFromViewControllers.compactMap(\.value) }
+			set { _fullFromViewControllers = newValue.map { Weak($0) } }
+		}
+
+		/// Full to-stack — every controller after the transition.
+		public var fullTo: [UIViewController] {
+			get { _fullToViewControllers.compactMap(\.value) }
+			set { _fullToViewControllers = newValue.map { Weak($0) } }
+		}
+
 		private var _fromViewControllers: [Weak<UIViewController>]
 		private var _toViewControllers: [Weak<UIViewController>]
+		private var _fullFromViewControllers: [Weak<UIViewController>]
+		private var _fullToViewControllers: [Weak<UIViewController>]
 
+		/// Creates controllers with both full and visible arrays.
+		///
+		/// - Parameters:
+		///   - fullFrom: Complete from-stack.
+		///   - fullTo: Complete to-stack.
+		///   - visibleFrom: Visible slice of from-stack (defaults to `fullFrom`).
+		///   - visibleTo: Visible slice of to-stack (defaults to `fullTo`).
+		/// @ai-generated(solo)
+		public init(
+			fullFrom: [UIViewController],
+			fullTo: [UIViewController],
+			visibleFrom: [UIViewController]? = nil,
+			visibleTo: [UIViewController]? = nil
+		) {
+			_fullFromViewControllers = fullFrom.map { Weak($0) }
+			_fullToViewControllers = fullTo.map { Weak($0) }
+			_fromViewControllers = (visibleFrom ?? fullFrom).map { Weak($0) }
+			_toViewControllers = (visibleTo ?? fullTo).map { Weak($0) }
+		}
+
+		/// Backward-compatible init — full arrays equal visible arrays.
 		public init(
 			fromViewControllers: [UIViewController],
 			toViewControllers: [UIViewController]
 		) {
-			_fromViewControllers = fromViewControllers.map { Weak($0) }
-			_toViewControllers = toViewControllers.map { Weak($0) }
+			self.init(fullFrom: fromViewControllers, fullTo: toViewControllers)
 		}
 
 		public subscript(_ key: UITransitionContextViewControllerKey) -> [UIViewController] {
@@ -117,15 +177,52 @@ public extension UIPresentation.Context {
 			default: return []
 			}
 		}
+
+		/// Walks the stack top-down, including each controller until hitting one
+		/// whose presentation has `overCurrentContext == false` (i.e. it's opaque/fullscreen).
+		/// That controller is included but iteration stops — everything below is invisible.
+		///
+		/// - Parameters:
+		///   - stack: The full stack to compute the visible slice of.
+		///   - presentation: Resolves a controller to its presentation.
+		/// - Returns: The visible slice, preserving original order (bottom to top).
+		/// @ai-generated(solo)
+		static func visibleSlice(
+			of stack: [UIViewController],
+			presentation: (UIViewController) -> UIPresentation
+		) -> [UIViewController] {
+			guard !stack.isEmpty else { return [] }
+			var startIndex = stack.count - 1
+			// Walk from top downward. Always include top. Stop after first non-overCurrentContext.
+			for i in stride(from: stack.count - 1, through: 0, by: -1) {
+				startIndex = i
+				if !presentation(stack[i]).environment.overCurrentContext {
+					break
+				}
+			}
+			return Array(stack[startIndex...])
+		}
 	}
 }
 
 public extension UIPresentation.Context.Controllers {
 
+	/// Controllers being removed — present in full from-stack but not in full to-stack.
+	var fullToRemove: [UIViewController] {
+		fullFrom.filter { !fullTo.contains($0) }
+	}
+
+	/// Controllers being inserted — present in full to-stack but not in full from-stack.
+	var fullToInsert: [UIViewController] {
+		fullTo.filter { !fullFrom.contains($0) }
+	}
+
+	/// Controllers being removed from the visible slice.
 	var toRemove: [UIViewController] {
 		from.filter { !to.contains($0) }
 	}
 
+	/// Controllers being inserted into the visible slice.
 	var toInsert: [UIViewController] {
 		to.filter { !from.contains($0) }
 	}
@@ -220,8 +317,15 @@ public extension UIPresentation.Context.Controllers {
 		return result
 	}
 
+	/// Whether the visible top controller is unchanged.
 	var isTopTheSame: Bool {
 		from.last === to.last
+	}
+
+	/// Whether the full-stack top controller is unchanged.
+	/// Used for appearance transition guards — UIKit appearance is structural.
+	var isFullTopTheSame: Bool {
+		fullFrom.last === fullTo.last
 	}
 }
 
@@ -259,14 +363,15 @@ extension UIPresentation.Context {
 	}
 
 	var needHide: Bool {
-		let all = viewControllers[.to]
+		// Use full to-stack: visibility depends on all controllers above, not just visible slice.
+		let all = viewControllers.fullTo
 		guard let j = all.firstIndex(of: viewController) else { return true }
 		for (index, vc) in all.enumerated().reversed() {
 			if index == j {
 				return false
 			}
 			let context = self.for(vc)
-			if !context.environment.overCurrentContext(context) {
+			if !context.environment.overCurrentContext {
 				return true
 			}
 		}
@@ -294,7 +399,7 @@ extension UIPresentation.Context {
 		guard let top else { return true }
 		let topContext = self.for(top)
 		// overCurrentContext top means behind controllers are visible — they must animate, not freeze.
-		if topContext.environment.overCurrentContext(topContext) { return false }
+		if topContext.environment.overCurrentContext { return false }
 		switch topContext.environment.behindBehavior {
 		case .freeze:
 			return true
@@ -327,12 +432,17 @@ extension UIPresentation.Context {
 	}
 
 	public var reversed: UIPresentation.Context {
-		UIPresentation.Context(
+		let reversedControllers = UIPresentation.Context.Controllers(
+			fullFrom: viewControllers.fullTo,
+			fullTo: viewControllers.fullFrom,
+			visibleFrom: viewControllers.to,
+			visibleTo: viewControllers.from
+		)
+		return UIPresentation.Context(
 			direction: direction.reversed,
 			controller: viewController,
 			container: _container,
-			fromViewControllers: viewControllers.to,
-			toViewControllers: viewControllers.from,
+			controllers: reversedControllers,
 			views: views,
 			animated: animated,
 			animation: animation,
