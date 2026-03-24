@@ -321,6 +321,12 @@ private extension UIPresentation.Transition {
 	/// for everything below it.
 	/// @ai-generated(guided)
 	static func applyBackEffects(context: UIPresentation.Context, progress: Progress) {
+		// Frozen departing controllers should not apply back effects: they are
+		// leaving the stack and their recess influence must not persist on
+		// remaining controllers (e.g. Menu stays shrunken after pop-to-root
+		// because frozen S1/S2 kept applying recess at progress=1).
+		if context.isBehindFrozen { return }
+
 		// Use visible controllers so barriers from non-visible departing VCs
 		// don't block recess propagation to re-entering controllers (e.g. pop-to-root).
 		let allControllers = context.visibleViewControllers.all(context.direction)
