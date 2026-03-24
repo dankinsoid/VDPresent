@@ -296,24 +296,18 @@ private extension UIStackController {
 			ctx.container.addSubview(ctx.view, layout: ctx.environment.contentLayout)
 		}
 
-		// Controllers re-entering visible: unhide container.
-		// View is already in identity after previous cleanup.
-		let reallyInserted = Set(controllers.toInsert.map(ObjectIdentifier.init))
-		for vc in visibleControllers.toInsert where !reallyInserted.contains(ObjectIdentifier(vc)) {
-			container(for: vc).isHidden = false
-		}
-
 		// Controllers leaving visible zone but staying in full stack:
-		// reset transitions to identity and hide container.
+		// remove wrapper/container so they don't consume resources.
+		// Re-entering visible later will recreate them fresh.
 		let visibleToSet = Set(visibleControllers.to.map(ObjectIdentifier.init))
 		let fullToSet = Set(controllers.to.map(ObjectIdentifier.init))
 		for vc in visibleControllers.from {
 			let id = ObjectIdentifier(vc)
 			if !visibleToSet.contains(id) && fullToSet.contains(id) {
-				let ctx = context(vc)
-				ctx.viewTransitions.reset(view: ctx.view)
-				ctx.viewTransitions.removeAll()
-				ctx.container.isHidden = true
+				wrappers[vc]?.removeFromSuperview()
+				wrappers[vc] = nil
+				containers[vc]?.removeFromSuperview()
+				containers[vc] = nil
 			}
 		}
 
