@@ -36,16 +36,16 @@ public extension UIPresentation.Transition {
 		UIPresentation.Transition(
 			transitionID: transitionID,
 			prepare: { context in
-				if !context.needHide || context.isTopController {
-					context.container.isHidden = false
-				}
+//				if !context.needHide || context.isTopController {
+//					context.container.isHidden = false
+//				}
 				if context.isBehindFrozen,
 				   context.direction == .removal,
 				   context.viewControllers.toRemove.contains(context.viewController)
 				{
 					// Removal frozen departing: snap to removed state before top animates.
 					// Back effects at removal(1) = identity, so remaining views stay in place.
-					context.container.isHidden = true
+//					context.container.isHidden = true
 					animateOwn(context: context, progress: .removal(1), animation: additionalAnimation)
 					applyBackEffects(context: context, progress: .removal(1))
 					// Insertion frozen: no prepare — stays at current state (insertion(1)),
@@ -56,10 +56,19 @@ public extension UIPresentation.Transition {
 				prepareInsertionTransition(context: context)
 				prepareBackground(context: context)
 				additionalPrepare?(context)
-				// Snap to start state so the view is in its pre-animation position
-				// (e.g. off-screen for a slide-up transition) before the animation block runs.
-				animateOwn(context: context, progress: context.ownDirection.at(.start), animation: additionalAnimation)
-				applyBackEffects(context: context, progress: context.ownDirection.at(.start))
+
+				// Frozen behind-controllers don't play own animation — they sit at
+				// fully-appeared state and are moved only by back effects from above.
+				// Without this, a re-entering controller (dismiss) would start offscreen,
+				// and a newly-inserted frozen controller (push) would animate in visibly.
+				let startProgress: Progress
+				if context.isBehindFrozen {
+					startProgress = .insertion(1)
+				} else {
+					startProgress = context.ownDirection.at(.start)
+				}
+				animateOwn(context: context, progress: startProgress, animation: additionalAnimation)
+				applyBackEffects(context: context, progress: startProgress)
 			},
 			animation: { context in
 				// Reset this view to identity by undoing any previously applied effects
@@ -67,10 +76,11 @@ public extension UIPresentation.Transition {
 				// This is safe inside UIView.animate — only the final state matters.
 				resetView(context: context)
 
-				// Frozen behind-controllers:
-				// - insertion: stay at insertion(1), moved only by backEffect from top
-				// - removal: already snapped to removal(1) in prepare
-				let ownProgress: Progress = context.isBehindFrozen && context.direction == .insertion
+				// Frozen behind-controllers stay at fully-appeared — no own animation,
+				// moved only by back effects from the top controller.
+				// Departing frozen controllers already snapped to removal(1) in prepare
+				// and were excluded from visible slice, so they don't reach here.
+				let ownProgress: Progress = context.isBehindFrozen
 					? .insertion(1)
 					: context.ownDirection.at(.end)
 				animateOwn(context: context, progress: ownProgress, animation: additionalAnimation)
@@ -85,10 +95,10 @@ public extension UIPresentation.Transition {
 			},
 			completion: { context, completed in
 				let finalContext = completed ? context : context.reversed
-				cleanupTransitions(context: finalContext)
-				if finalContext.needHide {
-					finalContext.container.isHidden = true
-				}
+//				cleanupTransitions(context: finalContext)
+//				if finalContext.needHide {
+//					finalContext.container.isHidden = true
+//				}
 				completeBackground(context: finalContext)
 				#if VDPRESENT_LOG
 				logSafeArea(context: finalContext)
