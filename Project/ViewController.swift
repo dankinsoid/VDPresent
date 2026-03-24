@@ -416,6 +416,7 @@ private func stackSectionItems() -> [DemoItem] {
 						.init(title: "Randomize!", style: .primary, handler: { vc in
 							randomize(from: vc)
 						}),
+						.init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
 					]
 				)
 				entry.show(as: .navigation)
