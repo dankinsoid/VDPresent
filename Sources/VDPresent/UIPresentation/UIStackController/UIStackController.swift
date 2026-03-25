@@ -577,7 +577,8 @@ private func logTransitionState(
 		} else {
 			role = "remaining"
 		}
-		lines.append("  \(name): \(transform) (layers=\(layers), \(role))")
+		let frame = fmtFrame(ctx.view)
+		lines.append("  \(name): \(transform) \(frame) (layers=\(layers), \(role))")
 	}
 	print("[\(phase)]\n\(lines.joined(separator: "\n"))")
 }
@@ -593,5 +594,22 @@ private func fmtTransform(_ view: UIView) -> String {
 		parts.append("sx=\(String(format: "%.3f", sx)) sy=\(String(format: "%.3f", sy))")
 	}
 	return parts.isEmpty ? "center" : parts.joined(separator: " ")
+}
+
+/// Window-relative insets: only non-zero edges, e.g. "{t=59 b=34}" or "{l=10 r=10 b=802}".
+private func fmtFrame(_ view: UIView) -> String {
+	guard let window = view.window else { return "{detached}" }
+	let r = view.convert(view.bounds, to: nil)
+	let wb = window.bounds
+	var parts: [String] = []
+	let t = Int(r.minY)
+	let b = Int(wb.maxY - r.maxY)
+	let l = Int(r.minX)
+	let ri = Int(wb.maxX - r.maxX)
+	if t != 0 { parts.append("t=\(t)") }
+	if l != 0 { parts.append("l=\(l)") }
+	if ri != 0 { parts.append("r=\(ri)") }
+	if b != 0 { parts.append("b=\(b)") }
+	return "{\(parts.isEmpty ? "full" : parts.joined(separator: " "))}"
 }
 #endif
