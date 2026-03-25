@@ -355,6 +355,16 @@ private extension UIStackController {
 				print("[\(label)]\n\(lines.joined(separator: "\n"))")
 			}
 		}
+		// Sync snapshot of presentation layer right before animate call.
+		do {
+			var lines: [String] = []
+			for (name, view) in trackedViews {
+				let pLayer = view.layer.presentation() ?? view.layer
+				let t = pLayer.affineTransform()
+				lines.append("  \(name): \(fmtCATransform(t)) \(fmtPresentationFrame(pLayer, in: view))")
+			}
+			print("[pre-animate-pLayer]\n\(lines.joined(separator: "\n"))")
+		}
 		#endif
 
 		AnimationDriver.animate(
