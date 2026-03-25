@@ -339,6 +339,23 @@ private extension UIStackController {
 
 		#if VDPRESENT_LOG
 		logTransitionState("prepare", allVisible: allVisible, controllers: controllers, context: context)
+		let duration = (presentations[allVisible.last!, default: presentation]).animation.duration
+		let trackedViews: [(String, UIView)] = allVisible.map { vc in
+			(vc.view.accessibilityIdentifier ?? "?", context(vc).view)
+		}
+		// Sample presentation layer at start and mid-animation.
+		for (label, delay) in [("frame-1", 0.016), ("frame-mid", duration * 0.5)] {
+			DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+				var lines: [String] = []
+				for (name, view) in trackedViews {
+					guard let pLayer = view.layer.presentation() else { continue }
+					let t = pLayer.affineTransform()
+					let frame = pLayer.frame
+					lines.append("  \(name): \(fmtCATransform(t)) {y=\(Int(frame.minY)) h=\(Int(frame.height))}")
+				}
+				print("[\(label)]\n\(lines.joined(separator: "\n"))")
+			}
+		}
 		#endif
 
 		AnimationDriver.animate(
@@ -611,5 +628,17 @@ private func fmtFrame(_ view: UIView) -> String {
 	if ri != 0 { parts.append("r=\(ri)") }
 	if b != 0 { parts.append("b=\(b)") }
 	return "{\(parts.isEmpty ? "full" : parts.joined(separator: " "))}"
+}
+
+private func fmtCATransform(_ t: CGAffineTransform) -> String {
+	let sx = sqrt(t.a * t.a + t.c * t.c)
+	let sy = sqrt(t.b * t.b + t.d * t.d)
+	var parts: [String] = []
+	if t.tx != 0 { parts.append("tx=\(Int(t.tx))") }
+	if t.ty != 0 { parts.append("ty=\(Int(t.ty))") }
+	if abs(sx - 1) > 0.001 || abs(sy - 1) > 0.001 {
+		parts.append("sx=\(String(format: "%.3f", sx)) sy=\(String(format: "%.3f", sy))")
+	}
+	return parts.isEmpty ? "center" : parts.joined(separator: " ")
 }
 #endif
