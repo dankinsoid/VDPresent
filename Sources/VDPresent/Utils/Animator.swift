@@ -15,9 +15,6 @@ final class Animator: UIViewPropertyAnimator {
 	}
 
 	func continueAnimation(withTimingParameters parameters: UITimingCurveProvider? = nil, duration: Double) {
-		#if VDPRESENT_LOG
-		print("Continue animation with duration: \(duration), duration factor: \(self.duration == 0 ? 1 : duration / self.duration)")
-		#endif
 		continueAnimation(
 			withTimingParameters: parameters,
 			durationFactor: self.duration < 0.001 ? 1 : duration / self.duration

@@ -337,9 +337,6 @@ private extension UIStackController {
 			)
 		}
 
-		#if VDPRESENT_LOG
-		print("[UIStackController] allVisible: \(allVisible.map { $0.view.accessibilityIdentifier ?? "nil" })")
-		#endif
 		AnimationDriver.animate(
 			allVisible.map { vc in
 				(context(vc), presentations[vc, default: presentation].transition)
@@ -348,10 +345,6 @@ private extension UIStackController {
 				if !controllers.isTopTheSame {
 					if let vc = controllers.to.last {
 						 vc.beginAppearanceTransition(true, animated: animated)
-
- #if VDPRESENT_LOG
-			print("[UIStackController] appear safeArea vc=\(vc.view.accessibilityIdentifier ?? "view") vc.view=[t=\(vc.view.safeAreaInsets.top) b=\(vc.view.safeAreaInsets.bottom)] vcFrame=\(Int(vc.view.frame.minY))-\(Int(vc.view.frame.maxY))")
-	#endif
 					 }
 					 if let vc = controllers.from.last {
 						 vc.beginAppearanceTransition(false, animated: animated)
@@ -422,14 +415,6 @@ private extension UIStackController {
 			controllers.to.last?.endAppearanceTransition()
 			controllers.from.last?.endAppearanceTransition()
 		}
-		#if VDPRESENT_LOG
-		// Log safe area for ALL toInsert right after endAppearanceTransition
-		for vc in controllers.toInsert {
-			let sa = vc.view.safeAreaInsets
-			let isTop = vc === controllers.to.last
-			print("📐 postAppearance  vc=\(vc.view.accessibilityIdentifier ?? "?") isTop=\(isTop) safeArea=t=\(Int(sa.top)) b=\(Int(sa.bottom))")
-		}
-		#endif
 		if isCompleted {
 			for fromViewController in controllers.toRemove {
 				fromViewController.removeFromParent()

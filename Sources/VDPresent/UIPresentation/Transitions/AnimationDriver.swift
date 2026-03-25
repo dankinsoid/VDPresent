@@ -21,31 +21,11 @@ enum AnimationDriver {
 		context: UIPresentation.Context
 	) {
 		if !context.viewControllers.from.contains(context.viewController) {
-#if VDPRESENT_LOG
-			print("⚠️ AnimationDriver.prepare fallback addSubview for \(context.viewController.view.accessibilityIdentifier ?? "?")")
-			// Log all visible sibling views' transforms before addSubview
-			for vc in context.visibleViewControllers.all(context.direction) where vc !== context.viewController {
-				let v = context.for(vc).view
-				let t = v.affineTransform
-				if t != .identity {
-					print("   📋 before addSubview: \(vc.view.accessibilityIdentifier ?? "?") transform=\(t)")
-				}
-			}
-#endif
 			context.container
 				.addSubview(
 					context.view,
 					layout: context.environment.contentLayout
 				)
-#if VDPRESENT_LOG
-			for vc in context.visibleViewControllers.all(context.direction) where vc !== context.viewController {
-				let v = context.for(vc).view
-				let t = v.affineTransform
-				if t != .identity {
-					print("   📋 after addSubview: \(vc.view.accessibilityIdentifier ?? "?") transform=\(t)")
-				}
-			}
-#endif
 		}
 		transition.prepare(context)
 	}
@@ -72,21 +52,7 @@ enum AnimationDriver {
 			completion(true)
 			return
 		}
-		#if VDPRESENT_LOG
-		print("🎬 animating with main duration: \(main.context.animation.duration)s, animated: \(main.context.animated), interactive: \(main.context.isInteractive)")
-		#endif
 		let animate: () -> Void = {
-			#if VDPRESENT_LOG
-			print("🎬 animate closure START — transforms before any animation:")
-			for (context, _) in items {
-				let vc = context.viewController
-				let name = vc.view.accessibilityIdentifier ?? String(describing: type(of: vc))
-				let v = context.view
-				let t = v.affineTransform
-				let frame = v.frame
-				print("   📐 \(name): transform=\(t) frame=(\(Int(frame.minX)),\(Int(frame.minY)) \(Int(frame.width))x\(Int(frame.height)))")
-			}
-			#endif
 			beginAppearance()
 			for (context, transition) in items {
 				transition.animation(context)
@@ -95,18 +61,6 @@ enum AnimationDriver {
 		let complete: (Bool) -> Void = { completed in
 			completion(completed)
 		}
-
-		#if VDPRESENT_LOG
-		print("🎬 PRE-ANIMATE — transforms after prepare, before UIView.animate:")
-		for (context, _) in items {
-			let vc = context.viewController
-			let name = vc.view.accessibilityIdentifier ?? String(describing: type(of: vc))
-			let v = context.view
-			let t = v.affineTransform
-			let frame = v.frame
-			print("   📐 \(name): transform=\(t) frame=(\(Int(frame.minX)),\(Int(frame.minY)) \(Int(frame.width))x\(Int(frame.height)))")
-		}
-		#endif
 
 		if main.context.animated {
 			if main.context.isInteractive {

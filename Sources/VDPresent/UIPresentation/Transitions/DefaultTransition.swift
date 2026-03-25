@@ -36,11 +36,6 @@ public extension UIPresentation.Transition {
 			transitionID: transitionID,
 			prepare: { context in
 				let progress = prepareProgress(context: context)
-				#if VDPRESENT_LOG
-				let isDeparting = context.viewControllers.toRemove.contains(context.viewController)
-				print("🔧 prepare  vc=\(viewId(context.viewController)) changing=\(context.isChangingController) frozen=\(context.isBehindFrozen) needAnimate=\(context.needAnimate) departing=\(isDeparting) progress=\(progress) view=\(fmt(context.view))")
-				logHierarchy(context: context, phase: "prepare")
-				#endif
 
 				// Reset to identity, then apply the pre-animation state.
 				resetView(context: context)
@@ -60,9 +55,6 @@ public extension UIPresentation.Transition {
 			},
 			animation: { context in
 				let progress = animateProgress(context: context)
-				#if VDPRESENT_LOG
-				logHierarchy(context: context, phase: "animate")
-				#endif
 
 				// Reset to identity, then apply the post-animation state.
 				resetView(context: context)
@@ -81,7 +73,6 @@ public extension UIPresentation.Transition {
 //				}
 				completeBackground(context: finalContext)
 				#if VDPRESENT_LOG
-				logSafeArea(context: finalContext)
 				let vc = finalContext.viewController
 				let isRemaining = finalContext.viewControllers.to.contains(vc) && finalContext.viewControllers.from.contains(vc)
 				let layers = finalContext.viewTransitions.all.count
@@ -277,14 +268,8 @@ private extension UIPresentation.Transition {
 	/// @ai-generated(guided)
 	static func resetView(context: UIPresentation.Context) {
 		let view = context.view
-		#if VDPRESENT_LOG
-		let before = fmt(view)
-		#endif
 		context.viewTransitions.reset(view: view)
 		context.viewTransitions.removeAll()
-		#if VDPRESENT_LOG
-		print("🔄 reset  vc=\(viewId(context.viewController)), \(before) → \(fmt(view))")
-		#endif
 	}
 
 	/// Applies this controller's own content transition to `progress`.
@@ -368,9 +353,6 @@ private extension UIPresentation.Transition {
 	static func cleanupTransitions(context: UIPresentation.Context) {
 		guard context.viewControllers.toRemove.contains(context.viewController) else { return }
 		let view = context.view
-		#if VDPRESENT_LOG
-		print("🔴 cleanup  vc=\(viewId(context.viewController))")
-		#endif
 		context.viewTransitions.reset(view: view)
 		context.viewTransitions.removeAll()
 	}
@@ -404,63 +386,6 @@ private extension UIPresentation.Transition {
 		return parts.isEmpty ? "center" : parts.joined(separator: " ")
 	}
 
-	/// Logs the view hierarchy around this controller: wrapper superview chain,
-	/// container subviews, and all sibling containers in content view.
-	static func logHierarchy(context: UIPresentation.Context, phase: String) {
-		let vc = context.viewController
-		let name = viewId(vc)
-		let wrapper = context.view
-		let container = context.container
-
-		// Superview chain: wrapper → container → content
-		var chain: [String] = []
-		var current: UIView? = wrapper
-		for _ in 0..<5 {
-			guard let v = current else { break }
-			let id = viewName(v)
-			let frame = "(\(Int(v.frame.minX)),\(Int(v.frame.minY)) \(Int(v.frame.width))x\(Int(v.frame.height)))"
-			let hidden = v.isHidden ? " HIDDEN" : ""
-			let alpha = v.alpha < 1 ? " alpha=\(String(format: "%.2f", v.alpha))" : ""
-			let tf = fmt(v)
-			chain.append("\(id)\(frame)\(hidden)\(alpha) \(tf)")
-			current = v.superview
-		}
-		print("📎 \(phase) hierarchy vc=\(name): \(chain.joined(separator: " → "))")
-
-		// All sibling containers in content (the parent of container)
-		if let content = container.superview {
-			let siblings = content.subviews.map { sub -> String in
-				let id = viewName(sub)
-				let hidden = sub.isHidden ? " HIDDEN" : ""
-				let tf = fmt(sub)
-				return "\(id)\(hidden) \(tf)"
-			}
-			print("📎 \(phase) content subviews: [\(siblings.joined(separator: ", "))]")
-		}
-	}
-
-	/// Logs safe area insets at each level of the view hierarchy for a controller.
-	static func logSafeArea(context: UIPresentation.Context) {
-		let vc = context.viewController
-		let name = viewId(vc)
-		let vcView = vc.view!
-		let wrapper = context.view
-		let container = context.container
-		let hidden = container.isHidden
-		let vcSA = vcView.safeAreaInsets.descr
-		let wrapSA = wrapper.safeAreaInsets.descr
-		if vcView.safeAreaInsets.top == 0 || vcView.safeAreaInsets.bottom == 0 {
-			print("⚠️ safeArea  vc=\(name) hidden=\(hidden) vc.view=[\(vcSA)] wrapper=[\(wrapSA)] wrapFrame=\(Int(wrapper.frame.minY))-\(Int(wrapper.frame.maxY)) vcFrame=\(vcView.frame.descr) contFrame=\(container.frame.descr)")
-		}
-		// Deferred check: does safe area arrive after layout?
-		DispatchQueue.main.async { [weak vcView, weak wrapper, weak container] in
-			guard let vcView, let wrapper, let container, !container.isHidden else { return }
-			let vcSA2 = vcView.safeAreaInsets.descr
-			if vcView.safeAreaInsets.top == 0 || vcView.safeAreaInsets.bottom == 0 {
-				print("⚠️ safeArea(deferred)  vc=\(name) vc.view=[\(vcSA2)] wrapper=[\(wrapper.safeAreaInsets.descr)] container=[\(container.safeAreaInsets.descr)]")
-			}
-		}
-	}
 	#endif
 
 	/// Creates or reuses the background/overlay view and registers its transition.
