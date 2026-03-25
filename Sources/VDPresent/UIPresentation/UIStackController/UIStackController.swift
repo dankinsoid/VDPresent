@@ -350,8 +350,7 @@ private extension UIStackController {
 				for (name, view) in trackedViews {
 					guard let pLayer = view.layer.presentation() else { continue }
 					let t = pLayer.affineTransform()
-					let frame = pLayer.frame
-					lines.append("  \(name): \(fmtCATransform(t)) {y=\(Int(frame.minY)) h=\(Int(frame.height))}")
+					lines.append("  \(name): \(fmtCATransform(t)) \(fmtPresentationFrame(pLayer, in: view))")
 				}
 				print("[\(label)]\n\(lines.joined(separator: "\n"))")
 			}
@@ -617,6 +616,29 @@ private func fmtTransform(_ view: UIView) -> String {
 private func fmtFrame(_ view: UIView) -> String {
 	guard let window = view.window else { return "{detached}" }
 	let r = view.convert(view.bounds, to: nil)
+	let wb = window.bounds
+	var parts: [String] = []
+	let t = Int(r.minY)
+	let b = Int(wb.maxY - r.maxY)
+	let l = Int(r.minX)
+	let ri = Int(wb.maxX - r.maxX)
+	if t != 0 { parts.append("t=\(t)") }
+	if l != 0 { parts.append("l=\(l)") }
+	if ri != 0 { parts.append("r=\(ri)") }
+	if b != 0 { parts.append("b=\(b)") }
+	return "{\(parts.isEmpty ? "full" : parts.joined(separator: " "))}"
+}
+
+/// Window-relative insets from presentation layer frame, same format as fmtFrame.
+private func fmtPresentationFrame(_ pLayer: CALayer, in view: UIView) -> String {
+	guard let window = view.window else { return "{detached}" }
+	// presentation() frame is in superlayer coords — convert to window.
+	let r: CGRect
+	if let superlayer = pLayer.superlayer {
+		r = superlayer.convert(pLayer.frame, to: nil)
+	} else {
+		r = pLayer.frame
+	}
 	let wb = window.bounds
 	var parts: [String] = []
 	let t = Int(r.minY)
