@@ -37,7 +37,8 @@ public extension UIPresentation.Transition {
 			prepare: { context in
 				let progress = prepareProgress(context: context)
 				#if VDPRESENT_LOG
-				print("🔧 prepare  vc=\(viewId(context.viewController)) changing=\(context.isChangingController) frozen=\(context.isBehindFrozen) progress=\(progress) view=\(fmt(context.view))")
+				let isDeparting = context.viewControllers.toRemove.contains(context.viewController)
+				print("🔧 prepare  vc=\(viewId(context.viewController)) changing=\(context.isChangingController) frozen=\(context.isBehindFrozen) needAnimate=\(context.needAnimate) departing=\(isDeparting) progress=\(progress) view=\(fmt(context.view))")
 				logHierarchy(context: context, phase: "prepare")
 				#endif
 
@@ -81,6 +82,10 @@ public extension UIPresentation.Transition {
 				completeBackground(context: finalContext)
 				#if VDPRESENT_LOG
 				logSafeArea(context: finalContext)
+				let vc = finalContext.viewController
+				let isRemaining = finalContext.viewControllers.to.contains(vc) && finalContext.viewControllers.from.contains(vc)
+				let layers = finalContext.viewTransitions.all.count
+				print("✅ completion  vc=\(viewId(vc)) completed=\(completed) remaining=\(isRemaining) layers=\(layers) view=\(fmt(finalContext.view))")
 				#endif
 				completion?(context, completed)
 			}
@@ -327,6 +332,7 @@ private extension UIPresentation.Transition {
 		guard let myIndex = allControllers.firstIndex(of: context.viewController), myIndex > 0 else { return }
 
 		let backControllers = allControllers[..<myIndex].reversed()
+		let toRemove = context.viewControllers.toRemove
 		for (index, vc) in backControllers.enumerated() {
 			let backContext = context.for(vc)
 			let backView = backContext.view
@@ -344,7 +350,9 @@ private extension UIPresentation.Transition {
 			backContext.viewTransitions.addBackEffect(transition)
 			#if VDPRESENT_LOG
 			if progress.value == 0 || progress.value == 1 {
-				print("⚡ backEffect  vc=\(viewId(context.viewController)) → \(viewName(backView)) depth=\(depthIndex), \(before) → \(fmt(backView))  @\(progress)")
+				let isDeparting = toRemove.contains(vc)
+				let layers = backContext.viewTransitions.all.count
+				print("⚡ backEffect  vc=\(viewId(context.viewController)) → \(viewName(backView)) depth=\(depthIndex) departing=\(isDeparting) layers=\(layers), \(before) → \(fmt(backView))  @\(progress)")
 			}
 			#endif
 
