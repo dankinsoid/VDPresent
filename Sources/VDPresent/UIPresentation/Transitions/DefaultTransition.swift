@@ -58,6 +58,15 @@ public extension UIPresentation.Transition {
 
 				// Reset to identity, then apply the post-animation state.
 				resetView(context: context)
+				#if VDPRESENT_LOG
+				let vcName = context.viewController.view.accessibilityIdentifier ?? "?"
+				let v = context.view
+				let pL = v.layer.presentation()
+				let modelT = v.affineTransform
+				let presT = pL?.affineTransform() ?? modelT
+				let presFrame = pL?.frame ?? v.frame
+				print("[in-animate-after-reset] \(vcName): model=\(modelT.shortDesc) pres=\(presT.shortDesc) presFrame.minY=\(Int(presFrame.minY))")
+				#endif
 				animateOwn(context: context, progress: progress, animation: additionalAnimation)
 				applyBackEffects(context: context, progress: progress)
 
@@ -314,7 +323,7 @@ private extension UIPresentation.Transition {
 			var transition = context.environment.recessTransition(depthIndex, context).reversed
 			// Capture current state (after own contentTransition + any earlier back effects)
 			// as initial, so this recess composes on top rather than overwriting.
-			transition.beforeTransition(view: backView)
+			transition.beforeTransitionIfNeeded(view: backView)
 			transition.update(progress: progress, view: backView)
 			// Store so resetView can undo this effect next cycle.
 			backContext.viewTransitions.addBackEffect(transition)
@@ -384,3 +393,20 @@ private extension UIPresentation.Transition {
 		}
 	}
 }
+
+#if VDPRESENT_LOG
+extension CGAffineTransform {
+
+	var shortDesc: String {
+		let sx = sqrt(a * a + c * c)
+		let sy = sqrt(b * b + d * d)
+		var parts: [String] = []
+		if tx != 0 { parts.append("tx=\(Int(tx))") }
+		if ty != 0 { parts.append("ty=\(Int(ty))") }
+		if abs(sx - 1) > 0.001 || abs(sy - 1) > 0.001 {
+			parts.append("sx=\(String(format: "%.3f", sx))")
+		}
+		return parts.isEmpty ? "identity" : parts.joined(separator: " ")
+	}
+}
+#endif
