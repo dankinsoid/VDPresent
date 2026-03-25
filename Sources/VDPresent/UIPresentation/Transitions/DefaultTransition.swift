@@ -72,12 +72,6 @@ public extension UIPresentation.Transition {
 //					finalContext.container.isHidden = true
 //				}
 				completeBackground(context: finalContext)
-				#if VDPRESENT_LOG
-				let vc = finalContext.viewController
-				let isRemaining = finalContext.viewControllers.to.contains(vc) && finalContext.viewControllers.from.contains(vc)
-				let layers = finalContext.viewTransitions.all.count
-				print("✅ completion  vc=\(viewId(vc)) completed=\(completed) remaining=\(isRemaining) layers=\(layers) view=\(fmt(finalContext.view))")
-				#endif
 				completion?(context, completed)
 			}
 		)
@@ -282,17 +276,11 @@ private extension UIPresentation.Transition {
 		animation: ((UIPresentation.Context, Progress) -> Void)?
 	) {
 		let view = context.view
-		#if VDPRESENT_LOG
-		let before = fmt(view)
-		#endif
 		var transition = context.environment.contentTransition(context)
 		// Capture current (identity) state as initial for this transition.
 		transition.beforeTransitionIfNeeded(view: view)
 		transition.update(progress: progress, view: view)
 		context.viewTransitions.setOwn(transition)
-		#if VDPRESENT_LOG
-		print("⚡ animate  vc=\(viewId(context.viewController)), \(before) → \(fmt(view))  @\(progress)")
-		#endif
 		if let bgView = context.backgroundView {
 			context.backgroundTransitions[bgView]?.update(progress: progress, view: bgView)
 		}
@@ -327,19 +315,9 @@ private extension UIPresentation.Transition {
 			// Capture current state (after own contentTransition + any earlier back effects)
 			// as initial, so this recess composes on top rather than overwriting.
 			transition.beforeTransition(view: backView)
-			#if VDPRESENT_LOG
-			let before = fmt(backView)
-			#endif
 			transition.update(progress: progress, view: backView)
 			// Store so resetView can undo this effect next cycle.
 			backContext.viewTransitions.addBackEffect(transition)
-			#if VDPRESENT_LOG
-			if progress.value == 0 || progress.value == 1 {
-				let isDeparting = toRemove.contains(vc)
-				let layers = backContext.viewTransitions.all.count
-				print("⚡ backEffect  vc=\(viewId(context.viewController)) → \(viewName(backView)) depth=\(depthIndex) departing=\(isDeparting) layers=\(layers), \(before) → \(fmt(backView))  @\(progress)")
-			}
-			#endif
 
 			// Stop at a barrier — it owns back effects for everything below.
 			if backContext.environment.backEffectBarrier {
@@ -358,35 +336,6 @@ private extension UIPresentation.Transition {
 	}
 
 	// MARK: - Debug helpers
-
-	#if VDPRESENT_LOG
-	private static func viewId(_ vc: UIViewController) -> String {
-		vc.view.accessibilityIdentifier ?? String(describing: type(of: vc))
-	}
-
-	private static func viewName(_ view: UIView) -> String {
-		(view as? UIStackEffectView)?.wrapped.accessibilityIdentifier
-			?? view.accessibilityIdentifier
-			?? String(describing: type(of: view))
-	}
-
-	/// Short readable representation of a view's current transform.
-	private static func fmt(_ view: UIView) -> String {
-		let t = view.affineTransform
-		let tx = t.tx
-		let ty = t.ty
-		let sx = sqrt(t.a * t.a + t.c * t.c)
-		let sy = sqrt(t.b * t.b + t.d * t.d)
-		var parts: [String] = []
-		if tx != 0 { parts.append("tx=\(Int(tx))") }
-		if ty != 0 { parts.append("ty=\(Int(ty))") }
-		if abs(sx - 1) > 0.001 || abs(sy - 1) > 0.001 {
-			parts.append("sx=\(String(format: "%.3f", sx)) sy=\(String(format: "%.3f", sy))")
-		}
-		return parts.isEmpty ? "center" : parts.joined(separator: " ")
-	}
-
-	#endif
 
 	/// Creates or reuses the background/overlay view and registers its transition.
 	/// No-ops when `backgroundTransition` is `.identity` — no view is created in that case.
