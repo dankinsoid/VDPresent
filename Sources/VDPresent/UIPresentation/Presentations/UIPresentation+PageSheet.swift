@@ -43,7 +43,6 @@ public extension UIPresentation {
 					)
 				}
 				.environment(\.overCurrentContext, true)
-				.environment(\.backEffectBarrier, true)
 				.withBackground(containerColor)
 				.environment(\.backgroundPlacement, .behindController),
 			interactivity: .swipe(to: edge),
