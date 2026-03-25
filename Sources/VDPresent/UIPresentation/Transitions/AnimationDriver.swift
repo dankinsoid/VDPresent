@@ -76,6 +76,17 @@ enum AnimationDriver {
 		print("🎬 animating with main duration: \(main.context.animation.duration)s, animated: \(main.context.animated), interactive: \(main.context.isInteractive)")
 		#endif
 		let animate: () -> Void = {
+			#if VDPRESENT_LOG
+			print("🎬 animate closure START — transforms before any animation:")
+			for (context, _) in items {
+				let vc = context.viewController
+				let name = vc.view.accessibilityIdentifier ?? String(describing: type(of: vc))
+				let v = context.view
+				let t = v.affineTransform
+				let frame = v.frame
+				print("   📐 \(name): transform=\(t) frame=(\(Int(frame.minX)),\(Int(frame.minY)) \(Int(frame.width))x\(Int(frame.height)))")
+			}
+			#endif
 			beginAppearance()
 			for (context, transition) in items {
 				transition.animation(context)
@@ -84,6 +95,18 @@ enum AnimationDriver {
 		let complete: (Bool) -> Void = { completed in
 			completion(completed)
 		}
+
+		#if VDPRESENT_LOG
+		print("🎬 PRE-ANIMATE — transforms after prepare, before UIView.animate:")
+		for (context, _) in items {
+			let vc = context.viewController
+			let name = vc.view.accessibilityIdentifier ?? String(describing: type(of: vc))
+			let v = context.view
+			let t = v.affineTransform
+			let frame = v.frame
+			print("   📐 \(name): transform=\(t) frame=(\(Int(frame.minX)),\(Int(frame.minY)) \(Int(frame.width))x\(Int(frame.height)))")
+		}
+		#endif
 
 		if main.context.animated {
 			if main.context.isInteractive {
