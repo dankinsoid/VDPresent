@@ -344,7 +344,7 @@ private extension UIStackController {
 			(vc.view.accessibilityIdentifier ?? "?", context(vc).view)
 		}
 		// Sample presentation layer at start and mid-animation.
-		for (label, delay) in [("frame-1", 0.016), ("frame-mid", duration * 0.5)] {
+		for (label, delay) in [("frame-0", 0.0), ("frame-1", 0.016), ("frame-mid", duration * 0.5)] {
 			DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
 				var lines: [String] = []
 				for (name, view) in trackedViews {
