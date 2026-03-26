@@ -339,32 +339,6 @@ private extension UIStackController {
 
 		#if VDPRESENT_LOG
 		logTransitionState("prepare", allVisible: allVisible, controllers: controllers, context: context)
-		let duration = (presentations[allVisible.last!, default: presentation]).animation.duration
-		let trackedViews: [(String, UIView)] = allVisible.map { vc in
-			(vc.view.accessibilityIdentifier ?? "?", context(vc).view)
-		}
-		// Sample presentation layer at start and mid-animation.
-		for (label, delay) in [("frame-0", 0.0), ("frame-1", 0.016), ("frame-mid", duration * 0.5)] {
-			DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-				var lines: [String] = []
-				for (name, view) in trackedViews {
-					guard let pLayer = view.layer.presentation() else { continue }
-					let t = pLayer.affineTransform()
-					lines.append("  \(name): \(fmtCATransform(t)) \(fmtPresentationFrame(pLayer, in: view))")
-				}
-				print("[\(label)]\n\(lines.joined(separator: "\n"))")
-			}
-		}
-		// Sync snapshot of presentation layer right before animate call.
-		do {
-			var lines: [String] = []
-			for (name, view) in trackedViews {
-				let pLayer = view.layer.presentation() ?? view.layer
-				let t = pLayer.affineTransform()
-				lines.append("  \(name): \(fmtCATransform(t)) \(fmtPresentationFrame(pLayer, in: view))")
-			}
-			print("[pre-animate-pLayer]\n\(lines.joined(separator: "\n"))")
-		}
 		#endif
 
 		AnimationDriver.animate(
@@ -593,7 +567,7 @@ private func logTransitionState(
 		let ctx = context(vc)
 		let name = vc.view.accessibilityIdentifier ?? String(describing: type(of: vc))
 		let transform = fmtTransform(ctx.view)
-		let layers = ctx.viewTransitions.all.count
+		let layers = ctx.viewTransitions.layerCount
 		let id = ObjectIdentifier(vc)
 		let role: String
 		if toRemove.contains(id) {
