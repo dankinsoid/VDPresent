@@ -210,28 +210,24 @@ private extension UIPresentation.Transition {
 
 	/// Progress for the prepare phase (pre-animation state).
 	///
-	/// - Remaining / frozen behind: `.insertion(1)` — fully appeared, no own animation.
-	///   Frozen controllers sit in place and are moved only by back effects from above.
-	/// - Top / animating controller: `ownDirection.at(.start)` — animation start point.
+	/// All controllers share the same progress direction — derived from the
+	/// overall transition direction. This lets back effects animate in sync
+	/// with the top controller via a single combined transition.
+	///
+	/// - Insertion: `.insertion(0)` — animation starts at "not yet inserted".
+	/// - Removal: `.insertion(1)` — animation starts at "fully inserted".
 	/// @ai-generated(solo)
 	static func prepareProgress(context: UIPresentation.Context) -> Progress {
-		if !context.isChangingController || context.isBehindFrozen {
-			return .insertion(1)
-		}
-		return context.ownDirection.at(.start)
+		context.direction == .insertion ? .insertion(0) : .insertion(1)
 	}
 
 	/// Progress for the animate phase (post-animation state).
 	///
-	/// - Remaining controllers: `.insertion(1)` — stay fully appeared.
-	/// - Frozen behind: `.insertion(1)` — stay fully appeared, moved only by back effects.
-	/// - Top / animating controller: `ownDirection.at(.end)` — animation end point.
+	/// - Insertion: `.insertion(1)` — animation ends at "fully inserted".
+	/// - Removal: `.insertion(0)` — animation ends at "not yet inserted" (removed).
 	/// @ai-generated(solo)
 	static func animateProgress(context: UIPresentation.Context) -> Progress {
-		if !context.isChangingController || context.isBehindFrozen {
-			return .insertion(1)
-		}
-		return context.ownDirection.at(.end)
+		context.direction == .insertion ? .insertion(1) : .insertion(0)
 	}
 
 	/// Resets this view to identity by undoing the combined transition,
@@ -263,24 +259,30 @@ private extension UIPresentation.Transition {
 		var transitions: [UITransition<UIView>] = []
 
 		// 1. Own contentTransition.
-		let ownTransition = context.environment.contentTransition(context)
-		transitions.append(ownTransition)
+		// Remaining/frozen controllers don't animate their own position —
+		// use constant identity so they stay in place while back effects animate.
+		if context.isChangingController && !context.isBehindFrozen {
+			transitions.append(context.environment.contentTransition(context))
+		} else {
+			transitions.append(.identity)
+		}
 
 		// 2. Recess effects from controllers above this one.
+		// NOT reversed — progress direction (insertion 0→1 or 1→0) already
+		// matches: recessTransition at insertion(0) = identity, insertion(1) = recessed.
 		let allControllers = context.visibleViewControllers.all(context.direction)
 		if let myIndex = allControllers.firstIndex(of: context.viewController) {
 			let frontControllers = allControllers[(myIndex + 1)...]
-			let toRemove = context.viewControllers.toRemove
-			let isDeparting = toRemove.contains(context.viewController)
+			let isDeparting = context.viewControllers.toRemove.contains(context.viewController)
 			for (offset, frontVC) in frontControllers.enumerated() {
 				let frontContext = context.for(frontVC)
 				let depthIndex = offset + 1
-				var backTransition = frontContext.environment.recessTransition(depthIndex, frontContext).reversed
+				var backTransition = frontContext.environment.recessTransition(depthIndex, frontContext)
 				// Departing back views must stay recessed — use constant so
 				// the recess effect doesn't animate toward identity when
-				// this view's progress moves toward removal.
+				// progress moves toward removal.
 				if isDeparting {
-					backTransition = backTransition.constant(at: .insertion(0))
+					backTransition = backTransition.constant(at: .insertion(1))
 				}
 				transitions.append(backTransition)
 
