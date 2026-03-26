@@ -351,8 +351,10 @@ private extension UIStackController {
 		logTransitionState("prepare", allVisible: allVisible, controllers: controllers, context: context)
 		#endif
 
+		// Reversed so top views update first — recessTransitions that
+		// read target view frames see the correct animate-phase position.
 		AnimationDriver.animate(
-			allVisible.map { vc in
+			allVisible.reversed().map { vc in
 				(context(vc), presentations[vc, default: presentation].transition)
 			},
 			beginAppearance: {
