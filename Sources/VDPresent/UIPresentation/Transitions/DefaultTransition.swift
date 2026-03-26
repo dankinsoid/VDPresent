@@ -268,8 +268,9 @@ private extension UIPresentation.Transition {
 		}
 
 		// 2. Recess effects from controllers above this one.
-		// NOT reversed — progress direction (insertion 0→1 or 1→0) already
-		// matches: recessTransition at insertion(0) = identity, insertion(1) = recessed.
+		// Reversed because recessTransition semantics are insertion(0)=recessed,
+		// insertion(1)=identity, but we need the opposite: insertion(0)=identity
+		// (before push) and insertion(1)=recessed (after push).
 		let allControllers = context.visibleViewControllers.all(context.direction)
 		if let myIndex = allControllers.firstIndex(of: context.viewController) {
 			let frontControllers = allControllers[(myIndex + 1)...]
@@ -277,7 +278,7 @@ private extension UIPresentation.Transition {
 			for (offset, frontVC) in frontControllers.enumerated() {
 				let frontContext = context.for(frontVC)
 				let depthIndex = offset + 1
-				var backTransition = frontContext.environment.recessTransition(depthIndex, frontContext)
+				var backTransition = frontContext.environment.recessTransition(depthIndex, frontContext).reversed
 				// Departing back views must stay recessed — use constant so
 				// the recess effect doesn't animate toward identity when
 				// progress moves toward removal.
