@@ -180,6 +180,7 @@ final class MainMenuViewController: UITableViewController {
 	override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
 		tableView.deselectRow(at: indexPath, animated: true)
 		let item = sections[indexPath.section].items[indexPath.row]
+		print("🟢 [Menu] tapped: \(item.title)")
 		if let tapAction = item.tapAction {
 			tapAction(self)
 		} else {
@@ -294,7 +295,8 @@ private func stackSectionItems() -> [DemoItem] {
 	[
 		/// @ai-generated(solo)
 		stackNavigationDemo(title: "Stack — .navigation", presentation: .navigation),
-		stackNavigationDemo(title: "Stack — .pageSheet", presentation: .pageSheet),
+		stackNavigationDemo(title: "Stack — .pageSheet", presentation: .pageSheet.with(animation: .default(2))),
+		stackNavigationDemo(title: "Stack — .sheet", presentation: .sheet.with(animation: .default(2))),
 
 		// Demo: push after pageSheet
 		.init(
@@ -636,7 +638,7 @@ final class StackStepViewController: UIViewController {
 	@objc private func didTapButton(_ sender: UIButton) {
 		guard sender.tag < actions.count else { return }
 		let action = actions[sender.tag]
-		print("🟢 [\(action.title)] tapped on \(view.accessibilityIdentifier ?? "?")")
+		print("🟢 [\(action.title)] tapped on \(sender.title(for: .normal) ?? view.accessibilityIdentifier ?? "?")")
 		action.handler(self)
 	}
 

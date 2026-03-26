@@ -60,112 +60,132 @@ public extension UIColor {
 
 private extension UITransition<UIView> {
 
+	// @ai-generated(guided)
 	static func transform(
 		to targetView: UIView,
 		edge: Edge,
 		cornerRadius: CGFloat,
 		up: Bool
 	) -> UITransition {
-		UITransition(PageSheetModifier(targetView)) { progress, view, initial in
-			view.affineTransform = UITransition<UIView>.transform(
+		UITransition(
+			\.affineTransform,
+			\.globalFrame,
+			\.layer.cornerRadius,
+			\.layer.maskedCorners,
+			\.clipsToBounds
+		) { [weak target = targetView] progress, view, initial
+			-> (CGAffineTransform, CGRect, CGFloat, CACornerMask, Bool) in
+			let (sourceTransform, sourceRect, initialCornerRadius, cornerMask, clipsToBounds) = initial
+			guard let target else {
+				return (sourceTransform, sourceRect, initialCornerRadius, cornerMask, clipsToBounds)
+			}
+
+			let targetRect = target.convert(target.bounds, to: nil)
+
+			let newTransform = computeTransform(
 				progress: progress,
-				initial: initial,
+				sourceTransform: sourceTransform,
+				sourceRect: sourceRect,
+				targetRect: targetRect,
 				edge: edge,
 				cornerRadius: cornerRadius,
 				isLtr: view.isLtrDirection,
 				up: up
 			)
-			view.clipsToBounds = true
-			view.layer.maskedCorners = .edge(edge)
-			view.layer.cornerCurve = .continuous
-			view.layer.cornerRadius = UITransition<UIView>.cornerRadius(
+
+			let newCornerRadius = computeCornerRadius(
 				progress: progress,
-				initial: initial,
+				sourceRect: sourceRect,
 				edge: edge,
 				cornerRadius: cornerRadius,
 				isLtr: view.isLtrDirection
 			)
+
+			// globalFrame: sourceRect returned unchanged — empty setter makes this no-op.
+			return (newTransform, sourceRect, newCornerRadius, .edge(edge), true)
 		}
 	}
 
-	static func transform(
+	static func computeTransform(
 		progress: Progress,
-		initial: PageSheetModifier.Value,
+		sourceTransform: CGAffineTransform,
+		sourceRect: CGRect,
+		targetRect: CGRect,
 		edge: Edge,
 		cornerRadius: CGFloat,
 		isLtr: Bool,
 		up: Bool
 	) -> CGAffineTransform {
 		let k = cornerRadius * 1.2
-		var targetRect = initial.targetRect
+		var adjustedRect = targetRect
 
 		switch edge {
 		case .top:
-			targetRect.origin.x += k
-			targetRect.size.width -= k * 2
-			targetRect.size.height = targetRect.size.width * (initial.targetRect.height / initial.targetRect.width.notZero)
+			adjustedRect.origin.x += k
+			adjustedRect.size.width -= k * 2
+			adjustedRect.size.height = adjustedRect.size.width * (targetRect.height / targetRect.width.notZero)
 			if up {
-				targetRect.origin.y -= k
+				adjustedRect.origin.y -= k
 			}
 
 		case .leading, .trailing:
-			targetRect.origin.y += k
-			targetRect.size.height -= k * 2
-			let newWidth = targetRect.size.height * (initial.targetRect.width / initial.targetRect.height.notZero)
+			adjustedRect.origin.y += k
+			adjustedRect.size.height -= k * 2
+			let newWidth = adjustedRect.size.height * (targetRect.width / targetRect.height.notZero)
 			if isLtr == (edge == .leading) {
-				targetRect.origin.x = targetRect.maxX - newWidth
-				targetRect.size.width = newWidth
+				adjustedRect.origin.x = adjustedRect.maxX - newWidth
+				adjustedRect.size.width = newWidth
 				if up {
-					targetRect.origin.x -= k
+					adjustedRect.origin.x -= k
 				}
 			} else {
-				targetRect.size.width = newWidth
+				adjustedRect.size.width = newWidth
 				if up {
-					targetRect.origin.x += k
+					adjustedRect.origin.x += k
 				}
 			}
 
 		case .bottom:
-			targetRect.origin.x += k
-			targetRect.size.width -= k * 2
-			let newHeight = targetRect.size.width * (initial.targetRect.height / initial.targetRect.width.notZero)
-			targetRect.origin.y = targetRect.maxY - newHeight
-			targetRect.size.height = newHeight
+			adjustedRect.origin.x += k
+			adjustedRect.size.width -= k * 2
+			let newHeight = adjustedRect.size.width * (targetRect.height / targetRect.width.notZero)
+			adjustedRect.origin.y = adjustedRect.maxY - newHeight
+			adjustedRect.size.height = newHeight
 			if up {
-				targetRect.origin.y += k
+				adjustedRect.origin.y += k
 			}
 		}
 
 		let scale = CGSize(
 			width: progress.value(
 				identity: 1,
-				transformed: targetRect.width / initial.sourceRect.width.notZero
+				transformed: adjustedRect.width / sourceRect.width.notZero
 			),
 			height: progress.value(
 				identity: 1,
-				transformed: targetRect.height / initial.sourceRect.height.notZero
+				transformed: adjustedRect.height / sourceRect.height.notZero
 			)
 		)
 
 		let offset = CGPoint(
 			x: progress.value(
 				identity: 0,
-				transformed: targetRect.midX - initial.sourceRect.midX
+				transformed: adjustedRect.midX - sourceRect.midX
 			),
 			y: progress.value(
 				identity: 0,
-				transformed: targetRect.midY - initial.sourceRect.midY
+				transformed: adjustedRect.midY - sourceRect.midY
 			)
 		)
 
-		return initial.sourceTransform
+		return sourceTransform
 			.translatedBy(x: offset.x, y: offset.y)
 			.scaledBy(x: scale.width, y: scale.height)
 	}
 
-	static func cornerRadius(
+	static func computeCornerRadius(
 		progress: Progress,
-		initial: PageSheetModifier.Value,
+		sourceRect: CGRect,
 		edge: Edge,
 		cornerRadius: CGFloat,
 		isLtr: Bool
@@ -174,21 +194,21 @@ private extension UITransition<UIView> {
 		let initialRadius: CGFloat
 		switch edge {
 		case .top:
-			initialRadius = initial.sourceRect.minY == 0
+			initialRadius = sourceRect.minY == 0
 				? displayRadius
 				: cornerRadius
 		case .leading, .trailing:
 			if isLtr == (edge == .leading) {
-				initialRadius = UIScreen.main.bounds.width == initial.sourceRect.maxX
+				initialRadius = UIScreen.main.bounds.width == sourceRect.maxX
 					? displayRadius
 					: cornerRadius
 			} else {
-				initialRadius = initial.sourceRect.minX == 0
+				initialRadius = sourceRect.minX == 0
 					? displayRadius
 					: cornerRadius
 			}
 		case .bottom:
-			initialRadius = UIScreen.main.bounds.height == initial.sourceRect.maxY
+			initialRadius = UIScreen.main.bounds.height == sourceRect.maxY
 				? displayRadius
 				: cornerRadius
 		}
@@ -199,45 +219,12 @@ private extension UITransition<UIView> {
 	}
 }
 
-private struct PageSheetModifier: TransitionModifier {
+private extension UIView {
 
-	weak var target: UIView?
-
-	init(_ target: UIView?) {
-		self.target = target
-	}
-
-	func matches(other: PageSheetModifier) -> Bool {
-		other.target === target
-	}
-
-	func set(value: Value, to root: UIView) {
-		root.affineTransform = value.sourceTransform
-		root.layer.cornerRadius = value.cornerRadius
-		root.layer.maskedCorners = value.cornerMask
-		root.clipsToBounds = value.clipsToBounds
-	}
-
-	func value(for root: UIView) -> Value {
-		let sourceRect = root.convert(root.bounds, to: nil)
-		let targetRect = target?.convert(target?.bounds ?? .zero, to: nil) ?? root.bounds
-		return Value(
-			sourceTransform: root.affineTransform,
-			cornerRadius: root.layer.cornerRadius,
-			cornerMask: root.layer.maskedCorners,
-			clipsToBounds: root.clipsToBounds,
-			sourceRect: sourceRect,
-			targetRect: targetRect
-		)
-	}
-
-	struct Value {
-
-		var sourceTransform: CGAffineTransform
-		var cornerRadius: CGFloat
-		var cornerMask: CACornerMask
-		var clipsToBounds: Bool
-		var sourceRect: CGRect
-		var targetRect: CGRect
+	/// Duplicated from VDTransition (internal there).
+	/// Empty setter allows `ReferenceWritableKeyPath` for capture-only use.
+	var globalFrame: CGRect {
+		get { convert(bounds, to: nil) }
+		set {}
 	}
 }
