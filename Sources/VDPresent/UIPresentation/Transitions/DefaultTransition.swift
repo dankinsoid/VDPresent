@@ -39,8 +39,9 @@ public extension UIPresentation.Transition {
 			prepare: { context in
 				let progress = prepareProgress(context: context)
 
-				// Reset to identity so buildTransitions captures clean initial state.
-				resetView(context: context)
+				// Reset is done externally (UIStackController resets all views
+				// before calling prepare) so that all views are in identity/layout
+				// position when recessTransitions read target frames.
 
 				if context.isChangingController {
 					prepareBackground(context: context)
