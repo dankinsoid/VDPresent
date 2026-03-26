@@ -292,6 +292,10 @@ private extension UIPresentation.Transition {
 		}
 
 		// 3. Combine, capture identity, apply progress.
+		#if VDPRESENT_LOG
+		let vcName = view.accessibilityIdentifier ?? "?"
+		print("[buildTransitions] \(vcName): \(transitions.count) parts, progress=\(progress), isDeparting=\(context.viewControllers.toRemove.contains(context.viewController)), isChanging=\(context.isChangingController)")
+		#endif
 		context.viewTransitions.build(transitions, view: view, progress: progress)
 
 		// 4. Background view.
