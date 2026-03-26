@@ -324,7 +324,11 @@ private extension UIPresentation.Transition {
 			// Capture current state (after own contentTransition + any earlier back effects)
 			// as initial, so this recess composes on top rather than overwriting.
 			transition.beforeTransitionIfNeeded(view: backView)
-			transition.update(progress: progress, view: backView)
+			// When both source and target are departing, keep recess locked
+			// so the back view slides off-screen at its current scale instead
+			// of un-recessing (which causes a visible scale-up flash).
+			let effectProgress = toRemove.contains(vc) ? .insertion(1) : progress
+			transition.update(progress: effectProgress, view: backView)
 			// Store so resetView can undo this effect next cycle.
 			backContext.viewTransitions.addBackEffect(transition)
 
