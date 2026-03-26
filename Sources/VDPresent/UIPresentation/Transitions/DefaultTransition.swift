@@ -39,30 +39,29 @@ public extension UIPresentation.Transition {
 			prepare: { context in
 				let progress = prepareProgress(context: context)
 
-				// Reset to identity, then apply the pre-animation state.
+				// Reset to identity so buildTransitions captures clean initial state.
 				resetView(context: context)
 
 				if context.isChangingController {
-					prepareInsertionTransition(context: context)
 					prepareBackground(context: context)
 					additionalPrepare?(context)
 				} else if context.backgroundView == nil {
-					// Re-entered visible zone: container was recreated but
-					// background view was lost — recreate it.
 					prepareBackground(context: context)
 				}
 
-				animateOwn(context: context, progress: progress, animation: additionalAnimation)
-				applyBackEffects(context: context, progress: progress)
+				// Collect own + back effects from above, combine, apply prepareProgress.
+				buildTransitions(context: context, progress: progress, animation: additionalAnimation)
 			},
 			animation: { context in
 				let progress = animateProgress(context: context)
 
-				// No reset — reuse transitions stored during prepare.
-				// update() writes the animate-phase target; UIKit animates
-				// from the prepare state (already on model layer) to here.
-				updateOwn(context: context, progress: progress, animation: additionalAnimation)
-				updateBackEffects(context: context, progress: progress)
+				// No reset — update the combined transition built during prepare.
+				// UIKit animates from prepare state to this animate state.
+				context.viewTransitions.combined?.update(progress: progress, view: context.view)
+				if let bgView = context.backgroundView {
+					context.backgroundTransitions[bgView]?.update(progress: progress, view: bgView)
+				}
+				additionalAnimation?(context, progress)
 
 				if context.isTopController {
 					context.updateStatusBar(style: context.viewController.preferredStatusBarStyle)
@@ -147,55 +146,46 @@ public enum BehindBehavior {
 	case freezeMatching
 }
 
-/// Ordered list of all transitions applied to a single view.
-/// Own contentTransition is stored separately from back effects.
-/// Back effects are tagged with the source controller so the animate phase
-/// can update a specific effect without rebuilding all transitions.
+/// Combined transition for a single view — own contentTransition merged with
+/// all recess effects from controllers above via `.combined()`.
 ///
-/// `reset` undoes all effects in reverse order, returning the view to identity.
+/// Using `combined` instead of applying transitions sequentially ensures that
+/// conflicting properties (e.g. two transforms) compose correctly rather than
+/// the last write winning.
+///
+/// After `buildCombined`, a single `update(progress:)` drives all sub-transitions.
 /// @ai-generated(guided)
 struct ViewTransitions {
 
-	private(set) var own: UITransition<UIView>?
-	private(set) var backEffects: [(source: ObjectIdentifier, transition: UITransition<UIView>)] = []
+	/// The merged transition. Built once per prepare phase.
+	private(set) var combined: UITransition<UIView>?
 
-	/// Sets the view's own content transition.
-	/// Replaces any previously set own transition.
-	mutating func setOwn(_ transition: UITransition<UIView>) {
-		own = transition
+	/// Number of sub-transitions that were combined. Used for diagnostics.
+	private(set) var layerCount = 0
+
+	/// Builds a combined transition from own + back effects, captures identity
+	/// from the view (which must be in identity state), and applies `progress`.
+	mutating func build(
+		_ transitions: [UITransition<UIView>],
+		view: UIView,
+		progress: Progress
+	) {
+		layerCount = transitions.count
+		var merged = UITransition<UIView>.combined(transitions)
+		merged.beforeTransition(view: view)
+		merged.update(progress: progress, view: view)
+		combined = merged
 	}
 
-	/// Appends a recess effect from `source` controller (applied after own transition).
-	mutating func addBackEffect(from source: UIViewController, _ transition: UITransition<UIView>) {
-		backEffects.append((ObjectIdentifier(source), transition))
-	}
-
-	/// Undoes all effects in reverse application order, returning view to identity.
+	/// Resets the view to identity using the combined transition's initial state.
 	func reset(view: UIView) {
-		for (_, transition) in backEffects.reversed() {
-			transition.setInitialState(view: view)
-		}
-		own?.setInitialState(view: view)
+		combined?.setInitialState(view: view)
 	}
 
-	/// Clears all stored transitions.
+	/// Clears the combined transition.
 	mutating func removeAll() {
-		own = nil
-		backEffects.removeAll()
-	}
-
-	/// Total number of stored transitions (own + back effects). Used for diagnostics.
-	var layerCount: Int {
-		(own != nil ? 1 : 0) + backEffects.count
-	}
-
-	/// Updates the stored back effect from a specific source controller to a new progress.
-	/// Reuses the initialState captured during prepare — no reset needed.
-	func updateBackEffect(from source: UIViewController, progress: Progress, view: UIView) {
-		let id = ObjectIdentifier(source)
-		for (src, transition) in backEffects where src == id {
-			transition.update(progress: progress, view: view)
-		}
+		combined = nil
+		layerCount = 0
 	}
 }
 
@@ -244,29 +234,8 @@ private extension UIPresentation.Transition {
 		return context.ownDirection.at(.end)
 	}
 
-	/// Configures the content transition for the view being inserted or removed.
-	/// Stores it as the `own` transition in `viewTransitions`.
-	static func prepareInsertionTransition(context: UIPresentation.Context) {
-		let view = context.view
-		let currentOwn = context.viewTransitions.own
-		var transition: UITransition<UIView>
-		if context.needAnimate {
-			transition = context.environment.contentTransition(context)
-		} else if currentOwn != nil {
-			// Not animated but has a prior transition — snap to fully inserted
-			// so the view doesn't appear mid-transition when stack is rebuilt without animation.
-			transition = context.environment.contentTransition(context).constant(at: .insertion(1))
-		} else {
-			return
-		}
-		transition.beforeTransition(view: view)
-		context.viewTransitions.setOwn(transition)
-	}
-
-	/// Resets this view to identity by undoing all stored effects (back effects
-	/// in reverse order, then own), then clears the list. After reset the view
-	/// is in identity state — `animateOwn` will recreate the own transition
-	/// with fresh initial states captured from this clean state.
+	/// Resets this view to identity by undoing the combined transition,
+	/// then clears stored state.
 	/// @ai-generated(guided)
 	static func resetView(context: UIPresentation.Context) {
 		let view = context.view
@@ -274,112 +243,62 @@ private extension UIPresentation.Transition {
 		context.viewTransitions.removeAll()
 	}
 
-	/// Applies this controller's own content transition to `progress`.
-	/// After reset, the view is in identity — a fresh transition is created
-	/// capturing identity as initial state, then driven to `progress`.
-	/// @ai-generated(guided)
-	static func animateOwn(
+	/// Collects own contentTransition + recess effects from all controllers above
+	/// this one, combines them into a single transition, captures identity state,
+	/// and applies `progress`.
+	///
+	/// Each VC collects effects **from above** (front → back), so all sub-transitions
+	/// for this view are gathered in one place. `.combined()` merges conflicting
+	/// properties (e.g. two transforms) correctly.
+	///
+	/// Back effects from departing controllers onto departing back views are made
+	/// `.constant(at:)` so they stay recessed regardless of this view's progress.
+	/// @ai-generated(solo)
+	static func buildTransitions(
 		context: UIPresentation.Context,
 		progress: Progress,
 		animation: ((UIPresentation.Context, Progress) -> Void)?
 	) {
 		let view = context.view
-		var transition = context.environment.contentTransition(context)
-		// Capture current (identity) state as initial for this transition.
-		transition.beforeTransitionIfNeeded(view: view)
-		transition.update(progress: progress, view: view)
-		context.viewTransitions.setOwn(transition)
+		var transitions: [UITransition<UIView>] = []
+
+		// 1. Own contentTransition.
+		let ownTransition = context.environment.contentTransition(context)
+		transitions.append(ownTransition)
+
+		// 2. Recess effects from controllers above this one.
+		let allControllers = context.visibleViewControllers.all(context.direction)
+		if let myIndex = allControllers.firstIndex(of: context.viewController) {
+			let frontControllers = allControllers[(myIndex + 1)...]
+			let toRemove = context.viewControllers.toRemove
+			let isDeparting = toRemove.contains(context.viewController)
+			for (offset, frontVC) in frontControllers.enumerated() {
+				let frontContext = context.for(frontVC)
+				let depthIndex = offset + 1
+				var backTransition = frontContext.environment.recessTransition(depthIndex, frontContext).reversed
+				// Departing back views must stay recessed — use constant so
+				// the recess effect doesn't animate toward identity when
+				// this view's progress moves toward removal.
+				if isDeparting {
+					backTransition = backTransition.constant(at: .insertion(0))
+				}
+				transitions.append(backTransition)
+
+				// Barrier: this front VC owns everything below — stop collecting.
+				if frontContext.environment.backEffectBarrier {
+					break
+				}
+			}
+		}
+
+		// 3. Combine, capture identity, apply progress.
+		context.viewTransitions.build(transitions, view: view, progress: progress)
+
+		// 4. Background view.
 		if let bgView = context.backgroundView {
 			context.backgroundTransitions[bgView]?.update(progress: progress, view: bgView)
 		}
 		animation?(context, progress)
-	}
-
-	/// Applies recess effects from this controller onto all visible views below it
-	/// in the `all()` iteration order (which includes both `to` and departing controllers).
-	///
-	/// Each back view's current state (already set by its own contentTransition) becomes
-	/// the initial state for the recess transition, making effects composable.
-	/// The applied transitions are stored in each back view's `viewTransitions.backEffects`
-	/// so they can be undone by `resetView` in the next cycle.
-	///
-	/// Stops at a controller with `backEffectBarrier == true` — it owns back effects
-	/// for everything below it.
-	/// @ai-generated(guided)
-	static func applyBackEffects(context: UIPresentation.Context, progress: Progress) {
-		// Use visible controllers so barriers from non-visible departing VCs
-		// don't block recess propagation to re-entering controllers (e.g. pop-to-root).
-		let allControllers = context.visibleViewControllers.all(context.direction)
-		guard let myIndex = allControllers.firstIndex(of: context.viewController), myIndex > 0 else { return }
-
-		let backControllers = allControllers[..<myIndex].reversed()
-		let toRemove = context.viewControllers.toRemove
-		for (index, vc) in backControllers.enumerated() {
-			let backContext = context.for(vc)
-			let backView = backContext.view
-			guard !backView.isHidden else { continue }
-			let depthIndex = index + 1
-			var transition = context.environment.recessTransition(depthIndex, context).reversed
-			// Capture current state (after own contentTransition + any earlier back effects)
-			// as initial, so this recess composes on top rather than overwriting.
-			transition.beforeTransitionIfNeeded(view: backView)
-			transition.update(progress: progress, view: backView)
-			// Store so resetView can undo this effect next cycle.
-			// Tag with source so animate phase can update specific effects.
-			backContext.viewTransitions.addBackEffect(from: context.viewController, transition)
-
-			// Stop at a barrier — it owns back effects for everything below.
-			if backContext.environment.backEffectBarrier {
-				break
-			}
-		}
-	}
-
-	/// Resets all transitions and clears cache for controllers being removed from the stack.
-	/// @ai-generated(guided)
-	static func cleanupTransitions(context: UIPresentation.Context) {
-		guard context.viewControllers.toRemove.contains(context.viewController) else { return }
-		let view = context.view
-		context.viewTransitions.reset(view: view)
-		context.viewTransitions.removeAll()
-	}
-
-	/// Updates the stored own transition to a new progress without resetting.
-	/// Reuses initialState captured during prepare — UIKit animates from prepare state
-	/// to this new state.
-	/// @ai-generated(solo)
-	static func updateOwn(
-		context: UIPresentation.Context,
-		progress: Progress,
-		animation: ((UIPresentation.Context, Progress) -> Void)?
-	) {
-		let view = context.view
-		context.viewTransitions.own?.update(progress: progress, view: view)
-		if let bgView = context.backgroundView {
-			context.backgroundTransitions[bgView]?.update(progress: progress, view: bgView)
-		}
-		animation?(context, progress)
-	}
-
-	/// Updates all stored back effects to a new progress without resetting.
-	/// Same iteration logic as `applyBackEffects` but calls `updateBackEffect`
-	/// on already-stored transitions instead of creating new ones.
-	/// @ai-generated(solo)
-	static func updateBackEffects(context: UIPresentation.Context, progress: Progress) {
-		let allControllers = context.visibleViewControllers.all(context.direction)
-		guard let myIndex = allControllers.firstIndex(of: context.viewController), myIndex > 0 else { return }
-
-		let backControllers = allControllers[..<myIndex].reversed()
-		for vc in backControllers {
-			let backContext = context.for(vc)
-			let backView = backContext.view
-			guard !backView.isHidden else { continue }
-			backContext.viewTransitions.updateBackEffect(from: context.viewController, progress: progress, view: backView)
-
-			if backContext.environment.backEffectBarrier {
-				break
-			}
-		}
 	}
 
 	// MARK: - Debug helpers
