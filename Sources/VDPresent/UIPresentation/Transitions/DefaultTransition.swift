@@ -280,10 +280,12 @@ private extension UIPresentation.Transition {
 				let frontContext = context.for(frontVC)
 				let depthIndex = offset + 1
 				var backTransition = frontContext.environment.recessTransition(depthIndex, frontContext).reversed
-				// Departing back views must stay recessed — use constant so
-				// the recess effect doesn't animate toward identity when
-				// progress moves toward removal.
-				if isDeparting {
+				// Freeze back effects that shouldn't animate with progress:
+				// - isDeparting: departing back views stay recessed (don't animate toward identity on removal)
+				// - remaining front controller: its recess was already applied before this
+				//   transition — re-animating 0→1 would cause the back view to jump to
+				//   identity in prepare then animate back (e.g. Menu jumps up on 2nd pageSheet push)
+				if isDeparting || frontContext.isRemainingController {
 					backTransition = backTransition.constant(at: .insertion(1))
 				}
 				transitions.append(backTransition)
