@@ -1,4 +1,4 @@
-import UIKit
+import SwiftUI
 
 public protocol ControllerTransitionTransform {
 
@@ -31,10 +31,10 @@ struct SheetTransform: ControllerTransitionTransform {
     // Анимируем до финальной позиции                                                                                                                                       
     func isAppearing(context: UIPresentation.Context, progress: Double) {
       let view = context.view                                                                                                                                             
-      view.transform = .identity.interpolated(                                                                                                                            
-        to: offscreenTransform(view: view, edge: edge),
-        progress: 1 - progress                                                                                                                                          
-      )                                                                                                                                                                 
+//      view.transform = .identity.interpolated(                                                                                                                            
+//        to: offscreenTransform(view: view, edge: edge),
+//        progress: 1 - progress                                                                                                                                          
+//      )                                                                                                                                                                 
     }
 
     func didAppear(context: UIPresentation.Context) {}                                                                                                                                                                   
@@ -45,10 +45,10 @@ struct SheetTransform: ControllerTransitionTransform {
     // Анимируем уход — обратно за экран                                                                                                                                   
     func isDisappearing(context: UIPresentation.Context, progress: Double) {
       let view = context.view                                                                                                                                             
-      view.transform = .identity.interpolated(                                                                                                                          
-        to: offscreenTransform(view: view, edge: edge),
-        progress: progress                                                                                                                                              
-      )
+//      view.transform = .identity.interpolated(                                                                                                                          
+//        to: offscreenTransform(view: view, edge: edge),
+//        progress: progress                                                                                                                                              
+//      )
     }
 
     func didDisappear(context: UIPresentation.Context) {}                
@@ -124,4 +124,11 @@ struct WithDimmingBackground: ControllerTransitionTransform {
         }
         return bg
     }
+}
+
+func hmhm() {
+	// move(to: .bottom)
+	// will appear: transform = dy = height
+	// is appearing: transform = dy = height * (1 - progress)
+	// is disappearing: transform = dy = height * progress
 }
