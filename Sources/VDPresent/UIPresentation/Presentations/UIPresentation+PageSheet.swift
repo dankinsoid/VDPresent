@@ -75,17 +75,25 @@ private extension UITransition<UIView> {
 			\.clipsToBounds
 		) { [weak target = targetView] progress, view, initial
 			-> (CGAffineTransform, CGRect, CGFloat, CACornerMask, Bool) in
-			let (sourceTransform, sourceRect, initialCornerRadius, cornerMask, clipsToBounds) = initial
+			let (sourceTransform, identityRect, initialCornerRadius, cornerMask, clipsToBounds) = initial
 			guard let target else {
-				return (sourceTransform, sourceRect, initialCornerRadius, cornerMask, clipsToBounds)
+				return (sourceTransform, identityRect, initialCornerRadius, cornerMask, clipsToBounds)
 			}
+
+			// When multiple recess sub-transitions are .combined(), each receives the
+			// previous one's output as `initial`. `sourceTransform` therefore accumulates
+			// prior recess transforms, but `identityRect` (globalFrame) stays as the
+			// identity-state frame (globalFrame has an empty setter).
+			// Derive the effective visual rect by applying the current sourceTransform
+			// so that offset/scale/cornerRadius computations see the actual position.
+			let effectiveRect = identityRect.applying(sourceTransform)
 
 			let targetRect = target.convert(target.bounds, to: nil)
 
 			let newTransform = computeTransform(
 				progress: progress,
 				sourceTransform: sourceTransform,
-				sourceRect: sourceRect,
+				effectiveRect: effectiveRect,
 				targetRect: targetRect,
 				edge: edge,
 				cornerRadius: cornerRadius,
@@ -95,21 +103,21 @@ private extension UITransition<UIView> {
 
 			let newCornerRadius = computeCornerRadius(
 				progress: progress,
-				sourceRect: sourceRect,
+				effectiveRect: effectiveRect,
 				edge: edge,
 				cornerRadius: cornerRadius,
 				isLtr: view.isLtrDirection
 			)
 
-			// globalFrame: sourceRect returned unchanged — empty setter makes this no-op.
-			return (newTransform, sourceRect, newCornerRadius, .edge(edge), true)
+			// globalFrame: identityRect returned unchanged — empty setter makes this no-op.
+			return (newTransform, identityRect, newCornerRadius, .edge(edge), true)
 		}
 	}
 
 	static func computeTransform(
 		progress: Progress,
 		sourceTransform: CGAffineTransform,
-		sourceRect: CGRect,
+		effectiveRect: CGRect,
 		targetRect: CGRect,
 		edge: Edge,
 		cornerRadius: CGFloat,
@@ -159,22 +167,22 @@ private extension UITransition<UIView> {
 		let scale = CGSize(
 			width: progress.value(
 				identity: 1,
-				transformed: adjustedRect.width / sourceRect.width.notZero
+				transformed: adjustedRect.width / effectiveRect.width.notZero
 			),
 			height: progress.value(
 				identity: 1,
-				transformed: adjustedRect.height / sourceRect.height.notZero
+				transformed: adjustedRect.height / effectiveRect.height.notZero
 			)
 		)
 
 		let offset = CGPoint(
 			x: progress.value(
 				identity: 0,
-				transformed: adjustedRect.midX - sourceRect.midX
+				transformed: adjustedRect.midX - effectiveRect.midX
 			),
 			y: progress.value(
 				identity: 0,
-				transformed: adjustedRect.midY - sourceRect.midY
+				transformed: adjustedRect.midY - effectiveRect.midY
 			)
 		)
 
@@ -185,7 +193,7 @@ private extension UITransition<UIView> {
 
 	static func computeCornerRadius(
 		progress: Progress,
-		sourceRect: CGRect,
+		effectiveRect: CGRect,
 		edge: Edge,
 		cornerRadius: CGFloat,
 		isLtr: Bool
@@ -194,21 +202,21 @@ private extension UITransition<UIView> {
 		let initialRadius: CGFloat
 		switch edge {
 		case .top:
-			initialRadius = sourceRect.minY == 0
+			initialRadius = effectiveRect.minY == 0
 				? displayRadius
 				: cornerRadius
 		case .leading, .trailing:
 			if isLtr == (edge == .leading) {
-				initialRadius = UIScreen.main.bounds.width == sourceRect.maxX
+				initialRadius = UIScreen.main.bounds.width == effectiveRect.maxX
 					? displayRadius
 					: cornerRadius
 			} else {
-				initialRadius = sourceRect.minX == 0
+				initialRadius = effectiveRect.minX == 0
 					? displayRadius
 					: cornerRadius
 			}
 		case .bottom:
-			initialRadius = UIScreen.main.bounds.height == sourceRect.maxY
+			initialRadius = UIScreen.main.bounds.height == effectiveRect.maxY
 				? displayRadius
 				: cornerRadius
 		}
