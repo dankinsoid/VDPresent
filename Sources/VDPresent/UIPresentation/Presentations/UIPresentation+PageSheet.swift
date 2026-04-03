@@ -63,10 +63,26 @@ private extension UIViewTransition {
 	/// Recess transition for pageSheet: scales and translates the behind view
 	/// to appear nested inside the sheet's target area.
 	///
-	/// Uses `UIViewState` to set transform, cornerRadius, cornerMask, and clipping
-	/// in the `idle` state (recessed). `willAppear`/`didDisappear` return identity.
+	/// Corner radius, corner mask, and clipping are constants (same in both states)
+	/// so they appear instantly. Only the transform animates between identity and recessed.
 	/// @ai-generated(solo)
 	static func recessTransform(
+		to targetView: UIView,
+		edge: Edge,
+		cornerRadius: CGFloat,
+		up: Bool
+	) -> UIViewTransition {
+		.combined(
+			recessScale(to: targetView, edge: edge, cornerRadius: cornerRadius, up: up),
+			.constant(\.clipsToBounds, true),
+			.constant(\.layer.maskedCorners, .edge(edge)),
+			recessCornerRadius(edge: edge, cornerRadius: cornerRadius)
+		)
+	}
+
+	/// Animates the transform from identity to the recessed (scaled + translated) position.
+	/// @ai-generated(solo)
+	private static func recessScale(
 		to targetView: UIView,
 		edge: Edge,
 		cornerRadius: CGFloat,
@@ -86,26 +102,44 @@ private extension UIViewTransition {
 				isLtr: isLtr,
 				up: up
 			)
-			let targetCornerRadius = computeRecessCornerRadius(
-				sourceRect: sourceRect,
-				edge: edge,
-				cornerRadius: cornerRadius,
-				isLtr: isLtr
-			)
-
-			return identity
-				.with(\.transform, transform)
-				.with(\.layer.cornerRadius, targetCornerRadius)
-				.with(\.layer.maskedCorners, .edge(edge))
-				.with(\.clipsToBounds, true)
+			return identity.with(\.transform, transform)
 		} removed: { _, identity in
 			identity
 		}
 	}
 
+	/// Corner radius as a constant: uses display corner radius when the view
+	/// is flush against the screen edge, otherwise the sheet's corner radius.
+	/// @ai-generated(solo)
+	private static func recessCornerRadius(
+		edge: Edge,
+		cornerRadius: CGFloat
+	) -> UIViewTransition {
+		UIViewTransition { view, identity in
+			let sourceRect = view.convert(view.bounds, to: nil)
+			let isLtr = UIView.userInterfaceLayoutDirection(for: view.semanticContentAttribute) == .leftToRight
+			let radius = computeRecessCornerRadius(
+				sourceRect: sourceRect,
+				edge: edge,
+				cornerRadius: cornerRadius,
+				isLtr: isLtr
+			)
+			return identity.with(\.layer.cornerRadius, radius)
+		} removed: { view, identity in
+			let sourceRect = view.convert(view.bounds, to: nil)
+			let isLtr = UIView.userInterfaceLayoutDirection(for: view.semanticContentAttribute) == .leftToRight
+			let radius = computeRecessCornerRadius(
+				sourceRect: sourceRect,
+				edge: edge,
+				cornerRadius: cornerRadius,
+				isLtr: isLtr
+			)
+			return identity.with(\.layer.cornerRadius, radius)
+		}
+	}
+
 	/// Computes the affine transform that scales and translates the source view
 	/// to fit inside the sheet's target area with corner-radius insets.
-	/// @ai-generated(solo)
 	static func computeRecessTransform(
 		sourceTransform: CGAffineTransform,
 		sourceRect: CGRect,
@@ -167,7 +201,6 @@ private extension UIViewTransition {
 
 	/// Computes the target corner radius for the recess effect, using the device's
 	/// display corner radius when the view is flush against the matching screen edge.
-	/// @ai-generated(solo)
 	static func computeRecessCornerRadius(
 		sourceRect: CGRect,
 		edge: Edge,
