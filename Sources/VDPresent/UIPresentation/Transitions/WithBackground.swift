@@ -70,7 +70,7 @@ extension UIPresentation.Environment {
 
 extension UIPresentation.Context {
 
-	var backgroundTransitions: [ObjectIdentifier: UIViewTransition] {
+	var backgroundTransitions: [ObjectIdentifier: ViewTransitions] {
 		get {
 			cache[\.backgroundTransitions] ?? [:]
 		}
