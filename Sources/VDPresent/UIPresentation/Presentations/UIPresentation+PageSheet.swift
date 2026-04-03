@@ -108,27 +108,22 @@ private extension UIViewTransition {
 		}
 	}
 
-	/// Corner radius as a constant: uses display corner radius when the view
-	/// is flush against the screen edge, otherwise the sheet's corner radius.
-	/// @ai-generated(solo)
+	/// Animates corner radius from screen display radius (identity) to the
+	/// sheet's smaller corner radius (recessed). When the view isn't flush
+	/// against the screen edge, both states use the sheet's corner radius.
+	/// @ai-generated(guided)
 	private static func recessCornerRadius(
 		edge: Edge,
 		cornerRadius: CGFloat
 	) -> UIViewTransition {
-		UIViewTransition { view, identity in
-			let sourceRect = view.convert(view.bounds, to: nil)
-			let isLtr = UIView.userInterfaceLayoutDirection(for: view.semanticContentAttribute) == .leftToRight
-			let radius = computeRecessCornerRadius(
-				sourceRect: sourceRect,
-				edge: edge,
-				cornerRadius: cornerRadius,
-				isLtr: isLtr
-			)
-			return identity.with(\.layer.cornerRadius, radius)
+		UIViewTransition { _, identity in
+			// Recessed: small corner radius matching the sheet
+			identity.with(\.layer.cornerRadius, cornerRadius)
 		} removed: { view, identity in
+			// Identity: screen display radius when flush, otherwise sheet radius
 			let sourceRect = view.convert(view.bounds, to: nil)
 			let isLtr = UIView.userInterfaceLayoutDirection(for: view.semanticContentAttribute) == .leftToRight
-			let radius = computeRecessCornerRadius(
+			let radius = initialCornerRadius(
 				sourceRect: sourceRect,
 				edge: edge,
 				cornerRadius: cornerRadius,
@@ -199,9 +194,10 @@ private extension UIViewTransition {
 			.scaledBy(x: scaleX, y: scaleY)
 	}
 
-	/// Computes the target corner radius for the recess effect, using the device's
-	/// display corner radius when the view is flush against the matching screen edge.
-	static func computeRecessCornerRadius(
+	/// Returns the view's natural corner radius before recessing: display radius
+	/// when the view is flush against the matching screen edge, sheet radius otherwise.
+	/// @ai-generated(solo)
+	static func initialCornerRadius(
 		sourceRect: CGRect,
 		edge: Edge,
 		cornerRadius: CGFloat,
