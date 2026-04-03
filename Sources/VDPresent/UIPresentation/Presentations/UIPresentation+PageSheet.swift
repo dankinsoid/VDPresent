@@ -108,9 +108,9 @@ private extension UIViewTransition {
 		}
 	}
 
-	/// Animates corner radius from screen display radius (identity) to the
-	/// sheet's smaller corner radius (recessed). When the view isn't flush
-	/// against the screen edge, both states use the sheet's corner radius.
+	/// Animates corner radius from the view's current value to the sheet's
+	/// smaller corner radius. Uses screen display radius instead of current
+	/// value when the view is flush against the matching screen edge.
 	/// @ai-generated(guided)
 	private static func recessCornerRadius(
 		edge: Edge,
@@ -120,10 +120,12 @@ private extension UIViewTransition {
 			// Recessed: small corner radius matching the sheet
 			identity.with(\.layer.cornerRadius, cornerRadius)
 		} removed: { view, identity in
-			// Identity: screen display radius when flush, otherwise sheet radius
+			// Identity: use current view value, but prefer screen display radius
+			// when the view is flush against the screen edge
 			let sourceRect = view.convert(view.bounds, to: nil)
 			let isLtr = UIView.userInterfaceLayoutDirection(for: view.semanticContentAttribute) == .leftToRight
 			let radius = initialCornerRadius(
+				view: view,
 				sourceRect: sourceRect,
 				edge: edge,
 				cornerRadius: cornerRadius,
@@ -194,27 +196,30 @@ private extension UIViewTransition {
 			.scaledBy(x: scaleX, y: scaleY)
 	}
 
-	/// Returns the view's natural corner radius before recessing: display radius
-	/// when the view is flush against the matching screen edge, sheet radius otherwise.
-	/// @ai-generated(solo)
+	/// Returns the view's starting corner radius: screen display radius when
+	/// the view is flush against the matching edge, otherwise the view's current value.
+	/// @ai-generated(guided)
 	static func initialCornerRadius(
+		view: UIView,
 		sourceRect: CGRect,
 		edge: Edge,
 		cornerRadius: CGFloat,
 		isLtr: Bool
 	) -> CGFloat {
 		let displayRadius = UIScreen.main.displayCornerRadius
+		let isFlush: Bool
 		switch edge {
 		case .top:
-			return sourceRect.minY == 0 ? displayRadius : cornerRadius
+			isFlush = sourceRect.minY == 0
 		case .leading, .trailing:
 			if isLtr == (edge == .leading) {
-				return UIScreen.main.bounds.width == sourceRect.maxX ? displayRadius : cornerRadius
+				isFlush = UIScreen.main.bounds.width == sourceRect.maxX
 			} else {
-				return sourceRect.minX == 0 ? displayRadius : cornerRadius
+				isFlush = sourceRect.minX == 0
 			}
 		case .bottom:
-			return UIScreen.main.bounds.height == sourceRect.maxY ? displayRadius : cornerRadius
+			isFlush = UIScreen.main.bounds.height == sourceRect.maxY
 		}
+		return isFlush ? displayRadius : view.layer.cornerRadius
 	}
 }
