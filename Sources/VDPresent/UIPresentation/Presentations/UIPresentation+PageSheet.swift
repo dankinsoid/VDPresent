@@ -34,14 +34,14 @@ public extension UIPresentation {
 						.constant(\.layer.maskedCorners, .edge(edge.opposite)),
 					)
 				}
-//				.environment(\.recessTransition) { i, context in
-//					.transform(
-//						to: context.view,
-//						edge: edge.opposite,
-//						cornerRadius: cornerRadius,
-//						up: i == 1
-//					)
-//				}
+				.environment(\.recessTransition) { i, context in
+					.recessTransform(
+						to: context.view,
+						edge: edge.opposite,
+						cornerRadius: cornerRadius,
+						up: i == 1
+					)
+				}
 				.environment(\.overCurrentContext, true)
 				.withBackground(containerColor)
 				.environment(\.backgroundPlacement, .behindController),
@@ -60,49 +60,53 @@ public extension UIColor {
 
 private extension UIViewTransition {
 
-//	static func transform(
-//		to targetView: UIView,
-//		edge: Edge,
-//		cornerRadius: CGFloat,
-//		up: Bool
-//	) -> UIViewTransition {
-//		let targetRect = targetView.convert(targetView.bounds, to: nil)
-//		return UITransition(
-//			\.affineTransform,
-//			\.globalFrame,
-//			\.layer.cornerRadius,
-//			\.layer.maskedCorners,
-//			\.clipsToBounds
-//		) { progress, view, initial
-//			-> (CGAffineTransform, CGRect, CGFloat, CACornerMask, Bool) in
-//			let (sourceTransform, sourceRect, initialCornerRadius, cornerMask, clipsToBounds) = initial
-//
-//			let newTransform = computeTransform(
-//				progress: progress,
-//				sourceTransform: sourceTransform,
-//				sourceRect: sourceRect,
-//				targetRect: targetRect,
-//				edge: edge,
-//				cornerRadius: cornerRadius,
-//				isLtr: view.isLtrDirection,
-//				up: up
-//			)
-//
-//			let newCornerRadius = computeCornerRadius(
-//				progress: progress,
-//				sourceRect: sourceRect,
-//				edge: edge,
-//				cornerRadius: cornerRadius,
-//				isLtr: view.isLtrDirection
-//			)
-//
-//			// globalFrame: sourceRect returned unchanged — empty setter makes this no-op.
-//			return (newTransform, sourceRect, newCornerRadius, .edge(edge), true)
-//		}
-//	}
+	/// Recess transition for pageSheet: scales and translates the behind view
+	/// to appear nested inside the sheet's target area.
+	///
+	/// Uses `UIViewState` to set transform, cornerRadius, cornerMask, and clipping
+	/// in the `idle` state (recessed). `willAppear`/`didDisappear` return identity.
+	/// @ai-generated(solo)
+	static func recessTransform(
+		to targetView: UIView,
+		edge: Edge,
+		cornerRadius: CGFloat,
+		up: Bool
+	) -> UIViewTransition {
+		UIViewTransition { view, identity in
+			let sourceRect = view.convert(view.bounds, to: nil)
+			let targetRect = targetView.convert(targetView.bounds, to: nil)
+			let isLtr = UIView.userInterfaceLayoutDirection(for: view.semanticContentAttribute) == .leftToRight
 
-	static func computeTransform(
-		progress: Progress,
+			let transform = computeRecessTransform(
+				sourceTransform: identity.transform,
+				sourceRect: sourceRect,
+				targetRect: targetRect,
+				edge: edge,
+				cornerRadius: cornerRadius,
+				isLtr: isLtr,
+				up: up
+			)
+			let targetCornerRadius = computeRecessCornerRadius(
+				sourceRect: sourceRect,
+				edge: edge,
+				cornerRadius: cornerRadius,
+				isLtr: isLtr
+			)
+
+			return identity
+				.with(\.transform, transform)
+				.with(\.layer.cornerRadius, targetCornerRadius)
+				.with(\.layer.maskedCorners, .edge(edge))
+				.with(\.clipsToBounds, true)
+		} removed: { _, identity in
+			identity
+		}
+	}
+
+	/// Computes the affine transform that scales and translates the source view
+	/// to fit inside the sheet's target area with corner-radius insets.
+	/// @ai-generated(solo)
+	static func computeRecessTransform(
 		sourceTransform: CGAffineTransform,
 		sourceRect: CGRect,
 		targetRect: CGRect,
@@ -151,75 +155,37 @@ private extension UIViewTransition {
 			}
 		}
 
-		let scale = CGSize(
-			width: progress.value(
-				identity: 1,
-				transformed: adjustedRect.width / sourceRect.width.notZero
-			),
-			height: progress.value(
-				identity: 1,
-				transformed: adjustedRect.height / sourceRect.height.notZero
-			)
-		)
-
-		let offset = CGPoint(
-			x: progress.value(
-				identity: 0,
-				transformed: adjustedRect.midX - sourceRect.midX
-			),
-			y: progress.value(
-				identity: 0,
-				transformed: adjustedRect.midY - sourceRect.midY
-			)
-		)
+		let scaleX = adjustedRect.width / sourceRect.width.notZero
+		let scaleY = adjustedRect.height / sourceRect.height.notZero
+		let offsetX = adjustedRect.midX - sourceRect.midX
+		let offsetY = adjustedRect.midY - sourceRect.midY
 
 		return sourceTransform
-			.translatedBy(x: offset.x, y: offset.y)
-			.scaledBy(x: scale.width, y: scale.height)
+			.translatedBy(x: offsetX, y: offsetY)
+			.scaledBy(x: scaleX, y: scaleY)
 	}
 
-	static func computeCornerRadius(
-		progress: Progress,
+	/// Computes the target corner radius for the recess effect, using the device's
+	/// display corner radius when the view is flush against the matching screen edge.
+	/// @ai-generated(solo)
+	static func computeRecessCornerRadius(
 		sourceRect: CGRect,
 		edge: Edge,
 		cornerRadius: CGFloat,
 		isLtr: Bool
 	) -> CGFloat {
 		let displayRadius = UIScreen.main.displayCornerRadius
-		let initialRadius: CGFloat
 		switch edge {
 		case .top:
-			initialRadius = sourceRect.minY == 0
-				? displayRadius
-				: cornerRadius
+			return sourceRect.minY == 0 ? displayRadius : cornerRadius
 		case .leading, .trailing:
 			if isLtr == (edge == .leading) {
-				initialRadius = UIScreen.main.bounds.width == sourceRect.maxX
-					? displayRadius
-					: cornerRadius
+				return UIScreen.main.bounds.width == sourceRect.maxX ? displayRadius : cornerRadius
 			} else {
-				initialRadius = sourceRect.minX == 0
-					? displayRadius
-					: cornerRadius
+				return sourceRect.minX == 0 ? displayRadius : cornerRadius
 			}
 		case .bottom:
-			initialRadius = UIScreen.main.bounds.height == sourceRect.maxY
-				? displayRadius
-				: cornerRadius
+			return UIScreen.main.bounds.height == sourceRect.maxY ? displayRadius : cornerRadius
 		}
-		return progress.value(
-			identity: initialRadius,
-			transformed: cornerRadius
-		)
-	}
-}
-
-private extension UIView {
-
-	/// Duplicated from VDTransition (internal there).
-	/// Empty setter allows `ReferenceWritableKeyPath` for capture-only use.
-	var globalFrame: CGRect {
-		get { convert(bounds, to: nil) }
-		set {}
 	}
 }
