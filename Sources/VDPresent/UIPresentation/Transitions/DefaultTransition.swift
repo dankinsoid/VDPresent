@@ -248,7 +248,7 @@ private extension UIPresentation.Transition {
 		var fromLabels: [String] = []
 		var toLabels: [String] = []
 		var cleanToLabels: [String] = []
-		let vcName = String(describing: type(of: context.viewController)).components(separatedBy: ".").last ?? "?"
+		let vcName = context.view.accessibilityIdentifier ?? String(describing: type(of: context.viewController)).components(separatedBy: ".").last ?? "?"
 		#endif
 
 		let allControllers = context.visibleViewControllers.all(context.direction)
@@ -294,7 +294,7 @@ private extension UIPresentation.Transition {
 				let frontContext = context.for(frontVC)
 				let depthIndex = offset + 1
 				#if VDPRESENT_LOG
-				let frontName = String(describing: type(of: frontVC)).components(separatedBy: ".").last ?? "?"
+				let frontName = context.for(frontVC).view.accessibilityIdentifier ?? String(describing: type(of: frontVC)).components(separatedBy: ".").last ?? "?"
 				#endif
 				let backTransition = frontContext.environment.recessTransition(depthIndex, frontContext).tween(for: frontContext.ownDirection)
 				let isDeparting = frontContext.ownDirection == .removal
@@ -332,6 +332,18 @@ private extension UIPresentation.Transition {
 
 		var oldState = context.viewTransitions.state
 		oldState.snapshot(context.view)
+		
+		if barrierIndex != nil {
+			to.insert(
+				{ [oldState] _, identity in
+					identity.merged(with: oldState)
+				},
+				at: 0
+			)
+			#if VDPRESENT_LOG
+			print("  [\(vcName)] inserted barrier base into to")
+			#endif
+		}
 		#if VDPRESENT_LOG
 		print("  [\(vcName)] oldState(snapshot): \(oldState)")
 		#endif
@@ -342,17 +354,6 @@ private extension UIPresentation.Transition {
 		print("  [\(vcName)] newState(from): \(newState)")
 		#endif
 
-		if barrierIndex != nil {
-			to.insert(
-				{ _, identity in
-					identity.merged(with: newState)
-				},
-				at: 0
-			)
-			#if VDPRESENT_LOG
-			print("  [\(vcName)] inserted barrier base into to")
-			#endif
-		}
 		newState.apply(to: context.view)
 
 		#if VDPRESENT_LOG
