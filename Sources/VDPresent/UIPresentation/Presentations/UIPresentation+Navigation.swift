@@ -22,7 +22,7 @@ public extension UIPresentation {
 		)
 		.environment(
 			\.backgroundTransition,
-			.backgroundColor(containerColor, default: containerColor.withAlphaComponent(0))
+			.tween(\.backgroundColor, from: containerColor.withAlphaComponent(0), to: containerColor)
 		)
 	}
 }

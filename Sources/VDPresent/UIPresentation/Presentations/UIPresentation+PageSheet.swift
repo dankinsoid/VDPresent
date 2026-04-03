@@ -89,8 +89,8 @@ private extension UIViewTransition {
 		up: Bool
 	) -> UIViewTransition {
 		UIViewTransition { view, identity in
-			let sourceRect = view.convert(view.bounds, to: nil)
-			let targetRect = targetView.convert(targetView.bounds, to: nil)
+			let sourceRect = view.untransformedFrameInWindow
+			let targetRect = targetView.untransformedFrameInWindow
 			let isLtr = UIView.userInterfaceLayoutDirection(for: view.semanticContentAttribute) == .leftToRight
 
 			let transform = computeRecessTransform(
@@ -117,12 +117,9 @@ private extension UIViewTransition {
 		cornerRadius: CGFloat
 	) -> UIViewTransition {
 		UIViewTransition { _, identity in
-			// Recessed: small corner radius matching the sheet
 			identity.with(\.layer.cornerRadius, cornerRadius)
 		} removed: { view, identity in
-			// Identity: use current view value, but prefer screen display radius
-			// when the view is flush against the screen edge
-			let sourceRect = view.convert(view.bounds, to: nil)
+			let sourceRect = view.untransformedFrameInWindow
 			let isLtr = UIView.userInterfaceLayoutDirection(for: view.semanticContentAttribute) == .leftToRight
 			let radius = initialCornerRadius(
 				view: view,
@@ -221,5 +218,23 @@ private extension UIViewTransition {
 			isFlush = UIScreen.main.bounds.height == sourceRect.maxY
 		}
 		return isFlush ? displayRadius : view.layer.cornerRadius
+	}
+}
+
+private extension UIView {
+
+	/// Frame in window coordinates ignoring the view's own transform.
+	/// Uses `bounds.size` (unaffected by transform) and `center` (= layer.position,
+	/// stored in superview coordinates independently of transform).
+	/// @ai-generated(solo)
+	var untransformedFrameInWindow: CGRect {
+		let size = bounds.size
+		let globalCenter = superview?.convert(center, to: nil) ?? center
+		return CGRect(
+			x: globalCenter.x - size.width / 2,
+			y: globalCenter.y - size.height / 2,
+			width: size.width,
+			height: size.height
+		)
 	}
 }

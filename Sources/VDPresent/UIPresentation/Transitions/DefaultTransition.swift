@@ -264,7 +264,7 @@ private extension UIPresentation.Transition {
 				let depthIndex = offset + 1
 				let backTransition = frontContext.environment.recessTransition(depthIndex, frontContext).tween(for: frontContext.ownDirection)
 				to.append(backTransition.to)
-				if frontContext.isChangingController, !frontContext.isBehindFrozen, context.viewTransitions.viewID != viewID {
+				if frontContext.isChangingController, !frontContext.isBehindFrozen, context.viewTransitions.viewID != viewID || frontContext.viewTransitions.viewID != ObjectIdentifier(frontContext.view) {
 					from.append(backTransition.from)
 				}
 
