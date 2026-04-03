@@ -79,7 +79,7 @@ public extension UIPresentation.Transition {
 			},
 			completion: { context, completed in
 				let finalContext = completed ? context : context.reversed
-				settleViewState(context: context, completed: completed)
+//				settleViewState(context: context, completed: completed)
 				completeBackground(context: finalContext)
 				completion?(context, completed)
 			}
@@ -194,7 +194,7 @@ extension UIPresentation.Context {
 		get { allViewTransitions[ObjectIdentifier(viewController)] ?? ViewTransitions() }
 		nonmutating set { allViewTransitions[ObjectIdentifier(viewController)] = newValue }
 	}
-	
+
 	var isNewView: Bool {
 		viewTransitions.viewID != ObjectIdentifier(view)
 	}
@@ -244,17 +244,27 @@ private extension UIPresentation.Transition {
 		var to: [UIViewTransition.TransitionClosure] = []
 		// Clean end state: own content + recess from final (to) stack, no barrier workarounds.
 		var cleanTo: [UIViewTransition.TransitionClosure] = []
+		#if VDPRESENT_LOG
+		var fromLabels: [String] = []
+		var toLabels: [String] = []
+		var cleanToLabels: [String] = []
+		let vcName = String(describing: type(of: context.viewController)).components(separatedBy: ".").last ?? "?"
+		#endif
 
 		let allControllers = context.visibleViewControllers.all(context.direction)
 		let myIndex = allControllers.firstIndex(of: context.viewController)
 		let barrierIndex: Int? = myIndex.flatMap { myIndex in
 			allControllers[(myIndex + 1)...].firstIndex { context.for($0).environment.backEffectBarrier }
 		}
-		let toControllers = context.viewControllers.to
+		let toControllers = context.visibleViewControllers.to
 		let cleanMyIndex = toControllers.firstIndex(of: context.viewController)
 		let cleanBarrierIndex: Int? = cleanMyIndex.flatMap { i in
 			toControllers[(i + 1)...].firstIndex { context.for($0).environment.backEffectBarrier }
 		}
+
+		#if VDPRESENT_LOG
+		print("  [\(vcName)] buildTransitions: isChanging=\(context.isChangingController) isBehindFrozen=\(context.isBehindFrozen) isNewView=\(context.isNewView) ownDir=\(context.ownDirection) barrierIdx=\(barrierIndex.map(String.init) ?? "nil")")
+		#endif
 
 		// 1. Own contentTransition.
 		let contentTransition = context.environment.contentTransition(context)
@@ -263,13 +273,18 @@ private extension UIPresentation.Transition {
 
 		if context.isChangingController, !context.isBehindFrozen, context.isNewView {
 			from.append(transition.from)
+			#if VDPRESENT_LOG
+			fromLabels.append("content")
+			#endif
 		}
 
-		if barrierIndex == nil {
+		if !context.isBehindFrozen {
 			to.append(transition.to)
-		}
-		if cleanBarrierIndex == nil {
 			cleanTo.append(cleanContentTransition.to)
+			#if VDPRESENT_LOG
+			toLabels.append("content")
+			cleanToLabels.append("content")
+			#endif
 		}
 
 		// 2. Recess effects from controllers above this one.
@@ -278,51 +293,73 @@ private extension UIPresentation.Transition {
 			for (offset, frontVC) in frontControllers.enumerated() {
 				let frontContext = context.for(frontVC)
 				let depthIndex = offset + 1
+				#if VDPRESENT_LOG
+				let frontName = String(describing: type(of: frontVC)).components(separatedBy: ".").last ?? "?"
+				#endif
 				let backTransition = frontContext.environment.recessTransition(depthIndex, frontContext).tween(for: frontContext.ownDirection)
-				
-				let isBelowBarrier = barrierIndex.map { myIndex + 1 + offset < $0 } ?? false
-				
-				if isBelowBarrier {
-					// Below barrier: skip — view already holds the correct
-					// recessed state and animate must not touch those properties.
-				} else {
-					to.append(backTransition.to)
-					if frontContext.isChangingController, !frontContext.isBehindFrozen, context.isNewView || frontContext.isNewView {
-						from.append(backTransition.from)
-					}
+				let isDeparting = frontContext.ownDirection == .removal
+
+				to.append(backTransition.to)
+				#if VDPRESENT_LOG
+				toLabels.append("recess(\(frontName),dep=\(isDeparting))")
+				#endif
+				if !isDeparting {
+					cleanTo.append(backTransition.to)
+					#if VDPRESENT_LOG
+					cleanToLabels.append("recess(\(frontName))")
+					#endif
+				}
+
+				if frontContext.isChangingController, !frontContext.isBehindFrozen, context.isNewView {
+					from.append(backTransition.from)
+					#if VDPRESENT_LOG
+					fromLabels.append("recess(\(frontName))")
+					#endif
+				}
+
+				if frontContext.environment.backEffectBarrier {
+					#if VDPRESENT_LOG
+					print("  [\(vcName)] barrier at \(frontName)")
+					#endif
+					break
 				}
 			}
 		}
 
-		// 3. Clean end state: recess from final (to) stack with its own barriers.
-		if let cleanMyIndex {
-			let cleanFront = toControllers[(cleanMyIndex + 1)...]
-			for (offset, frontVC) in cleanFront.enumerated() {
-				let frontContext = context.for(frontVC)
-				let depthIndex = offset + 1
-				let isBelowCleanBarrier = cleanBarrierIndex.map { cleanMyIndex + 1 + offset < $0 } ?? false
-				if !isBelowCleanBarrier {
-					let cleanRecess = frontContext.environment.recessTransition(depthIndex, frontContext).tween(for: .insertion)
-					cleanTo.append(cleanRecess.to)
-				}
-			}
-		}
+		#if VDPRESENT_LOG
+		print("  [\(vcName)] from=[\(fromLabels.joined(separator: ","))] to=[\(toLabels.joined(separator: ","))] cleanTo=[\(cleanToLabels.joined(separator: ","))]")
+		#endif
 
 		var oldState = context.viewTransitions.state
 		oldState.snapshot(context.view)
-
-		if barrierIndex != nil {
-			to.insert(
-				{ [oldState] view, identity in
-					identity.merged(with: oldState)
-				},
-				at: 0
-			)
-		}
+		#if VDPRESENT_LOG
+		print("  [\(vcName)] oldState(snapshot): \(oldState)")
+		#endif
 
 		let newTransition = UIViewTransition.Tween.combined(from: from, to: to)
 		let newState = newTransition.from(context.view, oldState)
+		#if VDPRESENT_LOG
+		print("  [\(vcName)] newState(from): \(newState)")
+		#endif
+
+		if barrierIndex != nil {
+			to.insert(
+				{ _, identity in
+					identity.merged(with: newState)
+				},
+				at: 0
+			)
+			#if VDPRESENT_LOG
+			print("  [\(vcName)] inserted barrier base into to")
+			#endif
+		}
 		newState.apply(to: context.view)
+
+		#if VDPRESENT_LOG
+		let identityPreview = newState.identity
+		let animatePreview = UIViewTransition.Tween.combined(from: from, to: to).to(context.view, identityPreview)
+		print("  [\(vcName)] animate preview (to from identity): \(animatePreview)")
+		#endif
 
 		context.viewTransitions.tween = newTransition
 		context.viewTransitions.cleanTo = UIViewTransition.Tween.combined(from: [], to: cleanTo)
