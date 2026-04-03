@@ -112,22 +112,22 @@ public extension UIPresentation {
 		public var transitionID: AnyHashable
 
 		/// Sets up initial state before animation begins (layout, transforms, visibility).
-		public var prepare: (Context) -> Void
+		public var prepare: @MainActor (Context) -> Void
 
 		/// The animatable changes — called inside an animation block or at each progress step.
-		public var animation: (Context) -> Void
+		public var animation: @MainActor (Context) -> Void
 
 		/// Called after the animation finishes. `Bool` is `false` when cancelled.
-		public var completion: (Context, Bool) -> Void
+		public var completion: @MainActor (Context, Bool) -> Void
 
 		public var environment: UIPresentation.Environment
 
 		public init(
 			transitionID: AnyHashable,
 			environment: UIPresentation.Environment = UIPresentation.Environment(),
-			prepare: @escaping (Context) -> Void = { _ in },
-			animation: @escaping (Context) -> Void = { _ in },
-			completion: @escaping (Context, Bool) -> Void = { _, _ in }
+			prepare: @escaping @MainActor (Context) -> Void = { _ in },
+			animation: @escaping @MainActor (Context) -> Void = { _ in },
+			completion: @escaping @MainActor (Context, Bool) -> Void = { _, _ in }
 		) {
 			self.transitionID = transitionID
 			self.prepare = prepare

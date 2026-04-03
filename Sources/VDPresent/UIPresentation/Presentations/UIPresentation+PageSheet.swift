@@ -26,22 +26,22 @@ public extension UIPresentation {
 					insideSafeArea: NSDirectionalRectEdge(edge.opposite)
 				))
 				.environment(\.contentTransition) { _ in
-					[
-						.move(edge: edge),
+					.combined(
+						.move(from: edge),
 						.constant(\.clipsToBounds, true),
 						.constant(\.layer.cornerRadius, cornerRadius),
 						.constant(\.layer.cornerCurve, .continuous),
 						.constant(\.layer.maskedCorners, .edge(edge.opposite)),
-					]
-				}
-				.environment(\.recessTransition) { i, context in
-					.transform(
-						to: context.view,
-						edge: edge.opposite,
-						cornerRadius: cornerRadius,
-						up: i == 1
 					)
 				}
+//				.environment(\.recessTransition) { i, context in
+//					.transform(
+//						to: context.view,
+//						edge: edge.opposite,
+//						cornerRadius: cornerRadius,
+//						up: i == 1
+//					)
+//				}
 				.environment(\.overCurrentContext, true)
 				.withBackground(containerColor)
 				.environment(\.backgroundPlacement, .behindController),
@@ -58,53 +58,48 @@ public extension UIColor {
 	}
 }
 
-private extension UITransition<UIView> {
+private extension UIViewTransition {
 
-	// @ai-generated(guided)
-	static func transform(
-		to targetView: UIView,
-		edge: Edge,
-		cornerRadius: CGFloat,
-		up: Bool
-	) -> UITransition {
-		UITransition(
-			\.affineTransform,
-			\.globalFrame,
-			\.layer.cornerRadius,
-			\.layer.maskedCorners,
-			\.clipsToBounds
-		) { [weak target = targetView] progress, view, initial
-			-> (CGAffineTransform, CGRect, CGFloat, CACornerMask, Bool) in
-			let (sourceTransform, sourceRect, initialCornerRadius, cornerMask, clipsToBounds) = initial
-			guard let target else {
-				return (sourceTransform, sourceRect, initialCornerRadius, cornerMask, clipsToBounds)
-			}
-
-			let targetRect = target.convert(target.bounds, to: nil)
-
-			let newTransform = computeTransform(
-				progress: progress,
-				sourceTransform: sourceTransform,
-				sourceRect: sourceRect,
-				targetRect: targetRect,
-				edge: edge,
-				cornerRadius: cornerRadius,
-				isLtr: view.isLtrDirection,
-				up: up
-			)
-
-			let newCornerRadius = computeCornerRadius(
-				progress: progress,
-				sourceRect: sourceRect,
-				edge: edge,
-				cornerRadius: cornerRadius,
-				isLtr: view.isLtrDirection
-			)
-
-			// globalFrame: sourceRect returned unchanged — empty setter makes this no-op.
-			return (newTransform, sourceRect, newCornerRadius, .edge(edge), true)
-		}
-	}
+//	static func transform(
+//		to targetView: UIView,
+//		edge: Edge,
+//		cornerRadius: CGFloat,
+//		up: Bool
+//	) -> UIViewTransition {
+//		let targetRect = targetView.convert(targetView.bounds, to: nil)
+//		return UITransition(
+//			\.affineTransform,
+//			\.globalFrame,
+//			\.layer.cornerRadius,
+//			\.layer.maskedCorners,
+//			\.clipsToBounds
+//		) { progress, view, initial
+//			-> (CGAffineTransform, CGRect, CGFloat, CACornerMask, Bool) in
+//			let (sourceTransform, sourceRect, initialCornerRadius, cornerMask, clipsToBounds) = initial
+//
+//			let newTransform = computeTransform(
+//				progress: progress,
+//				sourceTransform: sourceTransform,
+//				sourceRect: sourceRect,
+//				targetRect: targetRect,
+//				edge: edge,
+//				cornerRadius: cornerRadius,
+//				isLtr: view.isLtrDirection,
+//				up: up
+//			)
+//
+//			let newCornerRadius = computeCornerRadius(
+//				progress: progress,
+//				sourceRect: sourceRect,
+//				edge: edge,
+//				cornerRadius: cornerRadius,
+//				isLtr: view.isLtrDirection
+//			)
+//
+//			// globalFrame: sourceRect returned unchanged — empty setter makes this no-op.
+//			return (newTransform, sourceRect, newCornerRadius, .edge(edge), true)
+//		}
+//	}
 
 	static func computeTransform(
 		progress: Progress,

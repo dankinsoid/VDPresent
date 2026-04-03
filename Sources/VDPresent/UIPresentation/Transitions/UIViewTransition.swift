@@ -4,17 +4,28 @@ import VDTransition
 
 public struct UIViewTransition {
 
+	public static let identity = UIViewTransition()
+
 	public typealias TransitionClosure = @MainActor (UIView, _ identity: UIViewState) -> UIViewState
 
-	public var willAppear: TransitionClosure
-	public var idle: TransitionClosure
-	public var didDisappear: TransitionClosure
+	public let isIdentity: Bool
+	public let willAppear: TransitionClosure
+	public let idle: TransitionClosure
+	public let didDisappear: TransitionClosure
+	
+	public init() {
+		self.isIdentity = true
+		self.willAppear = { _, identity in identity }
+		self.idle = { _, identity in identity }
+		self.didDisappear = { _, identity in identity }
+	}
 
 	public init(
 		willAppear: @escaping TransitionClosure,
 		idle: @escaping TransitionClosure = { _, identity in identity },
 		didDisappear: @escaping TransitionClosure
 	) {
+		self.isIdentity = false
 		self.willAppear = willAppear
 		self.idle = idle
 		self.didDisappear = didDisappear
@@ -25,6 +36,86 @@ public struct UIViewTransition {
 		removed: @escaping TransitionClosure
 	) {
 		self.init(willAppear: removed, idle: idle, didDisappear: removed)
+	}
+}
+
+extension UIViewTransition {
+	
+	public struct Tween {
+		
+		public let from: UIViewTransition.TransitionClosure
+		public let to: UIViewTransition.TransitionClosure
+		
+		public init(
+			from: @escaping UIViewTransition.TransitionClosure,
+			to: @escaping UIViewTransition.TransitionClosure
+		) {
+			self.from = from
+			self.to = to
+		}
+
+		public static func combined(_ tweens: Tween...) -> Tween {
+			combined(tweens)
+		}
+
+		public static func combined(
+			from: [UIViewTransition.TransitionClosure],
+			to: [UIViewTransition.TransitionClosure]
+		) -> Tween {
+			Tween(
+				from: { view, identity in
+					from.reduce(identity) { state, closure in
+						state.merged(with: closure(view, state))
+					}
+				},
+				to: { view, identity in
+					to.reduce(identity) { state, closure in
+						state.merged(with: closure(view, state))
+					}
+				}
+			)
+		}
+	
+		public static func combined(_ tweens: [Tween]) -> Tween {
+			Tween(
+				from: { view, identity in
+					tweens.reduce(identity) { state, tween in
+						state.merged(with: tween.from(view, state))
+					}
+				},
+				to: { view, identity in
+					tweens.reduce(identity) { state, tween in
+						state.merged(with: tween.to(view, state))
+					}
+				}
+			)
+		}
+		
+		public func only(_ keyPath: KeyPath<Self, UIViewTransition.TransitionClosure>) -> UIViewTransition.Tween {
+			switch keyPath {
+			case \.from:
+				return UIViewTransition.Tween(
+					from: from,
+					to: { _, identity in identity }
+				)
+			case \.to:
+				return UIViewTransition.Tween(
+					from: { _, identity in identity },
+					to: to
+				)
+			default:
+				return self
+			}
+		}
+	}
+
+	public func tween(for direction: TransitionDirection) -> Tween {
+		switch direction {
+		case .insertion:
+			return Tween(from: willAppear, to: idle)
+		case .removal:
+			return Tween(from: idle, to: didDisappear)
+		}
 	}
 }
 
@@ -163,23 +254,21 @@ public extension UIViewTransition {
 		UIViewTransition(
 			willAppear: { view, identity in
 				transitions.reduce(identity) { state, transition in
-					state.merged(with: transition.willAppear(view, identity))
+					state.merged(with: transition.willAppear(view, state))
 				}
 			},
 			idle: { view, identity in
 				transitions.reduce(identity) { state, transition in
-					state.merged(with: transition.idle(view, identity))
+					state.merged(with: transition.idle(view, state))
 				}
 			},
 			didDisappear: { view, identity in
 				transitions.reduce(identity) { state, transition in
-					state.merged(with: transition.didDisappear(view, identity))
+					state.merged(with: transition.didDisappear(view, state))
 				}
 			}
 		)
 	}
-
-	static let identity = UIViewTransition { _, identity in identity }
 }
 
 @dynamicMemberLookup

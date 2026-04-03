@@ -16,12 +16,12 @@ public extension UIPresentation {
 		UIPresentation(
 			transition: .base(transitionID: "sheet")
 				.environment(\.contentTransition) { _ in
-					[
-						.move(edge: edge),
+					.combined(
+						.move(from: edge),
 						.constant(\.clipsToBounds, true),
 						.constant(\.layer.cornerRadius, cornerRadius),
 						.constant(\.layer.maskedCorners, .edge(edge.opposite)),
-					]
+					)
 				}
 				.environment(\.contentLayout, .constraints { view, superview in
 					var result = view.pinEdges(

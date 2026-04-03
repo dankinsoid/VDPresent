@@ -27,7 +27,6 @@ public extension UIPresentation.Transition {
 	///     Runs in the same `UIView.animate` batch as the built-in transitions.
 	///   - completion: Called after the transition finishes. `completed` is `false` when the
 	///     transition was cancelled (e.g. interactive gesture reversed).
-	/// @ai-generated(guided)
 	static func base(
 		transitionID: AnyHashable,
 		additionalPrepare: ((UIPresentation.Context) -> Void)? = nil,
@@ -39,16 +38,15 @@ public extension UIPresentation.Transition {
 			prepare: { context in
 				let progress = prepareProgress(context: context)
 
-				// Reset is done externally (UIStackController resets all views
 				// before calling prepare) so that all views are in identity/layout
 				// position when recessTransitions read target frames.
 
-				if context.isChangingController {
-					prepareBackground(context: context)
-					additionalPrepare?(context)
-				} else if context.backgroundView == nil {
-					prepareBackground(context: context)
-				}
+//				if context.isChangingController {
+//					prepareBackground(context: context)
+//					additionalPrepare?(context)
+//				} else if context.backgroundView == nil {
+//					prepareBackground(context: context)
+//				}
 
 				// Collect own + back effects from above, combine, apply prepareProgress.
 				buildTransitions(context: context, progress: progress, animation: additionalAnimation)
@@ -58,10 +56,21 @@ public extension UIPresentation.Transition {
 
 				// No reset — update the combined transition built during prepare.
 				// UIKit animates from prepare state to this animate state.
-				context.viewTransitions.combined?.update(progress: progress, view: context.view)
-				if let bgView = context.backgroundView {
-					context.backgroundTransitions[bgView]?.update(progress: progress, view: bgView)
-				}
+				let identityState = context.viewTransitions.state.identity
+				let newState = context.viewTransitions.tween?.to(context.view, identityState)
+				newState?.apply(to: context.view)
+				context.viewTransitions.state = newState ?? identityState
+				context.viewTransitions.progress = progress
+
+				#if VDPRESENT_LOG
+				let vcName = context.viewController.view.accessibilityIdentifier ?? String(describing: type(of: context.viewController))
+				let idTransform = identityState.contains(\UIView.transform) ? identityState[\.transform].shortDesc : "nil"
+				let toTransform = newState.map { $0.contains(\UIView.transform) ? $0[\.transform].shortDesc : "nil" } ?? "no tween"
+				print("  [anim] \(vcName): identity=\(idTransform) -> to=\(toTransform)")
+				#endif
+//				if let bgView = context.backgroundView {
+//					context.backgroundTransitions[ObjectIdentifier(bgView)]?.update(progress: progress, view: bgView)
+//				}
 				additionalAnimation?(context, progress)
 
 				if context.isTopController {
@@ -84,14 +93,14 @@ public extension UIPresentation.Transition {
 public extension UIPresentation.Environment {
 
 	/// Animation applied to the incoming view. Default: `.identity` (no animation).
-	var contentTransition: (UIPresentation.Context) -> UITransition<UIView> {
+	var contentTransition: (UIPresentation.Context) -> UIViewTransition {
 		get { self[\.contentTransition] ?? { _ in .identity } }
 		set { self[\.contentTransition] = newValue }
 	}
 
 	/// Animation applied to views moving to the back when a new VC becomes top.
 	/// `Int` is the depth index (1 = immediate predecessor, 2 = one below, …). Default: `.identity`.
-	var recessTransition: (Int, UIPresentation.Context) -> UITransition<UIView> {
+	var recessTransition: (Int, UIPresentation.Context) -> UIViewTransition {
 		get { self[\.recessTransition] ?? { _, _ in .identity } }
 		set { self[\.recessTransition] = newValue }
 	}
@@ -155,38 +164,16 @@ public enum BehindBehavior {
 /// the last write winning.
 ///
 /// After `buildCombined`, a single `update(progress:)` drives all sub-transitions.
-/// @ai-generated(guided)
 struct ViewTransitions {
 
 	/// The merged transition. Built once per prepare phase.
-	private(set) var combined: UITransition<UIView>?
-
-	/// Number of sub-transitions that were combined. Used for diagnostics.
-	private(set) var layerCount = 0
-
-	/// Builds a combined transition from own + back effects, captures identity
-	/// from the view (which must be in identity state), and applies `progress`.
-	mutating func build(
-		_ transitions: [UITransition<UIView>],
-		view: UIView,
-		progress: Progress
-	) {
-		layerCount = transitions.count
-		var merged = UITransition<UIView>.combined(transitions)
-		merged.beforeTransition(view: view)
-		merged.update(progress: progress, view: view)
-		combined = merged
-	}
-
-	/// Resets the view to identity using the combined transition's initial state.
-	func reset(view: UIView) {
-		combined?.setInitialState(view: view)
-	}
+	var tween: UIViewTransition.Tween?
+	var state = UIViewState()
+	var progress: Progress = .insertion(0)
 
 	/// Clears the combined transition.
 	mutating func removeAll() {
-		combined = nil
-		layerCount = 0
+		tween = nil
 	}
 }
 
@@ -195,15 +182,15 @@ extension UIPresentation.Context {
 	/// Per-view cache of all transitions. Keyed by view because all contexts
 	/// created via `context.for(vc)` share the same `Cache` instance.
 	/// Rebuilt each animate cycle: reset → apply own → apply back effects from above.
-	private var allViewTransitions: [Weak<UIView>: ViewTransitions] {
+	private var allViewTransitions: [ObjectIdentifier: ViewTransitions] {
 		get { cache[\.allViewTransitions] ?? [:] }
 		nonmutating set { cache[\.allViewTransitions] = newValue }
 	}
 
 	/// Shortcut to access `ViewTransitions` for this controller's view.
 	var viewTransitions: ViewTransitions {
-		get { allViewTransitions[view] ?? ViewTransitions() }
-		nonmutating set { allViewTransitions[view] = newValue }
+		get { allViewTransitions[ObjectIdentifier(viewController)] ?? ViewTransitions() }
+		nonmutating set { allViewTransitions[ObjectIdentifier(viewController)] = newValue }
 	}
 }
 
@@ -231,15 +218,6 @@ private extension UIPresentation.Transition {
 		context.direction == .insertion ? .insertion(1) : .insertion(0)
 	}
 
-	/// Resets this view to identity by undoing the combined transition,
-	/// then clears stored state.
-	/// @ai-generated(guided)
-	static func resetView(context: UIPresentation.Context) {
-		let view = context.view
-		context.viewTransitions.reset(view: view)
-		context.viewTransitions.removeAll()
-	}
-
 	/// Collects own contentTransition + recess effects from all controllers above
 	/// this one, combines them into a single transition, captures identity state,
 	/// and applies `progress`.
@@ -250,22 +228,25 @@ private extension UIPresentation.Transition {
 	///
 	/// Back effects from departing controllers onto departing back views are made
 	/// `.constant(at:)` so they stay recessed regardless of this view's progress.
-	/// @ai-generated(solo)
+	@MainActor
 	static func buildTransitions(
 		context: UIPresentation.Context,
 		progress: Progress,
 		animation: ((UIPresentation.Context, Progress) -> Void)?
 	) {
-		let view = context.view
-		var transitions: [UITransition<UIView>] = []
+		var from: [UIViewTransition.TransitionClosure] = []
+		var to: [UIViewTransition.TransitionClosure] = []
 
 		// 1. Own contentTransition.
 		// Remaining/frozen controllers don't animate their own position —
 		// use constant identity so they stay in place while back effects animate.
-		if context.isChangingController && !context.isBehindFrozen {
-			transitions.append(context.environment.contentTransition(context))
-		} else {
-			transitions.append(.identity)
+		let contentTransition = context.environment.contentTransition(context)
+		let transition = contentTransition.tween(for: context.ownDirection)
+		to.append(transition.to)
+
+		if context.isChangingController, !context.isBehindFrozen, context.ownDirection == .insertion {
+			// don't apply the idle state for removals - it's already applied to the view.
+			 from.append(transition.from)
 		}
 
 		// 2. Recess effects from controllers above this one.
@@ -279,14 +260,19 @@ private extension UIPresentation.Transition {
 			for (offset, frontVC) in frontControllers.enumerated() {
 				let frontContext = context.for(frontVC)
 				let depthIndex = offset + 1
-				var backTransition = frontContext.environment.recessTransition(depthIndex, frontContext).reversed
+				let backTransition = frontContext.environment.recessTransition(depthIndex, frontContext).tween(for: frontContext.ownDirection)
+				to.append(backTransition.to)
+				if frontContext.isChangingController, !frontContext.isBehindFrozen, frontContext.ownDirection == .insertion {
+					from.append(backTransition.from)
+				}
+
 				// Departing back views must stay recessed — use constant so
 				// the recess effect doesn't animate toward identity when
 				// progress moves toward removal.
-				if isDeparting {
-					backTransition = backTransition.constant(at: .insertion(1))
-				}
-				transitions.append(backTransition)
+//				if isDeparting {
+//					backTransition = backTransition.constant(at: .insertion(1))
+//				}
+//				transitions.append(backTransition)
 
 				// Barrier: this front VC owns everything below — stop collecting.
 				if frontContext.environment.backEffectBarrier {
@@ -295,17 +281,29 @@ private extension UIPresentation.Transition {
 			}
 		}
 
-		// 3. Combine, capture identity, apply progress.
+		var oldState = context.viewTransitions.state
+		oldState.snapshot(context.view)
+
+		let newTransition = UIViewTransition.Tween.combined(from: from, to: to)
+		let newState = newTransition.from(context.view, oldState)
+		newState.apply(to: context.view)
+
+		context.viewTransitions.tween = newTransition
+		context.viewTransitions.state = newState
+		context.viewTransitions.progress = progress
+
 		#if VDPRESENT_LOG
-		let vcName = view.accessibilityIdentifier ?? "?"
-		print("[buildTransitions] \(vcName): \(transitions.count) parts, progress=\(progress), isDeparting=\(context.viewControllers.toRemove.contains(context.viewController)), isChanging=\(context.isChangingController)")
+		let vcName = context.viewController.view.accessibilityIdentifier ?? String(describing: type(of: context.viewController))
+		let oldKeys = oldState.allKeys.map { "\($0.keyPath)" }.joined(separator: ", ")
+		let oldTransform = oldState.contains(\UIView.transform) ? oldState[\.transform].shortDesc : "nil"
+		let newTransform = newState.contains(\UIView.transform) ? newState[\.transform].shortDesc : "nil"
+		print("  [build] \(vcName): from=\(from.count) to=\(to.count) | oldKeys=[\(oldKeys)] oldTx=\(oldTransform) -> newTx=\(newTransform) | dir=\(context.ownDirection) changing=\(context.isChangingController)")
 		#endif
-		context.viewTransitions.build(transitions, view: view, progress: progress)
 
 		// 4. Background view.
-		if let bgView = context.backgroundView {
-			context.backgroundTransitions[bgView]?.update(progress: progress, view: bgView)
-		}
+//		if let bgView = context.backgroundView {
+//			context.backgroundTransitions[bgView]?.update(progress: progress, view: bgView)
+//		}
 		animation?(context, progress)
 	}
 
@@ -316,7 +314,7 @@ private extension UIPresentation.Transition {
 	static func prepareBackground(
 		context: UIPresentation.Context
 	) {
-		let transition = context.environment.backgroundTransition.reversed
+		let transition = context.environment.backgroundTransition
 		guard !transition.isIdentity else { return }
 		let backgroundView: UIView
 		if let bgView = context.backgroundView {
@@ -335,13 +333,13 @@ private extension UIPresentation.Transition {
 				context.container.insertSubview(backgroundView, at: 0, layout: context.environment.backgroundLayout)
 			}
 		}
-		let current = context.backgroundTransitions[backgroundView]
-		if context.needAnimate {
-			context.backgroundTransitions[backgroundView] = transition
-		} else {
-			context.backgroundTransitions[backgroundView] = transition.constant(at: .insertion(1))
-		}
-		context.backgroundTransitions[backgroundView]?.beforeTransitionIfNeeded(view: backgroundView, current: current)
+//		let current = context.backgroundTransitions[backgroundView]
+//		if context.needAnimate {
+//			context.backgroundTransitions[backgroundView] = transition
+//		} else {
+//			context.backgroundTransitions[backgroundView] = transition//.constant(at: .insertion(1))
+//		}
+//		context.backgroundTransitions[backgroundView]?.beforeTransitionIfNeeded(view: backgroundView, current: current)
 	}
 
 	/// Removes the background view from the hierarchy and clears its cached transition
@@ -353,7 +351,7 @@ private extension UIPresentation.Transition {
 
 		if array.contains(context.viewController), let view = context.backgroundView {
 			view.removeFromSuperview()
-			context.backgroundTransitions[view] = nil
+			context.backgroundTransitions[ObjectIdentifier(view)] = nil
 			context.backgroundView = nil
 		}
 	}

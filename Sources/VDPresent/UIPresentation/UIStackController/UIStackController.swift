@@ -328,16 +328,6 @@ private extension UIStackController {
 			context(first).visibleViewControllers = visibleControllers
 		}
 
-		// Reset all views to identity (layout position) before prepare.
-		// This ensures recessTransitions that read target view frames
-		// (e.g. pageSheet) see the correct layout frame, not a stale
-		// animated position from a previous transition.
-		for controller in allVisible {
-			let ctx = context(controller)
-			ctx.viewTransitions.reset(view: ctx.view)
-			ctx.viewTransitions.removeAll()
-		}
-
 		// Animation pipeline: only visible controllers.
 		for controller in allVisible {
 			let currentPresentation = presentations[controller, default: presentation]
@@ -579,7 +569,6 @@ private func logTransitionState(
 		let ctx = context(vc)
 		let name = vc.view.accessibilityIdentifier ?? String(describing: type(of: vc))
 		let transform = fmtTransform(ctx.view)
-		let layers = ctx.viewTransitions.layerCount
 		let id = ObjectIdentifier(vc)
 		let role: String
 		if toRemove.contains(id) {
@@ -590,7 +579,7 @@ private func logTransitionState(
 			role = "remaining"
 		}
 		let frame = fmtFrame(ctx.view)
-		lines.append("  \(name): \(transform) \(frame) (layers=\(layers), \(role))")
+		lines.append("  \(name): \(transform) \(frame) \(role)")
 	}
 	print("[\(phase)]\n\(lines.joined(separator: "\n"))")
 }

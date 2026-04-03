@@ -18,7 +18,7 @@ public extension UIPresentation {
 		overCurrentContext: Bool = false
 	) -> UIPresentation {
 		.fullScreen(
-			.move(edge: edge),
+			.move(from: edge),
 			interactivity: interactive ? .swipe(to: edge) : nil
 		)
 		.environment(

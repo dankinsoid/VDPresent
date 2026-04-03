@@ -16,6 +16,7 @@ enum AnimationDriver {
 	/// Must be called for all controllers before calling `animate`,
 	/// so that cross-controller state (e.g. back-view transforms) is
 	/// fully set up before any animation begins.
+	@MainActor
 	static func prepare(
 		transition: UIPresentation.Transition,
 		context: UIPresentation.Context
@@ -40,11 +41,12 @@ enum AnimationDriver {
 	///   - prepareInteractive: Called when an interactive animator is created; provides
 	///     a handler that the gesture recognizer should call with state updates.
 	///   - completion: Called after the animation finishes.
+	@MainActor
 	static func animate(
 		_ items: [(context: UIPresentation.Context, transition: UIPresentation.Transition)],
-		beginAppearance: @escaping () -> Void = {},
-		prepareInteractive: @escaping (@escaping (UIPresentation.Interactivity.State) -> Void) -> Void = { _ in },
-		completion: @escaping (Bool) -> Void
+		beginAppearance: @escaping @MainActor () -> Void = {},
+		prepareInteractive: @escaping @MainActor (@escaping (UIPresentation.Interactivity.State) -> Void) -> Void = { _ in },
+		completion: @escaping @MainActor (Bool) -> Void
 	) {
 
 		let main = items.max(by: { $0.context.animation.duration < $1.context.animation.duration })
@@ -52,7 +54,7 @@ enum AnimationDriver {
 			completion(true)
 			return
 		}
-		let animate: () -> Void = {
+		let animate: @MainActor () -> Void = {
 			beginAppearance()
 			for (context, transition) in items {
 				transition.animation(context)

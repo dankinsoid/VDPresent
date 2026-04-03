@@ -44,7 +44,7 @@ public extension UIPresentation.Environment {
 		set { self[\.backgroundLayout] = newValue }
 	}
 
-	var backgroundTransition: UITransition<UIView> {
+	var backgroundTransition: UIViewTransition {
 		get { self[\.backgroundTransition] ?? .identity }
 		set { self[\.backgroundTransition] = newValue }
 	}
@@ -70,7 +70,7 @@ extension UIPresentation.Environment {
 
 extension UIPresentation.Context {
 
-	var backgroundTransitions: [Weak<UIView>: UITransition<UIView>] {
+	var backgroundTransitions: [ObjectIdentifier: UIViewTransition] {
 		get {
 			cache[\.backgroundTransitions] ?? [:]
 		}

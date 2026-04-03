@@ -13,8 +13,8 @@ public extension UIPresentation {
 	) -> UIPresentation {
 		UIPresentation(
 			transition: .base(transitionID: "navigation")
-				.environment(\.contentTransition) { _ in .move(edge: edge) }
-				.environment(\.recessTransition) { _, _ in .move(edge: edge.opposite, offset: .relative(0.3)) }
+				.environment(\.contentTransition) { _ in .move(from: edge) }
+				.environment(\.recessTransition) { _, _ in .move(to: edge.opposite, offset: .relative(0.3)) }
 				.environment(\.backEffectBarrier, true)
 				.withBackground(containerColor),
 			interactivity: .swipe(to: edge),
@@ -22,7 +22,7 @@ public extension UIPresentation {
 		)
 		.environment(
 			\.backgroundTransition,
-			.value(\.backgroundColor, containerColor, default: containerColor.withAlphaComponent(0))
+			.backgroundColor(containerColor, default: containerColor.withAlphaComponent(0))
 		)
 	}
 }
