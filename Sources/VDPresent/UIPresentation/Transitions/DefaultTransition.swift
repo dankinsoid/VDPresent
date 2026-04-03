@@ -194,6 +194,10 @@ extension UIPresentation.Context {
 		get { allViewTransitions[ObjectIdentifier(viewController)] ?? ViewTransitions() }
 		nonmutating set { allViewTransitions[ObjectIdentifier(viewController)] = newValue }
 	}
+	
+	var isNewView: Bool {
+		viewTransitions.viewID != ObjectIdentifier(view)
+	}
 }
 
 private extension UIPresentation.Transition {
@@ -236,7 +240,6 @@ private extension UIPresentation.Transition {
 		progress: Progress,
 		animation: ((UIPresentation.Context, Progress) -> Void)?
 	) {
-		let viewID = ObjectIdentifier(context.view)
 		var from: [UIViewTransition.TransitionClosure] = []
 		var to: [UIViewTransition.TransitionClosure] = []
 
@@ -247,8 +250,7 @@ private extension UIPresentation.Transition {
 		let transition = contentTransition.tween(for: context.ownDirection)
 		to.append(transition.to)
 
-		if context.isChangingController, !context.isBehindFrozen, context.viewTransitions.viewID != viewID {
-			// don't apply the idle state for removals - it's already applied to the view.
+		if context.isChangingController, !context.isBehindFrozen, context.isNewView {
 			 from.append(transition.from)
 		}
 
@@ -264,7 +266,7 @@ private extension UIPresentation.Transition {
 				let depthIndex = offset + 1
 				let backTransition = frontContext.environment.recessTransition(depthIndex, frontContext).tween(for: frontContext.ownDirection)
 				to.append(backTransition.to)
-				if frontContext.isChangingController, !frontContext.isBehindFrozen, context.viewTransitions.viewID != viewID || frontContext.viewTransitions.viewID != ObjectIdentifier(frontContext.view) {
+				if frontContext.isChangingController, !frontContext.isBehindFrozen, context.isNewView || frontContext.isNewView {
 					from.append(backTransition.from)
 				}
 
@@ -285,7 +287,7 @@ private extension UIPresentation.Transition {
 		context.viewTransitions.tween = newTransition
 		context.viewTransitions.state = newState
 		context.viewTransitions.progress = progress
-		context.viewTransitions.viewID = viewID
+		context.viewTransitions.viewID = ObjectIdentifier(context.view)
 
 		animation?(context, progress)
 	}

@@ -119,7 +119,8 @@ private extension UIViewTransition {
 		UIViewTransition { _, identity in
 			identity.with(\.layer.cornerRadius, cornerRadius)
 		} removed: { view, identity in
-			let sourceRect = view.untransformedFrameInWindow
+			let baseRect = view.untransformedFrameInWindow
+			let sourceRect = baseRect.applying(identity.transform)
 			let isLtr = UIView.userInterfaceLayoutDirection(for: view.semanticContentAttribute) == .leftToRight
 			let radius = initialCornerRadius(
 				view: view,
