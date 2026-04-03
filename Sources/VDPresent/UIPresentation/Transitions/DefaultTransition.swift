@@ -297,6 +297,7 @@ private extension UIPresentation.Transition {
 	///
 	/// Uses the same tween approach as view transitions: builds from/to closures,
 	/// applies `from` state in prepare, then `to` state is applied in animate.
+	@MainActor
 	static func prepareBackground(
 		context: UIPresentation.Context
 	) {

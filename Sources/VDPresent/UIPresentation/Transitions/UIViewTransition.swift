@@ -223,6 +223,14 @@ public extension UIViewTransition {
 		}
 	}
 
+	static func tween<T>(_ keyPath: ReferenceWritableKeyPath<UIView, T>, from: T, to: T) -> UIViewTransition {
+		UIViewTransition { _, identity in
+			identity.with(keyPath, to)
+		} removed: { _, identity in
+			identity.with(keyPath, from)
+		}
+	}
+
 	static func to<T>(_ keyPath: ReferenceWritableKeyPath<UIView, T>, _ value: T, default initial: T? = nil) -> UIViewTransition {
 		UIViewTransition { _, identity in
 			identity.with(keyPath, value)

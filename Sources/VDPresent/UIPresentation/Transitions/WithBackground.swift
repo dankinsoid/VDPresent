@@ -10,7 +10,7 @@ extension UIPresentation.Transition {
 		withBackground(
 			color == .clear
 				? .identity
-				: .backgroundColor(color, default: color.withAlphaComponent(0)),
+				: .tween(\.backgroundColor, from: color.withAlphaComponent(0), to: color),
 			layout: layout
 		)
 	}
