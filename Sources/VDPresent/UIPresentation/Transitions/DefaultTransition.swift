@@ -237,6 +237,14 @@ private extension UIPresentation.Transition {
 		var from: [UIViewTransition.TransitionClosure] = []
 		var to: [UIViewTransition.TransitionClosure] = []
 
+		#if VDPRESENT_LOG
+		let vcName0 = context.viewController.view.accessibilityIdentifier ?? String(describing: type(of: context.viewController))
+		let rawState = context.viewTransitions.state
+		let rawStateTx = rawState.contains(\UIView.transform) ? rawState[\.transform].shortDesc : "nil"
+		let viewTx = context.view.transform.shortDesc
+		print("  [pre-build] \(vcName0): state.tx=\(rawStateTx) view.tx=\(viewTx) stateKeys=\(rawState.allKeys.count)")
+		#endif
+
 		// 1. Own contentTransition.
 		// Remaining/frozen controllers don't animate their own position —
 		// use constant identity so they stay in place while back effects animate.
