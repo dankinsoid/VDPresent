@@ -77,6 +77,47 @@ public extension UIViewTransition {
 		}
 	}
 
+	/// A transition that scales the view from the given scale on appearance.
+	/// - Parameters:
+	///   - scale: The scale to transition from. Defaults to `0.0001`.
+	///   - anchor: The anchor point for scaling. Defaults to `.center`.
+	static func scale(from scale: CGFloat = 0.0001, anchor: UnitPoint = .center) -> UIViewTransition {
+		UIViewTransition(removed: { view, identity in
+			Self.scaledState(identity: identity, scale: scale, anchor: anchor, bounds: view.bounds)
+		})
+	}
+
+	/// A transition that scales the view to the given scale on disappearance.
+	/// - Parameters:
+	///   - scale: The scale to transition to. Defaults to `0.0001`.
+	///   - anchor: The anchor point for scaling. Defaults to `.center`.
+	static func scale(to scale: CGFloat = 0.0001, anchor: UnitPoint = .center) -> UIViewTransition {
+		let original = Self.scale(from: scale, anchor: anchor)
+		return UIViewTransition(
+			willAppear: original.idle,
+			idle: original.willAppear,
+			didDisappear: original.idle
+		)
+	}
+
+	/// Computes the scaled UIViewState, compensating for a non-center anchor point via translation.
+	private static func scaledState(
+		identity: UIViewState,
+		scale: CGFloat,
+		anchor: UnitPoint,
+		bounds: CGRect
+	) -> UIViewState {
+		let s = scale != 0 ? scale : 0.0001
+		// Offset from default center anchor (0.5, 0.5) to the desired anchor, then compensate for scale.
+		let dx = (anchor.x - 0.5) * bounds.width * (1 - s)
+		let dy = (anchor.y - 0.5) * bounds.height * (1 - s)
+		return identity.transformed(\.transform) { transform in
+			transform
+				.translatedBy(x: dx, y: dy)
+				.scaledBy(x: s, y: s)
+		}
+	}
+
 	static func constant<T>(_ keyPath: ReferenceWritableKeyPath<UIView, T>, _ value: T) -> UIViewTransition {
 		UIViewTransition { _, identity in
 			identity.with(keyPath, value)
