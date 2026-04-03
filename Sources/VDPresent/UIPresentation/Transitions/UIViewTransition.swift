@@ -118,6 +118,12 @@ public extension UIViewTransition {
 		}
 	}
 
+	/// A transition that changes the background color in the idle state.
+	/// - Parameter color: The target background color.
+	static func backgroundColor(_ color: UIColor) -> UIViewTransition {
+		.to(\.backgroundColor, color)
+	}
+
 	static func constant<T>(_ keyPath: ReferenceWritableKeyPath<UIView, T>, _ value: T) -> UIViewTransition {
 		UIViewTransition { _, identity in
 			identity.with(keyPath, value)
