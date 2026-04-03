@@ -41,15 +41,14 @@ public extension UIPresentation.Transition {
 				// before calling prepare) so that all views are in identity/layout
 				// position when recessTransitions read target frames.
 
-				if context.isChangingController {
-					prepareBackground(context: context)
-					additionalPrepare?(context)
-				} else if context.backgroundView == nil {
+				if context.isChangingController || context.backgroundView == nil, !context.hasFrontBarrier {
 					prepareBackground(context: context)
 				}
 
 				// Collect own + back effects from above, combine, apply prepareProgress.
 				buildTransitions(context: context, progress: progress, animation: additionalAnimation)
+
+				additionalPrepare?(context)
 			},
 			animation: { context in
 				let progress = animateProgress(context: context)
@@ -61,7 +60,7 @@ public extension UIPresentation.Transition {
 				newState?.apply(to: context.view)
 				context.viewTransitions.state = newState ?? identityState
 				context.viewTransitions.progress = progress
-				if let bgView = context.backgroundView {
+				if let bgView = context.backgroundView, !context.hasFrontBarrier {
 					let bgID = ObjectIdentifier(bgView)
 					if var bgTx = context.backgroundTransitions[bgID] {
 						let identityState = bgTx.state.identity
@@ -80,10 +79,7 @@ public extension UIPresentation.Transition {
 			},
 			completion: { context, completed in
 				let finalContext = completed ? context : context.reversed
-//				cleanupTransitions(context: finalContext)
-//				if finalContext.needHide {
-//					finalContext.container.isHidden = true
-//				}
+				settleViewState(context: context, completed: completed)
 				completeBackground(context: finalContext)
 				completion?(context, completed)
 			}
@@ -171,6 +167,10 @@ struct ViewTransitions {
 	/// The merged transition. Built once per prepare phase.
 	var tween: UIViewTransition.Tween?
 	var state = UIViewState()
+	/// Pre-animation snapshot for rollback on cancel.
+	var oldState = UIViewState()
+	/// Clean end state: computed without barrier/departing workarounds.
+	var cleanTo: UIViewTransition.Tween?
 	var progress: Progress = .insertion(0)
 
 	/// Clears the combined transition.
@@ -242,37 +242,68 @@ private extension UIPresentation.Transition {
 	) {
 		var from: [UIViewTransition.TransitionClosure] = []
 		var to: [UIViewTransition.TransitionClosure] = []
+		// Clean end state: own content + recess from final (to) stack, no barrier workarounds.
+		var cleanTo: [UIViewTransition.TransitionClosure] = []
+
+		let allControllers = context.visibleViewControllers.all(context.direction)
+		let myIndex = allControllers.firstIndex(of: context.viewController)
+		let barrierIndex: Int? = myIndex.flatMap { myIndex in
+			allControllers[(myIndex + 1)...].firstIndex { context.for($0).environment.backEffectBarrier }
+		}
+		let toControllers = context.viewControllers.to
+		let cleanMyIndex = toControllers.firstIndex(of: context.viewController)
+		let cleanBarrierIndex: Int? = cleanMyIndex.flatMap { i in
+			toControllers[(i + 1)...].firstIndex { context.for($0).environment.backEffectBarrier }
+		}
 
 		// 1. Own contentTransition.
-		// Remaining/frozen controllers don't animate their own position —
-		// use constant identity so they stay in place while back effects animate.
 		let contentTransition = context.environment.contentTransition(context)
 		let transition = contentTransition.tween(for: context.ownDirection)
-		to.append(transition.to)
+		let cleanContentTransition = contentTransition.tween(for: context.ownDirection)
 
 		if context.isChangingController, !context.isBehindFrozen, context.isNewView {
-			 from.append(transition.from)
+			from.append(transition.from)
+		}
+
+		if barrierIndex == nil {
+			to.append(transition.to)
+		}
+		if cleanBarrierIndex == nil {
+			cleanTo.append(cleanContentTransition.to)
 		}
 
 		// 2. Recess effects from controllers above this one.
-		// Reversed because recessTransition semantics are insertion(0)=recessed,
-		// insertion(1)=identity, but we need the opposite: insertion(0)=identity
-		// (before push) and insertion(1)=recessed (after push).
-		let allControllers = context.visibleViewControllers.all(context.direction)
-		if let myIndex = allControllers.firstIndex(of: context.viewController) {
+		if let myIndex {
 			let frontControllers = allControllers[(myIndex + 1)...]
 			for (offset, frontVC) in frontControllers.enumerated() {
 				let frontContext = context.for(frontVC)
 				let depthIndex = offset + 1
 				let backTransition = frontContext.environment.recessTransition(depthIndex, frontContext).tween(for: frontContext.ownDirection)
-				to.append(backTransition.to)
-				if frontContext.isChangingController, !frontContext.isBehindFrozen, context.isNewView || frontContext.isNewView {
-					from.append(backTransition.from)
+				
+				let isBelowBarrier = barrierIndex.map { myIndex + 1 + offset < $0 } ?? false
+				
+				if isBelowBarrier {
+					// Below barrier: skip — view already holds the correct
+					// recessed state and animate must not touch those properties.
+				} else {
+					to.append(backTransition.to)
+					if frontContext.isChangingController, !frontContext.isBehindFrozen, context.isNewView || frontContext.isNewView {
+						from.append(backTransition.from)
+					}
 				}
+			}
+		}
 
-				// Barrier: this front VC owns everything below — stop collecting.
-				if frontContext.environment.backEffectBarrier {
-					break
+		// 3. Clean end state: recess from final (to) stack with its own barriers.
+		if let cleanMyIndex {
+			let cleanFront = toControllers[(cleanMyIndex + 1)...]
+			for (offset, frontVC) in cleanFront.enumerated() {
+				let frontContext = context.for(frontVC)
+				let depthIndex = offset + 1
+				let isBelowCleanBarrier = cleanBarrierIndex.map { cleanMyIndex + 1 + offset < $0 } ?? false
+				if !isBelowCleanBarrier {
+					let cleanRecess = frontContext.environment.recessTransition(depthIndex, frontContext).tween(for: .insertion)
+					cleanTo.append(cleanRecess.to)
 				}
 			}
 		}
@@ -280,16 +311,49 @@ private extension UIPresentation.Transition {
 		var oldState = context.viewTransitions.state
 		oldState.snapshot(context.view)
 
+		if barrierIndex != nil {
+			to.insert(
+				{ [oldState] view, identity in
+					identity.merged(with: oldState)
+				},
+				at: 0
+			)
+		}
+
 		let newTransition = UIViewTransition.Tween.combined(from: from, to: to)
 		let newState = newTransition.from(context.view, oldState)
 		newState.apply(to: context.view)
 
 		context.viewTransitions.tween = newTransition
+		context.viewTransitions.cleanTo = UIViewTransition.Tween.combined(from: [], to: cleanTo)
+		context.viewTransitions.oldState = oldState
 		context.viewTransitions.state = newState
 		context.viewTransitions.progress = progress
 		context.viewTransitions.viewID = ObjectIdentifier(context.view)
 
 		animation?(context, progress)
+	}
+
+	/// Settles the view into its correct post-animation state.
+	/// - completed: applies the clean `to` state (no barrier/departing workarounds).
+	/// - cancelled: restores the pre-animation snapshot.
+	///
+	/// TODO: Verify correctness when view resizes during animation — cleanTo closures
+	/// recompute from current bounds at call time, which should be correct, but needs testing.
+	/// @ai-generated(solo)
+	@MainActor
+	static func settleViewState(context: UIPresentation.Context, completed: Bool) {
+		if completed {
+			let identityState = context.viewTransitions.state.identity
+			if let cleanState = context.viewTransitions.cleanTo?.to(context.view, identityState) {
+				cleanState.apply(to: context.view)
+				context.viewTransitions.state = cleanState
+			}
+		} else {
+			let oldState = context.viewTransitions.oldState
+			oldState.apply(to: context.view)
+			context.viewTransitions.state = oldState
+		}
 	}
 
 	// MARK: - Debug helpers

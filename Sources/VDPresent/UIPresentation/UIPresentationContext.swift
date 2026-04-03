@@ -291,6 +291,14 @@ extension UIPresentation.Context {
 		!isChangingController
 	}
 
+	/// Whether there is a barrier controller above this one in the visible stack.
+	/// @ai-generated(solo)
+	var hasFrontBarrier: Bool {
+		let allControllers = visibleViewControllers.all(direction)
+		guard let myIndex = allControllers.firstIndex(of: viewController) else { return false }
+		return allControllers[(myIndex + 1)...].contains { self.for($0).environment.backEffectBarrier }
+	}
+
 	var isTopController: Bool {
 		topViewControllers.contains(viewController)
 	}
