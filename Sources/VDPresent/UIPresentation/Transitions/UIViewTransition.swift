@@ -120,8 +120,8 @@ public extension UIViewTransition {
 
 	/// A transition that changes the background color in the idle state.
 	/// - Parameter color: The target background color.
-	static func backgroundColor(_ color: UIColor) -> UIViewTransition {
-		.to(\.backgroundColor, color)
+	static func backgroundColor(_ color: UIColor, default initial: UIColor? = nil) -> UIViewTransition {
+		.to(\.backgroundColor, color, default: initial)
 	}
 
 	static func constant<T>(_ keyPath: ReferenceWritableKeyPath<UIView, T>, _ value: T) -> UIViewTransition {
@@ -132,20 +132,51 @@ public extension UIViewTransition {
 		}
 	}
 
-	static func to<T>(_ keyPath: ReferenceWritableKeyPath<UIView, T>, _ value: T) -> UIViewTransition {
+	static func to<T>(_ keyPath: ReferenceWritableKeyPath<UIView, T>, _ value: T, default initial: T? = nil) -> UIViewTransition {
 		UIViewTransition { _, identity in
 			identity.with(keyPath, value)
 		} removed: { _, identity in
-			identity
+			if let initial, !identity.contains(keyPath) {
+				return identity.with(keyPath, initial)
+			} else {
+				return identity
+			}
 		}
 	}
 
-	static func from<T>(_ keyPath: ReferenceWritableKeyPath<UIView, T>, _ value: T) -> UIViewTransition {
-		UIViewTransition { _, identity in
-			identity
-		} removed: { _, identity in
-			identity.with(keyPath, value)
-		}
+	static func from<T>(_ keyPath: ReferenceWritableKeyPath<UIView, T>, _ value: T, default initial: T? = nil) -> UIViewTransition {
+		let result = to(keyPath, value, default: initial)
+		return UIViewTransition(
+			willAppear: result.idle,
+			idle: result.willAppear,
+			didDisappear: result.idle
+		)
+	}
+
+	/// Combines multiple transitions into one by merging their states.
+	static func combined(_ transitions: UIViewTransition...) -> UIViewTransition {
+		.combined(transitions)
+	}
+
+	/// Combines an array of transitions into one by merging their states.
+	static func combined(_ transitions: [UIViewTransition]) -> UIViewTransition {
+		UIViewTransition(
+			willAppear: { view, identity in
+				transitions.reduce(identity) { state, transition in
+					state.merged(with: transition.willAppear(view, identity))
+				}
+			},
+			idle: { view, identity in
+				transitions.reduce(identity) { state, transition in
+					state.merged(with: transition.idle(view, identity))
+				}
+			},
+			didDisappear: { view, identity in
+				transitions.reduce(identity) { state, transition in
+					state.merged(with: transition.didDisappear(view, identity))
+				}
+			}
+		)
 	}
 
 	static let identity = UIViewTransition { _, identity in identity }
@@ -160,6 +191,10 @@ public struct UIViewState {
 
 	public var allKeys: Set<Key> {
 		Set(values.keys)
+	}
+	
+	public func contains<T>(_ keyPath: ReferenceWritableKeyPath<UIView, T>) -> Bool {
+		values.keys.contains(Key(keyPath))
 	}
 
 	public subscript(any key: Key) -> Any? {
@@ -227,6 +262,14 @@ public struct UIViewState {
 	public func apply(to view: UIView) {
 		for (keyPath, value) in values {
 			keyPath.setter(view, value)
+		}
+	}
+
+	/// Captures the current values of the specified key paths from the view.
+	/// - Note: This does not capture any keys that are not explicitly listed in the transition's key paths, so it won't capture all of the view's properties.
+	public mutating func snapshot(_ view: UIView) {
+		for key in allKeys {
+			values[key] = view[keyPath: key.keyPath]
 		}
 	}
 
