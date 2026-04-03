@@ -61,13 +61,6 @@ public extension UIPresentation.Transition {
 				newState?.apply(to: context.view)
 				context.viewTransitions.state = newState ?? identityState
 				context.viewTransitions.progress = progress
-
-				#if VDPRESENT_LOG
-				let vcName = context.viewController.view.accessibilityIdentifier ?? String(describing: type(of: context.viewController))
-				let idTransform = identityState.contains(\UIView.transform) ? identityState[\.transform].shortDesc : "nil"
-				let toTransform = newState.map { $0.contains(\UIView.transform) ? $0[\.transform].shortDesc : "nil" } ?? "no tween"
-				print("  [anim] \(vcName): identity=\(idTransform) -> to=\(toTransform)")
-				#endif
 //				if let bgView = context.backgroundView {
 //					context.backgroundTransitions[ObjectIdentifier(bgView)]?.update(progress: progress, view: bgView)
 //				}
@@ -166,6 +159,7 @@ public enum BehindBehavior {
 /// After `buildCombined`, a single `update(progress:)` drives all sub-transitions.
 struct ViewTransitions {
 
+	var viewID: ObjectIdentifier?
 	/// The merged transition. Built once per prepare phase.
 	var tween: UIViewTransition.Tween?
 	var state = UIViewState()
@@ -234,16 +228,9 @@ private extension UIPresentation.Transition {
 		progress: Progress,
 		animation: ((UIPresentation.Context, Progress) -> Void)?
 	) {
+		let viewID = ObjectIdentifier(context.view)
 		var from: [UIViewTransition.TransitionClosure] = []
 		var to: [UIViewTransition.TransitionClosure] = []
-
-		#if VDPRESENT_LOG
-		let vcName0 = context.viewController.view.accessibilityIdentifier ?? String(describing: type(of: context.viewController))
-		let rawState = context.viewTransitions.state
-		let rawStateTx = rawState.contains(\UIView.transform) ? rawState[\.transform].shortDesc : "nil"
-		let viewTx = context.view.transform.shortDesc
-		print("  [pre-build] \(vcName0): state.tx=\(rawStateTx) view.tx=\(viewTx) stateKeys=\(rawState.allKeys.count)")
-		#endif
 
 		// 1. Own contentTransition.
 		// Remaining/frozen controllers don't animate their own position —
@@ -252,7 +239,7 @@ private extension UIPresentation.Transition {
 		let transition = contentTransition.tween(for: context.ownDirection)
 		to.append(transition.to)
 
-		if context.isChangingController, !context.isBehindFrozen, context.ownDirection == .insertion {
+		if context.isChangingController, !context.isBehindFrozen, context.viewTransitions.viewID != viewID {
 			// don't apply the idle state for removals - it's already applied to the view.
 			 from.append(transition.from)
 		}
@@ -270,7 +257,7 @@ private extension UIPresentation.Transition {
 				let depthIndex = offset + 1
 				let backTransition = frontContext.environment.recessTransition(depthIndex, frontContext).tween(for: frontContext.ownDirection)
 				to.append(backTransition.to)
-				if frontContext.isChangingController, !frontContext.isBehindFrozen, frontContext.ownDirection == .insertion {
+				if frontContext.isChangingController, !frontContext.isBehindFrozen, context.viewTransitions.viewID != viewID {
 					from.append(backTransition.from)
 				}
 
@@ -299,14 +286,7 @@ private extension UIPresentation.Transition {
 		context.viewTransitions.tween = newTransition
 		context.viewTransitions.state = newState
 		context.viewTransitions.progress = progress
-
-		#if VDPRESENT_LOG
-		let vcName = context.viewController.view.accessibilityIdentifier ?? String(describing: type(of: context.viewController))
-		let oldKeys = oldState.allKeys.map { "\($0.keyPath)" }.joined(separator: ", ")
-		let oldTransform = oldState.contains(\UIView.transform) ? oldState[\.transform].shortDesc : "nil"
-		let newTransform = newState.contains(\UIView.transform) ? newState[\.transform].shortDesc : "nil"
-		print("  [build] \(vcName): from=\(from.count) to=\(to.count) | oldKeys=[\(oldKeys)] oldTx=\(oldTransform) -> newTx=\(newTransform) | dir=\(context.ownDirection) changing=\(context.isChangingController)")
-		#endif
+		context.viewTransitions.viewID = viewID
 
 		// 4. Background view.
 //		if let bgView = context.backgroundView {
