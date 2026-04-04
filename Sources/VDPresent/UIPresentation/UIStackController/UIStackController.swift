@@ -104,7 +104,7 @@ open class UIStackController: UIViewController {
 	private let content = UIStackControllerView()
 	private var containers: [UIViewController: UIStackControllerCanvas] = [:]
 	private var wrappers: [UIViewController: UIStackEffectView] = [:]
-	private var presentations: [UIViewController: UIPresentation] = [:]
+	private var presentations: [ObjectIdentifier: UIPresentation] = [:]
 	/// Single callback for the current interactive transition.
 	/// Replaces per-VC dictionary to avoid stale callbacks from previous transitions.
 	private var activeTransitionUpdate: ((UIPresentation.Interactivity.State) -> Void)?
@@ -198,13 +198,22 @@ open class UIStackController: UIViewController {
 
 private extension UIStackController {
 
+	/// Resolves the effective presentation for a single controller.
+	/// Chain: stored → defaultPresentation → fallback.
+	func resolvePresentation(
+		for vc: UIViewController,
+		fallback: UIPresentation
+	) -> UIPresentation {
+		presentations[ObjectIdentifier(vc)] ?? vc.defaultPresentation ?? fallback
+	}
+
 	func presentation(
 		for viewControllers: [UIViewController]
 	) -> UIPresentation {
 		if UIWindow.root?.rootViewController === self, viewControllers.count < 2 {
 			return .fullScreen(from: .bottom, containerColor: .clear)
 		}
-		return viewControllers.last.flatMap { presentations[$0] ?? $0.defaultPresentation } ?? presentation ?? .default
+		return viewControllers.last.flatMap { presentations[ObjectIdentifier($0)] ?? $0.defaultPresentation } ?? presentation ?? .default
 	}
 }
 
@@ -225,14 +234,13 @@ private extension UIStackController {
 			toViewControllers: toViewControllers
 		)
 
-		let presentations = self.presentations
-		let resolve: (UIViewController) -> UIPresentation = {
-			presentations[$0] ?? $0.defaultPresentation ?? presentation
+		let resolve: (UIViewController) -> UIPresentation = { [presentations] in
+			presentations[ObjectIdentifier($0)] ?? $0.defaultPresentation ?? presentation
 		}
 		let visibleControllers = controllers.visible(resolve)
 
 		let context: (UIViewController) -> UIPresentation.Context = { [weak self, cache] in
-			let presentations = self?.presentations ?? [:]
+			let resolved = self?.resolvePresentation(for: $0, fallback: presentation) ?? presentation
 			return UIPresentation.Context(
 				direction: direction,
 				controller: $0,
@@ -241,14 +249,14 @@ private extension UIStackController {
 				toViewControllers: toViewControllers,
 				views: { [weak self] in self?.wrapper(for: $0) ?? UIStackEffectView($0.view) },
 				animated: animated,
-				animation: (presentations[$0] ?? presentation).animation,
+				animation: resolved.animation,
 				isInteractive: isInteractive,
 				cache: cache,
 				updateStatusBar: { [weak self] in
 					self?.statusBarAnimation = $1
 					self?.statusBarStyle = $0
 				},
-				presentation: { presentations[$0] ?? presentation }
+				presentation: { [weak self] in self?.resolvePresentation(for: $0, fallback: presentation) ?? presentation }
 			)
 		}
 		transition(
@@ -289,8 +297,9 @@ private extension UIStackController {
 			if containers[toViewController] == nil {
 				container(for: toViewController)
 			}
-			if presentations[toViewController] == nil {
-				presentations[toViewController] = toViewController.defaultPresentation ?? presentation
+			let vcID = ObjectIdentifier(toViewController)
+			if presentations[vcID] == nil {
+				presentations[vcID] = toViewController.defaultPresentation ?? presentation
 			}
 			if needsSetup && !visibleControllers.toInsert.contains(toViewController) {
 				reenteredVisible.append(toViewController)
@@ -332,7 +341,7 @@ private extension UIStackController {
 
 		// Animation pipeline: only visible controllers.
 		for controller in allVisible {
-			let currentPresentation = presentations[controller, default: presentation]
+			let currentPresentation = resolvePresentation(for: controller, fallback: presentation)
 			AnimationDriver.prepare(
 				transition: currentPresentation.transition,
 				context: context(controller)
@@ -347,7 +356,7 @@ private extension UIStackController {
 		// read target view frames see the correct animate-phase position.
 		AnimationDriver.animate(
 			allVisible.reversed().map { vc in
-				(context(vc), presentations[vc, default: presentation].transition)
+				(context(vc), resolvePresentation(for: vc, fallback: presentation).transition)
 			},
 			beginAppearance: {
 				if !controllers.isTopTheSame {
@@ -392,7 +401,7 @@ private extension UIStackController {
 	) {
 		// Completion for visible controllers only.
 		for controller in visibleControllers.all(direction) {
-			let currentPresentation = presentations[controller, default: presentation]
+			let currentPresentation = resolvePresentation(for: controller, fallback: presentation)
 			currentPresentation.transition.completion(context(controller), isCompleted)
 		}
 		viewControllers = isCompleted ? controllers.to : controllers.from
@@ -458,7 +467,7 @@ private extension UIStackController {
 		context: @escaping (UIViewController) -> UIPresentation.Context
 	) {
 		for item in controllers.toRemove {
-			(presentations[item] ?? item.defaultPresentation ?? presentation)
+			resolvePresentation(for: item, fallback: presentation)
 				.interactivity?.uninstall(context: context(item))
 		}
 		// Install for all `to` controllers, not just toInsert.
@@ -466,7 +475,7 @@ private extension UIStackController {
 		// so their gesture recognizers must be reinstalled.
 		for controller in controllers.to {
 			let ctxt = context(controller)
-			let prsnt = presentations[controller] ?? controller.defaultPresentation ?? presentation
+			let prsnt = resolvePresentation(for: controller, fallback: presentation)
 			prsnt.interactivity?.install(context: ctxt) { [weak self] context, state in
 					guard let self else { return .prevent }
 					switch state {
@@ -474,7 +483,7 @@ private extension UIStackController {
 						guard !self.isSettingControllers else { return .prevent }
 						let controllers = context.viewControllers
 						let resolve: (UIViewController) -> UIPresentation = {
-							self.presentations[$0] ?? $0.defaultPresentation ?? presentation
+							self.resolvePresentation(for: $0, fallback: presentation)
 						}
 						// Compute visible slice same as non-interactive path,
 						// so controllers behind an opaque one are excluded.
@@ -503,9 +512,10 @@ private extension UIStackController {
 
 	func didSetViewControllers() {
 		let set = Set(viewControllers)
+		let idSet = Set(viewControllers.map(ObjectIdentifier.init))
 		containers = containers.filter { set.contains($0.key) }
 		wrappers = wrappers.filter { set.contains($0.key) }
-		presentations = presentations.filter { set.contains($0.key) }
+		presentations = presentations.filter { idSet.contains($0.key) }
 		updateContainers()
 	}
 
