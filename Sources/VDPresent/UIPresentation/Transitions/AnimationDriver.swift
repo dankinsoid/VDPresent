@@ -129,11 +129,11 @@ enum AnimationDriver {
 							#endif
 							animator.startAnimation()
 							#if VDPRESENT_LOG
-							print("[Animator] post-start state=\(animator.state) running=\(animator.isRunning) fraction=\(String(format: "%.3f", animator.fractionComplete)) hasLayerAnims=\(items.first.map { $0.context.view.layer.animationKeys()?.isEmpty == false } ?? false)")
+							print("[Animator] post-start state=\(animator.state) running=\(animator.isRunning) fraction=\(String(format: "%.3f", animator.fractionComplete)) duration=\(String(format: "%.3f", animator.duration)) hasLayerAnims=\(items.first.map { $0.context.view.layer.animationKeys()?.isEmpty == false } ?? false)")
 							#endif
 							animator.pauseAnimation()
 							#if VDPRESENT_LOG
-							print("[Animator] post-pause state=\(animator.state) running=\(animator.isRunning) fraction=\(String(format: "%.3f", animator.fractionComplete))")
+							print("[Animator] post-pause state=\(animator.state) running=\(animator.isRunning) fraction=\(String(format: "%.3f", animator.fractionComplete)) duration=\(String(format: "%.3f", animator.duration))")
 							#endif
 						}
 
