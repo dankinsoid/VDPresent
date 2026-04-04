@@ -156,15 +156,15 @@ public extension UIViewTransition {
 		let isLtr = UIView.userInterfaceLayoutDirection(for: view.semanticContentAttribute) == .leftToRight
 		switch edge {
 		case .leading:
-			let value = offset.value(for: view.frame.width)
+			let value = offset.value(for: view.bounds.width)
 			return (isLtr ? -value : value, 0)
 		case .trailing:
-			let value = offset.value(for: view.frame.width)
+			let value = offset.value(for: view.bounds.width)
 			return (isLtr ? value : -value, 0)
 		case .top:
-			return (0, -offset.value(for: view.frame.height))
+			return (0, -offset.value(for: view.bounds.height))
 		case .bottom:
-			return (0, offset.value(for: view.frame.height))
+			return (0, offset.value(for: view.bounds.height))
 		}
 	}
 

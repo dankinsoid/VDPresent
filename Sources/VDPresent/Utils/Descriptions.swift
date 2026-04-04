@@ -28,6 +28,20 @@ extension CGRect {
 	}
 }
 
+extension CGAffineTransform {
+
+	var descr: String {
+		var parts: [String] = []
+		if tx != 0 { parts.append("tx: \(tx.descr)") }
+		if ty != 0 { parts.append("ty: \(ty.descr)") }
+		let sx = sqrt(a * a + c * c)
+		let sy = sqrt(b * b + d * d)
+		if abs(sx - 1) > 0.001 { parts.append("sx: \(sx.descr)") }
+		if abs(sy - 1) > 0.001 { parts.append("sy: \(sy.descr)") }
+		return parts.isEmpty ? "identity" : "(\(parts.joined(separator: " ")))"
+	}
+}
+
 extension UIEdgeInsets {
 	
 	var descr: String {
