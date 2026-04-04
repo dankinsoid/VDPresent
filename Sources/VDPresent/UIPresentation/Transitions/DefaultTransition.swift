@@ -274,11 +274,13 @@ private extension UIPresentation.Transition {
 		// Background has no recess — only the view accumulates recess effects.
 		if let myIndex {
 			let frontControllers = allControllers[(myIndex + 1)...]
-			for (offset, frontVC) in frontControllers.enumerated() {
+			var toDepth = 0
+			for frontVC in frontControllers {
 				let frontContext = context.for(frontVC)
-				let depthIndex = offset + 1
+				let isDepartingVC = frontContext.ownDirection == .removal
+				if !isDepartingVC { toDepth += 1 }
+				let depthIndex = isDepartingVC ? toDepth + 1 : toDepth
 				let backTransition = frontContext.environment.recessTransition(depthIndex, frontContext).tween(for: frontContext.ownDirection)
-				let isDeparting = frontContext.ownDirection == .removal
 
 				#if VDPRESENT_LOG
 				let myName = context.viewController.view.accessibilityIdentifier ?? String(describing: type(of: context.viewController))
@@ -287,14 +289,14 @@ private extension UIPresentation.Transition {
 				var addedTo = false, addedFrom = "", addedCleanTo = false
 				#endif
 
-				if !context.isBehindFrozen || frontContext.environment.backEffectBarrier || (context.isNewView && !isDeparting) {
+				if !context.isBehindFrozen || frontContext.environment.backEffectBarrier || (context.isNewView && !isDepartingVC) {
 					to.append(backTransition.to)
 					#if VDPRESENT_LOG
 					addedTo = true
 					#endif
 				}
 
-				if !isDeparting {
+				if !isDepartingVC {
 					cleanTo.append(backTransition.to)
 					#if VDPRESENT_LOG
 					addedCleanTo = true
@@ -302,7 +304,7 @@ private extension UIPresentation.Transition {
 				}
 
 				if frontContext.isChangingController, !frontContext.isBehindFrozen {
-					if context.isNewView || !isDeparting {
+					if context.isNewView || !isDepartingVC {
 						from.append(backTransition.from)
 						#if VDPRESENT_LOG
 						addedFrom = "from(willAppear)"
@@ -316,7 +318,7 @@ private extension UIPresentation.Transition {
 				}
 
 				#if VDPRESENT_LOG
-				print("  [recess] \(myName) ← \(frontName) dir=\(frontDir) departing=\(isDeparting) changing=\(frontContext.isChangingController) frontFrozen=\(frontContext.isBehindFrozen) barrier=\(frontContext.environment.backEffectBarrier) | to=\(addedTo) from=\(addedFrom.isEmpty ? "none" : addedFrom) cleanTo=\(addedCleanTo) | isNewView=\(context.isNewView) isBehindFrozen=\(context.isBehindFrozen)")
+				print("  [recess] \(myName) ← \(frontName) depth=\(depthIndex) dir=\(frontDir) departing=\(isDepartingVC) changing=\(frontContext.isChangingController) frontFrozen=\(frontContext.isBehindFrozen) barrier=\(frontContext.environment.backEffectBarrier) | to=\(addedTo) from=\(addedFrom.isEmpty ? "none" : addedFrom) cleanTo=\(addedCleanTo) | isNewView=\(context.isNewView) isBehindFrozen=\(context.isBehindFrozen)")
 				#endif
 
 				if frontContext.environment.backEffectBarrier {
