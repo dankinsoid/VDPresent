@@ -79,7 +79,7 @@ public extension UIPresentation.Transition {
 			},
 			completion: { context, completed in
 				let finalContext = completed ? context : context.reversed
-//				settleViewState(context: context, completed: completed)
+				settleViewState(context: context, completed: completed)
 				completeBackground(context: finalContext)
 				completion?(context, completed)
 			}
@@ -242,50 +242,28 @@ private extension UIPresentation.Transition {
 	) {
 		var from: [UIViewTransition.TransitionClosure] = []
 		var to: [UIViewTransition.TransitionClosure] = []
-		// Clean end state: own content + recess from final (to) stack, no barrier workarounds.
+		// Clean end state: own content + recess from final (to) stack.
 		var cleanTo: [UIViewTransition.TransitionClosure] = []
-		#if VDPRESENT_LOG
-		var fromLabels: [String] = []
-		var toLabels: [String] = []
-		var cleanToLabels: [String] = []
-		let vcName = context.view.accessibilityIdentifier ?? String(describing: type(of: context.viewController)).components(separatedBy: ".").last ?? "?"
-		#endif
 
 		let allControllers = context.visibleViewControllers.all(context.direction)
 		let myIndex = allControllers.firstIndex(of: context.viewController)
-		let barrierIndex: Int? = myIndex.flatMap { myIndex in
-			allControllers[(myIndex + 1)...].firstIndex { context.for($0).environment.backEffectBarrier }
-		}
-		let toControllers = context.visibleViewControllers.to
-		let cleanMyIndex = toControllers.firstIndex(of: context.viewController)
-		let cleanBarrierIndex: Int? = cleanMyIndex.flatMap { i in
-			toControllers[(i + 1)...].firstIndex { context.for($0).environment.backEffectBarrier }
-		}
-
-		#if VDPRESENT_LOG
-		print("  [\(vcName)] buildTransitions: isChanging=\(context.isChangingController) isBehindFrozen=\(context.isBehindFrozen) isNewView=\(context.isNewView) ownDir=\(context.ownDirection) barrierIdx=\(barrierIndex.map(String.init) ?? "nil")")
-		#endif
 
 		// 1. Own contentTransition.
 		let contentTransition = context.environment.contentTransition(context)
 		let transition = contentTransition.tween(for: context.ownDirection)
-		let cleanContentTransition = contentTransition.tween(for: context.ownDirection)
 
-		if context.isChangingController, !context.isBehindFrozen, context.isNewView {
-			from.append(transition.from)
-			#if VDPRESENT_LOG
-			fromLabels.append("content")
-			#endif
+		if context.isNewView {
+			if context.isChangingController, !context.isBehindFrozen {
+				from.append(transition.from)
+			} else {
+				from.append(transition.to)
+			}
 		}
 
 		if !context.isBehindFrozen {
 			to.append(transition.to)
-			cleanTo.append(cleanContentTransition.to)
-			#if VDPRESENT_LOG
-			toLabels.append("content")
-			cleanToLabels.append("content")
-			#endif
 		}
+		cleanTo.append(transition.to)
 
 		// 2. Recess effects from controllers above this one.
 		if let myIndex {
@@ -293,74 +271,45 @@ private extension UIPresentation.Transition {
 			for (offset, frontVC) in frontControllers.enumerated() {
 				let frontContext = context.for(frontVC)
 				let depthIndex = offset + 1
-				#if VDPRESENT_LOG
-				let frontName = context.for(frontVC).view.accessibilityIdentifier ?? String(describing: type(of: frontVC)).components(separatedBy: ".").last ?? "?"
-				#endif
 				let backTransition = frontContext.environment.recessTransition(depthIndex, frontContext).tween(for: frontContext.ownDirection)
 				let isDeparting = frontContext.ownDirection == .removal
 
-				to.append(backTransition.to)
-				#if VDPRESENT_LOG
-				toLabels.append("recess(\(frontName),dep=\(isDeparting))")
-				#endif
-				if !isDeparting {
-					cleanTo.append(backTransition.to)
-					#if VDPRESENT_LOG
-					cleanToLabels.append("recess(\(frontName))")
-					#endif
+				if !context.isBehindFrozen || frontContext.environment.backEffectBarrier || (context.isNewView && !isDeparting) {
+					to.append(backTransition.to)
 				}
 
-				if frontContext.isChangingController, !frontContext.isBehindFrozen, context.isNewView {
+				if !isDeparting {
+					cleanTo.append(backTransition.to)
+				}
+
+				if frontContext.isChangingController, !frontContext.isBehindFrozen {
 					from.append(backTransition.from)
-					#if VDPRESENT_LOG
-					fromLabels.append("recess(\(frontName))")
-					#endif
+				} else if context.isNewView {
+					from.append(backTransition.to)
 				}
 
 				if frontContext.environment.backEffectBarrier {
-					#if VDPRESENT_LOG
-					print("  [\(vcName)] barrier at \(frontName)")
-					#endif
 					break
 				}
 			}
 		}
 
-		#if VDPRESENT_LOG
-		print("  [\(vcName)] from=[\(fromLabels.joined(separator: ","))] to=[\(toLabels.joined(separator: ","))] cleanTo=[\(cleanToLabels.joined(separator: ","))]")
-		#endif
-
 		var oldState = context.viewTransitions.state
 		oldState.snapshot(context.view)
-		
-		if barrierIndex != nil {
+
+		if context.isBehindFrozen {
 			to.insert(
 				{ [oldState] _, identity in
 					identity.merged(with: oldState)
 				},
 				at: 0
 			)
-			#if VDPRESENT_LOG
-			print("  [\(vcName)] inserted barrier base into to")
-			#endif
 		}
-		#if VDPRESENT_LOG
-		print("  [\(vcName)] oldState(snapshot): \(oldState)")
-		#endif
 
 		let newTransition = UIViewTransition.Tween.combined(from: from, to: to)
 		let newState = newTransition.from(context.view, oldState)
-		#if VDPRESENT_LOG
-		print("  [\(vcName)] newState(from): \(newState)")
-		#endif
 
 		newState.apply(to: context.view)
-
-		#if VDPRESENT_LOG
-		let identityPreview = newState.identity
-		let animatePreview = UIViewTransition.Tween.combined(from: from, to: to).to(context.view, identityPreview)
-		print("  [\(vcName)] animate preview (to from identity): \(animatePreview)")
-		#endif
 
 		context.viewTransitions.tween = newTransition
 		context.viewTransitions.cleanTo = UIViewTransition.Tween.combined(from: [], to: cleanTo)
@@ -456,20 +405,3 @@ private extension UIPresentation.Transition {
 		}
 	}
 }
-
-#if VDPRESENT_LOG
-extension CGAffineTransform {
-
-	var shortDesc: String {
-		let sx = sqrt(a * a + c * c)
-		let sy = sqrt(b * b + d * d)
-		var parts: [String] = []
-		if tx != 0 { parts.append("tx=\(Int(tx))") }
-		if ty != 0 { parts.append("ty=\(Int(ty))") }
-		if abs(sx - 1) > 0.001 || abs(sy - 1) > 0.001 {
-			parts.append("sx=\(String(format: "%.3f", sx))")
-		}
-		return parts.isEmpty ? "identity" : parts.joined(separator: " ")
-	}
-}
-#endif
