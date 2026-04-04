@@ -272,6 +272,9 @@ private extension UIStackController {
 		context: @escaping (UIViewController) -> UIPresentation.Context,
 		completion: (() -> Void)?
 	) {
+		#if VDPRESENT_LOG
+		print("[Transition] begin isSettingControllers=\(isSettingControllers) isInteractive=\(controllers.to.first.map { context($0).isInteractive } ?? false) animators=\(animators.count)")
+		#endif
 		isSettingControllers = true
 		viewControllers = controllers.to
 
@@ -358,6 +361,9 @@ private extension UIStackController {
 				}
 			},
 			prepareInteractive: { [weak self] update in
+				#if VDPRESENT_LOG
+				print("[prepareInteractive] setting animators for \(allVisible.count) controllers, existing animators=\(self?.animators.count ?? -1)")
+				#endif
 				for controller in allVisible {
 					self?.animators[controller] = update
 				}
@@ -491,6 +497,12 @@ private extension UIStackController {
 					default:
 						break
 					}
+					#if VDPRESENT_LOG
+					print("[Interactivity] dispatching state=\(state) to \(self.animators.count) animators:")
+					for (vc, _) in self.animators {
+						print("[Interactivity]   animator for \(vc.view.accessibilityIdentifier ?? String(describing: type(of: vc)))")
+					}
+					#endif
 					for animator in self.animators {
 						animator.value(state)
 					}
