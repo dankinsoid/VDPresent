@@ -218,9 +218,6 @@ private extension UIViewTransition {
 		case .bottom:
 			isFlush = UIScreen.main.bounds.height == sourceRect.maxY
 		}
-		#if VDPRESENT_LOG
-		print("initialCornerRadius: isFlush = \(isFlush), sourceRect = \(sourceRect), displayRadius = \(displayRadius)")
-		#endif
 		return isFlush ? displayRadius : view.layer.cornerRadius
 	}
 }
