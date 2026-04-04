@@ -370,10 +370,14 @@ public struct UIViewState {
 		}
 	}
 
-	public struct Key: Hashable {
+	public struct Key: Hashable, CustomStringConvertible {
 
 		let keyPath: PartialKeyPath<UIView>
 		let setter: (UIView, Any) -> Void
+		
+		public var description: String {
+			"\(keyPath)"
+		}
 
 		public init<T>(_ keyPath: ReferenceWritableKeyPath<UIView, T>) {
 			self.keyPath = keyPath

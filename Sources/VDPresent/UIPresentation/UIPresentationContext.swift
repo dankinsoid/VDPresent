@@ -336,8 +336,7 @@ extension UIPresentation.Context {
 	/// The top controller's `behindBehavior` decides whether such controllers
 	/// animate their own contentTransition or stay frozen.
 	var isBehindFrozen: Bool {
-		// Only applies to non-top changing controllers.
-		guard isChangingController, !isTopController else { return false }
+		guard !isTopController else { return false }
 		// The top controller drives the decision.
 		let top = direction == .insertion ? viewControllers.to.last : viewControllers.from.last
 		guard let top else { return true }
