@@ -458,7 +458,7 @@ private extension UIStackController {
 		context: @escaping (UIViewController) -> UIPresentation.Context
 	) {
 		for item in controllers.toRemove {
-			presentations[item, default: presentation]
+			(presentations[item] ?? item.defaultPresentation ?? presentation)
 				.interactivity?.uninstall(context: context(item))
 		}
 		// Install for all `to` controllers, not just toInsert.
@@ -466,8 +466,8 @@ private extension UIStackController {
 		// so their gesture recognizers must be reinstalled.
 		for controller in controllers.to {
 			let ctxt = context(controller)
-			presentations[controller, default: presentation]
-				.interactivity?.install(context: ctxt) { [weak self] context, state in
+			let prsnt = presentations[controller] ?? controller.defaultPresentation ?? presentation
+			prsnt.interactivity?.install(context: ctxt) { [weak self] context, state in
 					guard let self else { return .prevent }
 					switch state {
 					case .begin:
