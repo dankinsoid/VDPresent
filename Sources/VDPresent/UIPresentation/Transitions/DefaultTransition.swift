@@ -38,13 +38,7 @@ public extension UIPresentation.Transition {
 			prepare: { context in
 				let progress = prepareProgress(context: context)
 
-				// before calling prepare) so that all views are in identity/layout
-				// position when recessTransitions read target frames.
-
-				if context.isChangingController || context.backgroundView == nil, !context.hasFrontBarrier {
-					prepareBackground(context: context)
-				}
-
+				prepareBackground(context: context)
 				// Collect own + back effects from above, combine, apply prepareProgress.
 				buildTransitions(context: context, progress: progress, animation: additionalAnimation)
 
@@ -60,7 +54,7 @@ public extension UIPresentation.Transition {
 				newState?.apply(to: context.view)
 				context.viewTransitions.state = newState ?? identityState
 				context.viewTransitions.progress = progress
-				if let bgView = context.backgroundView, !context.hasFrontBarrier {
+				if let bgView = context.backgroundView {
 					let bgID = ObjectIdentifier(bgView)
 					if var bgTx = context.backgroundTransitions[bgID] {
 						let identityState = bgTx.state.identity
@@ -245,27 +239,39 @@ private extension UIPresentation.Transition {
 		// Clean end state: own content + recess from final (to) stack.
 		var cleanTo: [UIViewTransition.TransitionClosure] = []
 
+		// Background transition — built alongside the view using the same conditions.
+		let backgroundView = context.backgroundView
+		let bgTransition = context.environment.backgroundTransition
+		let hasBg = backgroundView != nil && !bgTransition.isIdentity
+		var bgFrom: [UIViewTransition.TransitionClosure] = []
+		var bgTo: [UIViewTransition.TransitionClosure] = []
+
 		let allControllers = context.visibleViewControllers.all(context.direction)
 		let myIndex = allControllers.firstIndex(of: context.viewController)
 
 		// 1. Own contentTransition.
 		let contentTransition = context.environment.contentTransition(context)
 		let transition = contentTransition.tween(for: context.ownDirection)
+		let bgTween = hasBg ? bgTransition.tween(for: context.ownDirection) : nil
 
 		if context.isNewView {
 			if context.isChangingController, !context.isBehindFrozen {
 				from.append(transition.from)
+				if let bgTween { bgFrom.append(bgTween.from) }
 			} else {
 				from.append(transition.to)
+				if let bgTween { bgFrom.append(bgTween.to) }
 			}
 		}
 
 		if !context.isBehindFrozen {
 			to.append(transition.to)
+			if let bgTween { bgTo.append(bgTween.to) }
 		}
 		cleanTo.append(transition.to)
 
 		// 2. Recess effects from controllers above this one.
+		// Background has no recess — only the view accumulates recess effects.
 		if let myIndex {
 			let frontControllers = allControllers[(myIndex + 1)...]
 			for (offset, frontVC) in frontControllers.enumerated() {
@@ -306,6 +312,25 @@ private extension UIPresentation.Transition {
 				},
 				at: 0
 			)
+			// Freeze existing background — keep it at its current visual state.
+			// New backgrounds have no meaningful state to freeze (just .clear),
+			// so they get bgTween.to instead.
+			if hasBg, let backgroundView {
+				let bgID = ObjectIdentifier(backgroundView)
+				let isExistingBg = context.backgroundTransitions[bgID]?.viewID == bgID
+				if isExistingBg {
+					var bgOld = context.backgroundTransitions[bgID]!.state
+					bgOld.snapshot(backgroundView)
+					bgTo.insert(
+						{ [bgOld] _, identity in
+							identity.merged(with: bgOld)
+						},
+						at: 0
+					)
+				} else if let bgTween {
+					bgTo.append(bgTween.to)
+				}
+			}
 		}
 
 		let newTransition = UIViewTransition.Tween.combined(from: from, to: to)
@@ -319,6 +344,26 @@ private extension UIPresentation.Transition {
 		context.viewTransitions.state = newState
 		context.viewTransitions.progress = progress
 		context.viewTransitions.viewID = ObjectIdentifier(context.view)
+
+		// Apply background transition.
+		if hasBg, let backgroundView {
+			let bgID = ObjectIdentifier(backgroundView)
+			var bgTransitions = context.backgroundTransitions[bgID] ?? ViewTransitions()
+
+			var bgOldState = bgTransitions.state
+			bgOldState.snapshot(backgroundView)
+
+			let bgCombined = UIViewTransition.Tween.combined(from: bgFrom, to: bgTo)
+			let bgNewState = bgCombined.from(backgroundView, bgOldState)
+			bgNewState.apply(to: backgroundView)
+
+			bgTransitions.tween = bgCombined
+			bgTransitions.oldState = bgOldState
+			bgTransitions.state = bgNewState
+			bgTransitions.progress = progress
+			bgTransitions.viewID = ObjectIdentifier(backgroundView)
+			context.backgroundTransitions[bgID] = bgTransitions
+		}
 
 		animation?(context, progress)
 	}
@@ -347,50 +392,43 @@ private extension UIPresentation.Transition {
 
 	// MARK: - Debug helpers
 
-	/// Creates or reuses the background/overlay view and registers its transition.
-	/// No-ops when `backgroundTransition` is `.identity` — no view is created in that case.
-	///
-	/// Uses the same tween approach as view transitions: builds from/to closures,
-	/// applies `from` state in prepare, then `to` state is applied in animate.
+	/// Ensures the background view exists in the hierarchy. Does not build transitions —
+	/// that is handled by `buildTransitions` using the same logic as the main view.
+	/// No-ops when `backgroundTransition` is `.identity`.
+	/// @ai-generated(solo)
 	@MainActor
 	static func prepareBackground(
 		context: UIPresentation.Context
 	) {
 		let transition = context.environment.backgroundTransition
-		guard !transition.isIdentity else { return }
-		let backgroundView: UIView
-		if let bgView = context.backgroundView {
-			backgroundView = bgView
-		} else {
-			backgroundView = UIView()
-			backgroundView.backgroundColor = .clear
-			backgroundView.isUserInteractionEnabled = false
-			context.backgroundView = backgroundView
-			if context.environment.backgroundPlacement == .behindController {
-				if let i = context.viewControllers.to.firstIndex(of: context.viewController), i > 0 {
-					let vc = context.viewControllers.to[i - 1]
-					context.for(vc).view.addSubview(backgroundView, layout: context.environment.backgroundLayout)
-				}
-			} else {
-				context.container.insertSubview(backgroundView, at: 0, layout: context.environment.backgroundLayout)
-			}
+		guard !transition.isIdentity else {
+			#if VDPRESENT_LOG
+			print("  [bg] skip \(context.viewController.view.accessibilityIdentifier ?? "?") — identity transition")
+			#endif
+			return
 		}
-
-		let bgID = ObjectIdentifier(backgroundView)
-		let tween = transition.tween(for: context.direction)
-
-		var bgTransitions = context.backgroundTransitions[bgID] ?? ViewTransitions()
-
-		var oldState = bgTransitions.state
-		oldState.snapshot(backgroundView)
-
-		let fromState = tween.from(backgroundView, oldState)
-		fromState.apply(to: backgroundView)
-
-		bgTransitions.tween = tween
-		bgTransitions.state = fromState
-		bgTransitions.progress = prepareProgress(context: context)
-		context.backgroundTransitions[bgID] = bgTransitions
+		guard context.backgroundView == nil else {
+			#if VDPRESENT_LOG
+			let bgView = context.backgroundView!
+			print("  [bg] reuse \(context.viewController.view.accessibilityIdentifier ?? "?") superview=\(bgView.superview != nil) alpha=\(bgView.alpha) hidden=\(bgView.isHidden) color=\(bgView.backgroundColor?.description ?? "nil")")
+			#endif
+			return
+		}
+		let backgroundView = UIView()
+		backgroundView.backgroundColor = .clear
+		backgroundView.isUserInteractionEnabled = false
+		context.backgroundView = backgroundView
+		#if VDPRESENT_LOG
+		print("  [bg] create \(context.viewController.view.accessibilityIdentifier ?? "?") placement=\(context.environment.backgroundPlacement)")
+		#endif
+		if context.environment.backgroundPlacement == .behindController {
+			if let i = context.viewControllers.to.firstIndex(of: context.viewController), i > 0 {
+				let vc = context.viewControllers.to[i - 1]
+				context.for(vc).view.addSubview(backgroundView, layout: context.environment.backgroundLayout)
+			}
+		} else {
+			context.container.insertSubview(backgroundView, at: 0, layout: context.environment.backgroundLayout)
+		}
 	}
 
 	/// Removes the background view from the hierarchy and clears its cached transition
@@ -401,6 +439,9 @@ private extension UIPresentation.Transition {
 		let array = context.viewControllers.toRemove
 
 		if array.contains(context.viewController), let view = context.backgroundView {
+			#if VDPRESENT_LOG
+			print("  [bg] remove \(context.viewController.view.accessibilityIdentifier ?? "?")")
+			#endif
 			view.removeFromSuperview()
 			context.backgroundTransitions[ObjectIdentifier(view)] = nil
 			context.backgroundView = nil
