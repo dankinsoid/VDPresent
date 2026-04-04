@@ -295,8 +295,8 @@ private func stackSectionItems() -> [DemoItem] {
 	[
 		/// @ai-generated(solo)
 		stackNavigationDemo(title: "Stack — .navigation", presentation: .navigation),
-		stackNavigationDemo(title: "Stack — .pageSheet", presentation: .pageSheet.with(animation: .default(1))),
-		stackNavigationDemo(title: "Stack — .sheet", presentation: .sheet.with(animation: .default(1))),
+		stackNavigationDemo(title: "Stack — .pageSheet", presentation: .pageSheet),
+		stackNavigationDemo(title: "Stack — .sheet", presentation: .sheet),
 
 		// Demo: push after pageSheet
 		.init(
@@ -390,7 +390,7 @@ private func stackSectionItems() -> [DemoItem] {
 							.init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
 						]
 					)
-					vc.defaultPresentation = presentation
+					vc.defaultPresentation = presentation.with(animation: .default(1))
 					return vc
 				}
 

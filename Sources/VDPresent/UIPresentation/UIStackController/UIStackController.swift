@@ -274,9 +274,6 @@ private extension UIStackController {
 		context: @escaping (UIViewController) -> UIPresentation.Context,
 		completion: (() -> Void)?
 	) {
-		#if VDPRESENT_LOG
-		print("[Transition] begin isSettingControllers=\(isSettingControllers) isInteractive=\(controllers.to.first.map { context($0).isInteractive } ?? false) hasActiveTransition=\(activeTransitionUpdate != nil)")
-		#endif
 		isSettingControllers = true
 		viewControllers = controllers.to
 

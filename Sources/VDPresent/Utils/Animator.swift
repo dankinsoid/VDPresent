@@ -2,14 +2,7 @@ import UIKit
 
 final class Animator: UIViewPropertyAnimator {
 
-	#if VDPRESENT_LOG
-	private let id = UUID().uuidString.prefix(4)
-	#endif
-
 	override func finishAnimation(at finalPosition: UIViewAnimatingPosition) {
-		#if VDPRESENT_LOG
-		print("[Animator:\(id)] finishAnimation(at: \(finalPosition == .end ? "end" : finalPosition == .start ? "start" : "current")) state=\(state)")
-		#endif
 		guard state != .inactive else { return }
 		if state != .stopped {
 			stopAnimation(false)
@@ -23,9 +16,6 @@ final class Animator: UIViewPropertyAnimator {
 
 	func continueAnimation(withTimingParameters parameters: UITimingCurveProvider? = nil, duration: Double) {
 		let factor = self.duration < 0.001 ? 1 : duration / self.duration
-		#if VDPRESENT_LOG
-		print("[Animator:\(id)] continueAnimation factor=\(String(format: "%.3f", factor)) state=\(state) running=\(isRunning) reversed=\(isReversed)")
-		#endif
 		continueAnimation(
 			withTimingParameters: parameters,
 			durationFactor: factor
@@ -33,9 +23,6 @@ final class Animator: UIViewPropertyAnimator {
 	}
 
 	deinit {
-		#if VDPRESENT_LOG
-		print("[Animator:\(id)] deinit state=\(state)")
-		#endif
 		finishAnimation(at: .end)
 	}
 }
@@ -52,8 +39,8 @@ private extension UIViewAnimatingPosition {
 }
 
 #if VDPRESENT_LOG
-extension UIViewAnimatingState: @retroactive CustomStringConvertible {
-	public var description: String {
+extension UIViewAnimatingState {
+	var descr: String {
 		switch self {
 		case .inactive: return "inactive"
 		case .active: return "active"

@@ -68,12 +68,6 @@ enum AnimationDriver {
 			if main.context.isInteractive {
 				let existingAnimator = main.context.animator
 				let animator = existingAnimator ?? Animator(duration: main.context.animation.duration, curve: .linear)
-				#if VDPRESENT_LOG
-				if let existingAnimator {
-					print("[Animator] REUSING existing animator state=\(existingAnimator.state) running=\(existingAnimator.isRunning)")
-				}
-				print("[Animator] created duration=\(animator.duration) mainContextDuration=\(main.context.animation.duration)")
-				#endif
 				main.context.animator = animator
 				// Allow touches during interactive transitions so the UI stays
 				// responsive while the animator runs (especially the reverse
@@ -109,9 +103,6 @@ enum AnimationDriver {
 							main.context.animatorDidContinue = true
 							animator.isReversed = !completed
 							animator.continueAnimation(duration: duration)
-							#if VDPRESENT_LOG
-							AnimatorFrameLogger.start(animator: animator, ctxAlive: { main.context.animator != nil })
-							#endif
 						}
 					}
 				}
@@ -144,40 +135,3 @@ extension UIPresentation.Context {
 		nonmutating set { cache[\.animatorDidStart] = newValue }
 	}
 }
-
-#if VDPRESENT_LOG
-private class AnimatorFrameLogger: NSObject {
-	private weak var animator: UIViewPropertyAnimator?
-	private var ctxAlive: () -> Bool
-	private var frameCount = 0
-	private var link: CADisplayLink?
-
-	static func start(animator: UIViewPropertyAnimator, ctxAlive: @escaping () -> Bool) {
-		let logger = AnimatorFrameLogger(animator: animator, ctxAlive: ctxAlive)
-		logger.link = CADisplayLink(target: logger, selector: #selector(tick))
-		logger.link?.add(to: .main, forMode: .common)
-	}
-
-	private init(animator: UIViewPropertyAnimator, ctxAlive: @escaping () -> Bool) {
-		self.animator = animator
-		self.ctxAlive = ctxAlive
-	}
-
-	@objc private func tick() {
-		frameCount += 1
-		guard let animator else {
-			print("[Animator] frame#\(frameCount) animator deallocated")
-			link?.invalidate()
-			return
-		}
-		let s = animator.state
-		let r = animator.isRunning
-		let f = animator.fractionComplete
-		print("[Animator] frame#\(frameCount) state=\(s) running=\(r) fraction=\(String(format: "%.3f", f)) ctxAnimator=\(ctxAlive() ? "alive" : "nil")")
-		if s == .inactive || frameCount > 180 {
-			link?.invalidate()
-			print("[Animator] displayLink stopped")
-		}
-	}
-}
-#endif

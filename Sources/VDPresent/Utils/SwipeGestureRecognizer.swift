@@ -65,10 +65,16 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
 			update(percent: percent)
 
 		case .ended:
-			guard wasBegun else { return }
-			finish(completed: percent > 0.35 || velocityInDirection > 800)
+			guard wasBegun else {
+				return
+			}
+			let p = percent
+			let v = velocityInDirection
+			let completed = p > 0.35 || v > 800
+			finish(completed: completed)
 
 		case .failed, .cancelled:
+			let stateName = gestureRecognizer.state == .failed ? "failed" : "cancelled"
 			guard wasBegun else { return }
 			finish(completed: false)
 
@@ -79,7 +85,8 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
 
 	private func begin() {
 		setAxisIfNeeded()
-		if update(.begin, edge ?? .leading) == .allow {
+		let policy = update(.begin, edge ?? .leading)
+		if policy == .allow {
 			wasBegun = true
 		} else {
 			stop()

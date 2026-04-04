@@ -403,26 +403,11 @@ private extension UIPresentation.Transition {
 		context: UIPresentation.Context
 	) {
 		let transition = context.environment.backgroundTransition
-		guard !transition.isIdentity else {
-			#if VDPRESENT_LOG
-			print("  [bg] skip \(context.viewController.view.accessibilityIdentifier ?? "?") — identity transition")
-			#endif
-			return
-		}
-		guard context.backgroundView == nil else {
-			#if VDPRESENT_LOG
-			let bgView = context.backgroundView!
-			print("  [bg] reuse \(context.viewController.view.accessibilityIdentifier ?? "?") superview=\(bgView.superview != nil) alpha=\(bgView.alpha) hidden=\(bgView.isHidden) color=\(bgView.backgroundColor?.description ?? "nil")")
-			#endif
-			return
-		}
+		guard !transition.isIdentity, context.backgroundView == nil else { return }
 		let backgroundView = UIView()
 		backgroundView.backgroundColor = .clear
 		backgroundView.isUserInteractionEnabled = false
 		context.backgroundView = backgroundView
-		#if VDPRESENT_LOG
-		print("  [bg] create \(context.viewController.view.accessibilityIdentifier ?? "?") placement=\(context.environment.backgroundPlacement)")
-		#endif
 		if context.environment.backgroundPlacement == .behindController {
 			if let i = context.viewControllers.to.firstIndex(of: context.viewController), i > 0 {
 				let vc = context.viewControllers.to[i - 1]
@@ -441,9 +426,6 @@ private extension UIPresentation.Transition {
 		let array = context.viewControllers.toRemove
 
 		if array.contains(context.viewController), let view = context.backgroundView {
-			#if VDPRESENT_LOG
-			print("  [bg] remove \(context.viewController.view.accessibilityIdentifier ?? "?")")
-			#endif
 			view.removeFromSuperview()
 			context.backgroundTransitions[ObjectIdentifier(view)] = nil
 			context.backgroundView = nil
