@@ -105,7 +105,9 @@ open class UIStackController: UIViewController {
 	private var containers: [UIViewController: UIStackControllerCanvas] = [:]
 	private var wrappers: [UIViewController: UIStackEffectView] = [:]
 	private var presentations: [UIViewController: UIPresentation] = [:]
-	private var animators: [UIViewController: (UIPresentation.Interactivity.State) -> Void] = [:]
+	/// Single callback for the current interactive transition.
+	/// Replaces per-VC dictionary to avoid stale callbacks from previous transitions.
+	private var activeTransitionUpdate: ((UIPresentation.Interactivity.State) -> Void)?
 	private let cache = UIPresentation.Context.Cache()
 	private var queue: [Setting] = []
 	private var statusBarAnimation: UIStatusBarAnimation = .fade
@@ -273,7 +275,7 @@ private extension UIStackController {
 		completion: (() -> Void)?
 	) {
 		#if VDPRESENT_LOG
-		print("[Transition] begin isSettingControllers=\(isSettingControllers) isInteractive=\(controllers.to.first.map { context($0).isInteractive } ?? false) animators=\(animators.count)")
+		print("[Transition] begin isSettingControllers=\(isSettingControllers) isInteractive=\(controllers.to.first.map { context($0).isInteractive } ?? false) hasActiveTransition=\(activeTransitionUpdate != nil)")
 		#endif
 		isSettingControllers = true
 		viewControllers = controllers.to
@@ -362,16 +364,15 @@ private extension UIStackController {
 			},
 			prepareInteractive: { [weak self] update in
 				#if VDPRESENT_LOG
-				print("[prepareInteractive] setting animators for \(allVisible.count) controllers, existing animators=\(self?.animators.count ?? -1)")
+				print("[prepareInteractive] setting activeTransitionUpdate, had existing=\(self?.activeTransitionUpdate != nil)")
 				#endif
-				for controller in allVisible {
-					self?.animators[controller] = update
-				}
+				self?.activeTransitionUpdate = update
 			},
 			completion: { [weak self] completed in
 				#if VDPRESENT_LOG
 				logTransitionState("animate", allVisible: allVisible, controllers: controllers, context: context)
 				#endif
+				self?.activeTransitionUpdate = nil
 				self?.completionBlock(
 					presentation: presentation,
 					direction: direction,
@@ -498,14 +499,9 @@ private extension UIStackController {
 						break
 					}
 					#if VDPRESENT_LOG
-					print("[Interactivity] dispatching state=\(state) to \(self.animators.count) animators:")
-					for (vc, _) in self.animators {
-						print("[Interactivity]   animator for \(vc.view.accessibilityIdentifier ?? String(describing: type(of: vc)))")
-					}
+					print("[Interactivity] dispatching state=\(state) hasActiveTransition=\(self.activeTransitionUpdate != nil)")
 					#endif
-					for animator in self.animators {
-						animator.value(state)
-					}
+					self.activeTransitionUpdate?(state)
 					return .allow
 				}
 		}
@@ -519,7 +515,6 @@ private extension UIStackController {
 		containers = containers.filter { set.contains($0.key) }
 		wrappers = wrappers.filter { set.contains($0.key) }
 		presentations = presentations.filter { set.contains($0.key) }
-		animators = animators.filter { set.contains($0.key) }
 		updateContainers()
 	}
 
