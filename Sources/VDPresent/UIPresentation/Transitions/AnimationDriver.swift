@@ -84,7 +84,7 @@ enum AnimationDriver {
 				#endif
 				animator.addAnimations {
 					#if VDPRESENT_LOG
-					print("[Animator] addAnimations EXECUTING items=\(items.count) state=\(animator.state) running=\(animator.isRunning)")
+					print("[Animator] addAnimations EXECUTING items=\(items.count) state=\(animator.state) running=\(animator.isRunning) inheritedDuration=\(UIView.inheritedAnimationDuration) areAnimationsEnabled=\(UIView.areAnimationsEnabled)")
 					for (context, _) in items {
 						let v = context.view
 						print("[Animator]   view=\(v.accessibilityIdentifier ?? String(describing: type(of: v))) t=\(v.transform) alpha=\(v.alpha) superview=\(v.superview != nil) window=\(v.window != nil)")
