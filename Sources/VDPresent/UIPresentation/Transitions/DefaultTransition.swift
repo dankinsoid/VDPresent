@@ -283,7 +283,9 @@ private extension UIPresentation.Transition {
 				}
 
 				if frontContext.isChangingController, !frontContext.isBehindFrozen {
-					from.append(backTransition.from)
+					if context.isNewView || !isDeparting {
+						from.append(backTransition.from)
+					}
 				} else if context.isNewView {
 					from.append(backTransition.to)
 				}

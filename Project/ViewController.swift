@@ -295,8 +295,8 @@ private func stackSectionItems() -> [DemoItem] {
 	[
 		/// @ai-generated(solo)
 		stackNavigationDemo(title: "Stack — .navigation", presentation: .navigation),
-		stackNavigationDemo(title: "Stack — .pageSheet", presentation: .pageSheet.with(animation: .default(2))),
-		stackNavigationDemo(title: "Stack — .sheet", presentation: .sheet.with(animation: .default(2))),
+		stackNavigationDemo(title: "Stack — .pageSheet", presentation: .pageSheet.with(animation: .default(1))),
+		stackNavigationDemo(title: "Stack — .sheet", presentation: .sheet.with(animation: .default(1))),
 
 		// Demo: push after pageSheet
 		.init(
