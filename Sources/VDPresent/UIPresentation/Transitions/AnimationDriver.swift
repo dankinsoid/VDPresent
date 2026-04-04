@@ -152,6 +152,11 @@ enum AnimationDriver {
 							animator.continueAnimation(duration: duration)
 							#if VDPRESENT_LOG
 							print("[Animator] after continue state=\(animator.state) running=\(animator.isRunning)")
+							for (context, _) in items {
+								let v = context.view
+								let keys = v.layer.animationKeys() ?? []
+								print("[Animator]   post-continue view=\(v.accessibilityIdentifier ?? String(describing: type(of: v))) t=\(v.transform) layerAnims=\(keys)")
+							}
 							AnimatorFrameLogger.start(animator: animator, ctxAlive: { main.context.animator != nil })
 							#endif
 						} else {
