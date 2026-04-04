@@ -145,53 +145,54 @@ private extension UIViewTransition {
 		up: Bool
 	) -> CGAffineTransform {
 		let k = cornerRadius * 1.2
-		var adjustedRect = targetRect
+
+		// Scale is determined by the axis perpendicular to the edge:
+		// width for top/bottom, height for leading/trailing.
+		let scale: CGFloat
+		switch edge {
+		case .top, .bottom:
+			scale = (targetRect.width - k * 2) / sourceRect.width.notZero
+		case .leading, .trailing:
+			scale = (targetRect.height - k * 2) / sourceRect.height.notZero
+		}
+
+		let scaledW = sourceRect.width * scale
+		let scaledH = sourceRect.height * scale
+
+		// Position the scaled rect: centered on the cross-axis,
+		// pinned to the target edge on the main axis, with optional `up` shift.
+		var midX: CGFloat
+		var midY: CGFloat
 
 		switch edge {
 		case .top:
-			adjustedRect.origin.x += k
-			adjustedRect.size.width -= k * 2
-			adjustedRect.size.height = adjustedRect.size.width * (targetRect.height / targetRect.width.notZero)
-			if up {
-				adjustedRect.origin.y -= k
-			}
-
-		case .leading, .trailing:
-			adjustedRect.origin.y += k
-			adjustedRect.size.height -= k * 2
-			let newWidth = adjustedRect.size.height * (targetRect.width / targetRect.height.notZero)
-			if isLtr == (edge == .leading) {
-				adjustedRect.origin.x = adjustedRect.maxX - newWidth
-				adjustedRect.size.width = newWidth
-				if up {
-					adjustedRect.origin.x -= k
-				}
-			} else {
-				adjustedRect.size.width = newWidth
-				if up {
-					adjustedRect.origin.x += k
-				}
-			}
+			midX = targetRect.midX
+			midY = targetRect.minY + scaledH / 2
+			if up { midY -= k }
 
 		case .bottom:
-			adjustedRect.origin.x += k
-			adjustedRect.size.width -= k * 2
-			let newHeight = adjustedRect.size.width * (targetRect.height / targetRect.width.notZero)
-			adjustedRect.origin.y = adjustedRect.maxY - newHeight
-			adjustedRect.size.height = newHeight
-			if up {
-				adjustedRect.origin.y += k
+			midX = targetRect.midX
+			midY = targetRect.maxY - scaledH / 2
+			if up { midY += k }
+
+		case .leading, .trailing:
+			midY = targetRect.midY
+			let pinToEnd = isLtr == (edge == .leading)
+			if pinToEnd {
+				midX = targetRect.maxX - scaledW / 2
+				if up { midX -= k }
+			} else {
+				midX = targetRect.minX + scaledW / 2
+				if up { midX += k }
 			}
 		}
 
-		let scaleX = adjustedRect.width / sourceRect.width.notZero
-		let scaleY = adjustedRect.height / sourceRect.height.notZero
-		let offsetX = adjustedRect.midX - sourceRect.midX
-		let offsetY = adjustedRect.midY - sourceRect.midY
+		let offsetX = midX - sourceRect.midX
+		let offsetY = midY - sourceRect.midY
 
 		return sourceTransform
 			.translatedBy(x: offsetX, y: offsetY)
-			.scaledBy(x: scaleX, y: scaleY)
+			.scaledBy(x: scale, y: scale)
 	}
 
 	/// Returns the view's starting corner radius: screen display radius when
