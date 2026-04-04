@@ -24,7 +24,7 @@ final class Animator: UIViewPropertyAnimator {
 	func continueAnimation(withTimingParameters parameters: UITimingCurveProvider? = nil, duration: Double) {
 		let factor = self.duration < 0.001 ? 1 : duration / self.duration
 		#if VDPRESENT_LOG
-		print("[Animator:\(id)] continueAnimation factor=\(String(format: "%.3f", factor)) self.duration=\(String(format: "%.3f", self.duration)) requested=\(String(format: "%.3f", duration)) state=\(state) running=\(isRunning) reversed=\(isReversed)")
+		print("[Animator:\(id)] continueAnimation factor=\(String(format: "%.3f", factor)) state=\(state) running=\(isRunning) reversed=\(isReversed)")
 		#endif
 		continueAnimation(
 			withTimingParameters: parameters,

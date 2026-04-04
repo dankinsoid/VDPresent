@@ -363,9 +363,6 @@ private extension UIStackController {
 				}
 			},
 			prepareInteractive: { [weak self] update in
-				#if VDPRESENT_LOG
-				print("[prepareInteractive] setting activeTransitionUpdate, had existing=\(self?.activeTransitionUpdate != nil)")
-				#endif
 				self?.activeTransitionUpdate = update
 			},
 			completion: { [weak self] completed in
@@ -498,9 +495,6 @@ private extension UIStackController {
 					default:
 						break
 					}
-					#if VDPRESENT_LOG
-					print("[Interactivity] dispatching state=\(state) hasActiveTransition=\(self.activeTransitionUpdate != nil)")
-					#endif
 					self.activeTransitionUpdate?(state)
 					return .allow
 				}

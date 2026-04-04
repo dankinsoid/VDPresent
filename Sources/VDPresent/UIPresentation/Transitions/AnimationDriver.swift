@@ -79,34 +79,11 @@ enum AnimationDriver {
 				// responsive while the animator runs (especially the reverse
 				// animation after a cancelled gesture).
 				animator.isUserInteractionEnabled = true
-				#if VDPRESENT_LOG
-				print("[Animator] addAnimations REGISTERING items=\(items.count) animatorState=\(animator.state)")
-				#endif
 				animator.addAnimations {
-					#if VDPRESENT_LOG
-					print("[Animator] addAnimations EXECUTING items=\(items.count) state=\(animator.state) running=\(animator.isRunning) inheritedDuration=\(UIView.inheritedAnimationDuration) areAnimationsEnabled=\(UIView.areAnimationsEnabled)")
-					for (context, _) in items {
-						let v = context.view
-						print("[Animator]   view=\(v.accessibilityIdentifier ?? String(describing: type(of: v))) t=\(v.transform) alpha=\(v.alpha) superview=\(v.superview != nil) window=\(v.window != nil)")
-					}
-					#endif
 					animate()
-					#if VDPRESENT_LOG
-					for (context, _) in items {
-						let v = context.view
-						print("[Animator]   AFTER view=\(v.accessibilityIdentifier ?? String(describing: type(of: v))) t=\(v.transform) alpha=\(v.alpha)")
-					}
-					#endif
 				}
-				#if VDPRESENT_LOG
-				let animatorId = ObjectIdentifier(animator)
-				print("[Animator] setup id=\(animatorId) state=\(animator.state)")
-				#endif
 				animator.addCompletion { position in
 					let completed = position == .end
-					#if VDPRESENT_LOG
-					print("[Animator] completion id=\(animatorId) position=\(position == .end ? "end" : position == .start ? "start" : "current") completed=\(completed)")
-					#endif
 					complete(completed)
 					main.context.animator?.finishAnimation(at: completed ? .end : .start)
 					main.context.animator = nil
@@ -118,23 +95,8 @@ enum AnimationDriver {
 					case .begin:
 						if !main.context.animatorDidStart {
 							main.context.animatorDidStart = true
-							#if VDPRESENT_LOG
-							print("[Animator] pre-start state=\(animator.state) running=\(animator.isRunning) inheritedDuration=\(UIView.inheritedAnimationDuration) runLoopMode=\(RunLoop.current.currentMode?.rawValue ?? "nil") areAnimationsEnabled=\(UIView.areAnimationsEnabled)")
-							for (context, _) in items {
-								let v = context.view
-								let pres = v.layer.presentation()
-								let hasAnim = v.layer.animationKeys()?.isEmpty == false
-								print("[Animator]   pre-start view model.t=\(v.transform) pres.t=\(pres?.affineTransform() as Any) hasLayerAnims=\(hasAnim)")
-							}
-							#endif
 							animator.startAnimation()
-							#if VDPRESENT_LOG
-							print("[Animator] post-start state=\(animator.state) running=\(animator.isRunning) fraction=\(String(format: "%.3f", animator.fractionComplete)) duration=\(String(format: "%.3f", animator.duration)) hasLayerAnims=\(items.first.map { $0.context.view.layer.animationKeys()?.isEmpty == false } ?? false)")
-							#endif
 							animator.pauseAnimation()
-							#if VDPRESENT_LOG
-							print("[Animator] post-pause state=\(animator.state) running=\(animator.isRunning) fraction=\(String(format: "%.3f", animator.fractionComplete)) duration=\(String(format: "%.3f", animator.duration))")
-							#endif
 						}
 
 					case let .change(progress):
@@ -145,23 +107,10 @@ enum AnimationDriver {
 					case let .end(completed, duration):
 						if !main.context.animatorDidContinue {
 							main.context.animatorDidContinue = true
-							#if VDPRESENT_LOG
-							print("[Animator] continue completed=\(completed) duration=\(String(format: "%.3f", duration)) state=\(animator.state) fraction=\(String(format: "%.3f", animator.fractionComplete))")
-							#endif
 							animator.isReversed = !completed
 							animator.continueAnimation(duration: duration)
 							#if VDPRESENT_LOG
-							print("[Animator] after continue state=\(animator.state) running=\(animator.isRunning)")
-							for (context, _) in items {
-								let v = context.view
-								let keys = v.layer.animationKeys() ?? []
-								print("[Animator]   post-continue view=\(v.accessibilityIdentifier ?? String(describing: type(of: v))) t=\(v.transform) layerAnims=\(keys)")
-							}
 							AnimatorFrameLogger.start(animator: animator, ctxAlive: { main.context.animator != nil })
-							#endif
-						} else {
-							#if VDPRESENT_LOG
-							print("[Animator] .end ignored — animatorDidContinue already true")
 							#endif
 						}
 					}
