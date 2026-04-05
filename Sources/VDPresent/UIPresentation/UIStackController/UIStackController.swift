@@ -102,8 +102,8 @@ open class UIStackController: UIViewController {
 	override open var preferredStatusBarStyle: UIStatusBarStyle { statusBarStyle }
 
 	private let content = UIStackControllerView()
-	private var containers: [UIViewController: UIStackControllerCanvas] = [:]
-	private var wrappers: [UIViewController: UIStackEffectView] = [:]
+	private var containers: [ObjectIdentifier: UIStackControllerCanvas] = [:]
+	private var wrappers: [ObjectIdentifier: UIStackEffectView] = [:]
 	private var presentations: [ObjectIdentifier: UIPresentation] = [:]
 	/// Single callback for the current interactive transition.
 	/// Replaces per-VC dictionary to avoid stale callbacks from previous transitions.
@@ -290,14 +290,14 @@ private extension UIStackController {
 		// removed while off-screen) need these recreated, not just toInsert.
 		var reenteredVisible: [UIViewController] = []
 		for toViewController in visibleControllers.to {
-			let needsSetup = wrappers[toViewController] == nil
+			let vcID = ObjectIdentifier(toViewController)
+			let needsSetup = wrappers[vcID] == nil
 			if needsSetup {
-				wrappers[toViewController] = wrap(view: toViewController.view)
+				wrappers[vcID] = wrap(view: toViewController.view)
 			}
-			if containers[toViewController] == nil {
+			if containers[vcID] == nil {
 				container(for: toViewController)
 			}
-			let vcID = ObjectIdentifier(toViewController)
 			if presentations[vcID] == nil {
 				presentations[vcID] = toViewController.defaultPresentation ?? presentation
 			}
@@ -421,10 +421,10 @@ private extension UIStackController {
 			for vc in visibleControllers.from {
 				let id = ObjectIdentifier(vc)
 				if !visibleToSet.contains(id) && fullToSet.contains(id) {
-					wrappers[vc]?.removeFromSuperview()
-					wrappers[vc] = nil
-					containers[vc]?.removeFromSuperview()
-					containers[vc] = nil
+					wrappers[id]?.removeFromSuperview()
+					wrappers[id] = nil
+					containers[id]?.removeFromSuperview()
+					containers[id] = nil
 				}
 			}
 		}
@@ -511,26 +511,26 @@ private extension UIStackController {
 private extension UIStackController {
 
 	func didSetViewControllers() {
-		let set = Set(viewControllers)
 		let idSet = Set(viewControllers.map(ObjectIdentifier.init))
-		containers = containers.filter { set.contains($0.key) }
-		wrappers = wrappers.filter { set.contains($0.key) }
+		containers = containers.filter { idSet.contains($0.key) }
+		wrappers = wrappers.filter { idSet.contains($0.key) }
 		presentations = presentations.filter { idSet.contains($0.key) }
 		updateContainers()
 	}
 
 	func wrapper(for controller: UIViewController) -> UIStackEffectView {
-		wrappers[controller] ?? UIStackEffectView(controller.view)
+		wrappers[ObjectIdentifier(controller)] ?? UIStackEffectView(controller.view)
 	}
 
 	@discardableResult
 	func container(for controller: UIViewController) -> UIStackControllerCanvas {
-		if let result = containers[controller] {
+		let id = ObjectIdentifier(controller)
+		if let result = containers[id] {
 			return result
 		}
 		let container = UIStackControllerCanvas()
 		container.backgroundColor = .clear
-		containers[controller] = container
+		containers[id] = container
 		content.containers.append(container)
 		return container
 	}
@@ -538,7 +538,7 @@ private extension UIStackController {
 	func updateContainers() {
 		// Only include containers that already exist — non-visible controllers
 		// may have had their containers intentionally removed.
-		content.containers = viewControllers.compactMap { containers[$0] }
+		content.containers = viewControllers.compactMap { containers[ObjectIdentifier($0)] }
 	}
 }
 
