@@ -19,7 +19,7 @@ public extension UIPresentation {
 					NSDirectionalEdgeInsets(
 						[
 							edge.opposite: edge == .leading || edge == .trailing
-								? minOffset + UIScreen.main.displayCornerRadius / 2
+								? minOffset + UIScreen.main.displayCornerRadius // TODO: displayCornerRadius should be added for fullscreen stack controller only?
 								: minOffset,
 						]
 					),
@@ -144,16 +144,16 @@ private extension UIViewTransition {
 		isLtr: Bool,
 		up: Bool
 	) -> CGAffineTransform {
-		let k = cornerRadius * 1.2
+		let edgePadding = cornerRadius * 1.2
 
 		// Scale is determined by the axis perpendicular to the edge:
 		// width for top/bottom, height for leading/trailing.
 		let scale: CGFloat
 		switch edge {
 		case .top, .bottom:
-			scale = (targetRect.width - k * 2) / sourceRect.width.notZero
+			scale = (targetRect.width - edgePadding * 2) / sourceRect.width.notZero
 		case .leading, .trailing:
-			scale = (targetRect.height - k * 2) / sourceRect.height.notZero
+			scale = (targetRect.height - edgePadding * 2) / sourceRect.height.notZero
 		}
 
 		let scaledW = sourceRect.width * scale
@@ -168,22 +168,29 @@ private extension UIViewTransition {
 		case .top:
 			midX = targetRect.midX
 			midY = targetRect.minY + scaledH / 2
-			if up { midY -= k }
+			if up { midY -= edgePadding }
 
 		case .bottom:
 			midX = targetRect.midX
 			midY = targetRect.maxY - scaledH / 2
-			if up { midY += k }
+			if up { midY += edgePadding }
 
 		case .leading, .trailing:
 			midY = targetRect.midY
 			let pinToEnd = isLtr == (edge == .leading)
 			if pinToEnd {
 				midX = targetRect.maxX - scaledW / 2
-				if up { midX -= k }
+				if up { midX -= edgePadding }
 			} else {
 				midX = targetRect.minX + scaledW / 2
-				if up { midX += k }
+				if up { midX += edgePadding }
+			}
+			
+			// TODO: displayCornerRadius should be added for fullscreen stack controller only?
+			if edge == .leading {
+				midX += UIScreen.main.displayCornerRadius
+			} else {
+				midX -= UIScreen.main.displayCornerRadius
 			}
 		}
 

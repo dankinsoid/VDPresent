@@ -1,4 +1,4 @@
-import UIKit
+import SwiftUI
 
 // MARK: - DemoItem
 
@@ -297,6 +297,46 @@ private func stackSectionItems() -> [DemoItem] {
 		stackNavigationDemo(title: "Stack — .navigation", presentation: .navigation),
 		stackNavigationDemo(title: "Stack — .pageSheet", presentation: .pageSheet),
 		stackNavigationDemo(title: "Stack — .sheet", presentation: .sheet),
+		stackNavigationDemo(title: "Stack — .pageSheet top", presentation: .pageSheet(from: .top)),
+
+		// Demo: pageSheet with different edges in one stack
+		/// @ai-generated(solo)
+		.init(
+			title: ".pageSheet — mixed edges",
+			description: "Four pageSheets shown one after another, each from a different edge (bottom, top, leading, trailing) in the same stack.",
+			code: "a.show(as: .pageSheet(from: .bottom))\nb.show(as: .pageSheet(from: .top))\nc.show(as: .pageSheet(from: .leading))\nd.show(as: .pageSheet(from: .trailing))",
+			presentation: .pageSheet,
+			tapAction: { _ in
+				let edges: [(String, Edge)] = [
+					("bottom", .bottom),
+					("top", .top),
+					("leading", .leading),
+					("trailing", .trailing),
+				]
+				let total = edges.count
+				let screens = edges.enumerated().map { i, pair in
+					StackStepViewController(
+						stepTitle: "Sheet \(i + 1)/\(total) — from .\(pair.0)",
+						description: "pageSheet shown from .\(pair.0). Push the next one or swipe to dismiss.",
+						code: "vc.show(as: .pageSheet(from: .\(pair.0)))",
+						actions: []
+					)
+				}
+				for (i, screen) in screens.enumerated() {
+					var actions: [StackAction] = []
+					if i + 1 < total {
+						let next = screens[i + 1]
+						let nextEdge = edges[i + 1]
+						actions.append(.init(title: "Push .\(nextEdge.0)", style: .primary, handler: { _ in
+							_ = next.show(as: .pageSheet(from: nextEdge.1))
+						}))
+					}
+					actions.append(.init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }))
+					screen.setActions(actions)
+				}
+				_ = screens[0].show(as: .pageSheet(from: edges[0].1))
+			}
+		),
 
 		// Demo: push after pageSheet
 		.init(
