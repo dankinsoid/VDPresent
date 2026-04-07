@@ -252,7 +252,7 @@ private extension UIPresentation.Transition {
 		#if VDPRESENT_LOG
 		let vcName = context.view.accessibilityIdentifier ?? String(describing: type(of: context.viewController))
 		let allNames = allControllers.map { $0.view.accessibilityIdentifier ?? String(describing: type(of: $0)) }
-		print("[buildTransitions] vc=\(vcName) direction=\(context.direction) ownDirection=\(context.ownDirection) myIndex=\(myIndex.map(String.init) ?? "nil") allControllers=\(allNames) transitionID=\(context.environment.transitionID ?? "nil")")
+		print("[buildTransitions] vc=\(vcName) direction=\(context.direction) ownDirection=\(context.ownDirection) myIndex=\(myIndex.map(String.init) ?? "nil") allControllers=\(allNames) transitionID=\(context.presentation.transition.transitionID)")
 		#endif
 
 		// 1. Own contentTransition.
@@ -290,12 +290,12 @@ private extension UIPresentation.Transition {
 				let isDepartingVC = frontContext.ownDirection == .removal
 				if !isDepartingVC { toDepth += 1 }
 				let depthIndex = isDepartingVC ? toDepth + 1 : toDepth
-				let frontName = frontContext.viewController.view.accessibilityIdentifier ?? String(describing: type(of: frontVC))
+				let frontName = frontVC.view.accessibilityIdentifier ?? String(describing: type(of: frontVC))
 				let backTransition = frontContext.environment.recessTransition(depthIndex, frontContext).tween(for: frontContext.ownDirection)
 
 				let applyTo = !context.isBehindFrozen || frontContext.environment.backEffectBarrier || (context.isNewView && !isDepartingVC)
 				#if VDPRESENT_LOG
-				print("[recess]   front=\(frontName) departing=\(isDepartingVC) depth=\(depthIndex) barrier=\(frontContext.environment.backEffectBarrier) applyTo=\(applyTo) transitionID=\(frontContext.environment.transitionID ?? "nil")")
+				print("[recess]   front=\(frontName) departing=\(isDepartingVC) depth=\(depthIndex) barrier=\(frontContext.environment.backEffectBarrier) applyTo=\(applyTo) transitionID=\(frontContext.presentation.transition.transitionID)")
 				#endif
 				if applyTo {
 					to.append(backTransition.to)
