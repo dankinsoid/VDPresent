@@ -371,38 +371,10 @@ private func stackSectionItems() -> [DemoItem] {
 			}
 		),
 
-		// Demo: replace pageSheet with push via set(viewControllers:)
-		.init(
-			title: ".pageSheet → replace with .navigation",
-			description: "Show a pageSheet, then replace it with a navigation controller via set(viewControllers:).",
-			code: "stack.set(viewControllers: [menu, pushed], as: .navigation)",
-			presentation: .pageSheet,
-			tapAction: { _ in
-				let sheet = StackStepViewController(
-					stepTitle: "PageSheet",
-					description: "Tap to replace this pageSheet with a pushed controller.",
-					code: "stack.set(viewControllers: [menu, pushed], as: .navigation)",
-					actions: [
-						.init(title: "Replace with .navigation", style: .primary, handler: { vc in
-							guard let stack = vc.stackController else { return }
-							let menu = stack.viewControllers.first.map { [$0] } ?? []
-							let pushed = StackStepViewController(
-								stepTitle: "Pushed (replaced sheet)",
-								description: "This controller replaced the pageSheet. Swipe from right edge to go back.",
-								code: "",
-								actions: [
-									.init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
-								]
-							)
-							stack.set(viewControllers: menu + [pushed], as: .navigation)
-						}),
-						.init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
-					]
-				)
-				sheet.show(as: .pageSheet)
-			}
-		),
-
+		replaceDemo(from: (.pageSheet, "pageSheet"), to: (.navigation, "navigation")),
+		replaceDemo(from: (.navigation, "navigation"), to: (.pageSheet, "pageSheet")),
+		replaceDemo(from: (.pageSheet, "pageSheet"), to: (.pageSheet(from: .top), "pageSheet(from: .top)")),
+		
 		// Demo: random stack mutation
 		.init(
 			title: "Random stack mutation",
@@ -465,6 +437,45 @@ private func stackSectionItems() -> [DemoItem] {
 			}
 		),
 	]
+}
+
+/// @ai-generated(solo)
+private func replaceDemo(
+	from initial: (UIPresentation, String),
+	to replacement: (UIPresentation, String)
+) -> DemoItem {
+	let (initialPres, initialName) = initial
+	let (replacementPres, replacementName) = replacement
+	return .init(
+		title: ".\(initialName) → .\(replacementName)",
+		description: "Show .\(initialName), then replace with .\(replacementName) via set(viewControllers:).",
+		code: "stack.set(viewControllers: [menu, new], as: .\(replacementName))",
+		presentation: initialPres,
+		tapAction: { _ in
+			let step = StackStepViewController(
+				stepTitle: ".\(initialName)",
+				description: "Tap to replace with .\(replacementName).",
+				code: "stack.set(viewControllers: [menu, new], as: .\(replacementName))",
+				actions: [
+					.init(title: "Replace with .\(replacementName)", style: .primary, handler: { vc in
+						guard let stack = vc.stackController else { return }
+						let menu = stack.viewControllers.first.map { [$0] } ?? []
+						let replaced = StackStepViewController(
+							stepTitle: ".\(replacementName) (replaced)",
+							description: "Replaced .\(initialName). Dismiss to go back.",
+							code: "",
+							actions: [
+								.init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
+							]
+						)
+						stack.set(viewControllers: menu + [replaced], as: replacementPres.with(animation: .default(1)))
+					}),
+					.init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
+				]
+			)
+			step.show(as: initialPres)
+		}
+	)
 }
 
 // MARK: - DemoViewController
