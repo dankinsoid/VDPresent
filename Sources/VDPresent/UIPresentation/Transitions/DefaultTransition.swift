@@ -249,6 +249,12 @@ private extension UIPresentation.Transition {
 		let allControllers = context.visibleViewControllers.all(context.direction)
 		let myIndex = allControllers.firstIndex(of: context.viewController)
 
+		#if VDPRESENT_LOG
+		let vcName = context.view.accessibilityIdentifier ?? String(describing: type(of: context.viewController))
+		let allNames = allControllers.map { $0.view.accessibilityIdentifier ?? String(describing: type(of: $0)) }
+		print("[buildTransitions] vc=\(vcName) direction=\(context.direction) ownDirection=\(context.ownDirection) myIndex=\(myIndex.map(String.init) ?? "nil") allControllers=\(allNames) transitionID=\(context.environment.transitionID ?? "nil")")
+		#endif
+
 		// 1. Own contentTransition.
 		let contentTransition = context.environment.contentTransition(context)
 		let transition = contentTransition.tween(for: context.ownDirection)
@@ -275,14 +281,23 @@ private extension UIPresentation.Transition {
 		if let myIndex {
 			let frontControllers = allControllers[(myIndex + 1)...]
 			var toDepth = 0
+			let myName = context.view.accessibilityIdentifier ?? String(describing: type(of: context.viewController))
+			#if VDPRESENT_LOG
+			print("[recess] \(myName): myIndex=\(myIndex), frontControllers=\(frontControllers.count), isBehindFrozen=\(context.isBehindFrozen), isNewView=\(context.isNewView)")
+			#endif
 			for frontVC in frontControllers {
 				let frontContext = context.for(frontVC)
 				let isDepartingVC = frontContext.ownDirection == .removal
 				if !isDepartingVC { toDepth += 1 }
 				let depthIndex = isDepartingVC ? toDepth + 1 : toDepth
+				let frontName = frontContext.viewController.view.accessibilityIdentifier ?? String(describing: type(of: frontVC))
 				let backTransition = frontContext.environment.recessTransition(depthIndex, frontContext).tween(for: frontContext.ownDirection)
 
-				if !context.isBehindFrozen || frontContext.environment.backEffectBarrier || (context.isNewView && !isDepartingVC) {
+				let applyTo = !context.isBehindFrozen || frontContext.environment.backEffectBarrier || (context.isNewView && !isDepartingVC)
+				#if VDPRESENT_LOG
+				print("[recess]   front=\(frontName) departing=\(isDepartingVC) depth=\(depthIndex) barrier=\(frontContext.environment.backEffectBarrier) applyTo=\(applyTo) transitionID=\(frontContext.environment.transitionID ?? "nil")")
+				#endif
+				if applyTo {
 					to.append(backTransition.to)
 				}
 
@@ -299,6 +314,9 @@ private extension UIPresentation.Transition {
 				}
 
 				if frontContext.environment.backEffectBarrier {
+					#if VDPRESENT_LOG
+					print("[recess]   ⛔ barrier hit at \(frontName) — stopping recess iteration for \(myName)")
+					#endif
 					break
 				}
 			}
