@@ -125,7 +125,7 @@ public extension UIViewTransition {
 	/// - Parameters:
 	///   - edge: The edge from which the view enters.
 	///   - offset: The distance to move, relative to the view's size. Defaults to `.relative(1)` (full width/height).
-	static func move(from edge: Edge, offset: RelationValue<CGFloat> = .relative(1)) -> UIViewTransition {
+	static func move(from edge: Edge, _ offset: RelationValue<CGFloat> = .relative(1)) -> UIViewTransition {
 		UIViewTransition(removed: { view, identity in
 			identity.transformed(\.transform) { transform in
 				let (dx, dy) = Self.moveOffset(for: edge, view: view, offset: offset)
@@ -134,12 +134,31 @@ public extension UIViewTransition {
 		})
 	}
 
+	static func move(
+		from fromEdge: Edge,
+		_ fromOffset: RelationValue<CGFloat> = .relative(1),
+		to toEdge: Edge,
+		_ toOffset: RelationValue<CGFloat> = .relative(1)
+	) -> UIViewTransition {
+		UIViewTransition { view, identity in
+			identity.transformed(\.transform) { transform in
+				let (dx, dy) = Self.moveOffset(for: toEdge, view: view, offset: toOffset)
+				return transform.translatedBy(x: dx, y: dy)
+			}
+		} removed: { view, identity in
+			identity.transformed(\.transform) { transform in
+				let (dx, dy) = Self.moveOffset(for: fromEdge, view: view, offset: fromOffset)
+				return transform.translatedBy(x: dx, y: dy)
+			}
+		}
+	}
+
 	/// A transition that moves the view out towards the specified edge on disappearance.
 	/// - Parameters:
 	///   - edge: The edge towards which the view exits.
 	///   - offset: The distance to move, relative to the view's size. Defaults to `.relative(1)` (full width/height).
-	static func move(to edge: Edge, offset: RelationValue<CGFloat> = .relative(1)) -> UIViewTransition {
-		let original = move(from: edge, offset: offset)
+	static func move(to edge: Edge, _ offset: RelationValue<CGFloat> = .relative(1)) -> UIViewTransition {
+		let original = move(from: edge, offset)
 		return UIViewTransition(
 			willAppear: original.idle,
 			idle: original.willAppear,
@@ -416,4 +435,63 @@ struct AnyEquatable: Equatable {
 	static func == (_ lhs: AnyEquatable, _ rhs: AnyEquatable) -> Bool {
 		lhs.compare(lhs.base, rhs.base)
 	}
+}
+
+private final class PreviewController: UIViewController {
+	
+	let moving = UIView()
+
+	override func viewDidLoad() {
+		super.viewDidLoad()
+		
+		let container = UIView()
+		container.layer.borderColor = UIColor.black.cgColor
+		container.layer.borderWidth = 1
+		container.translatesAutoresizingMaskIntoConstraints = false
+		view.addSubview(container)
+		NSLayoutConstraint.activate([
+			container.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+			container.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+			container.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.25),
+			container.heightAnchor.constraint(equalTo: view.heightAnchor, multiplier: 0.25),
+		])
+		
+		moving.backgroundColor = .systemGreen
+		container.addSubview(moving)
+		moving.pinEdges(to: container)
+		
+		let button = UIButton()
+		button.setTitle("Move", for: .normal)
+		button.setTitleColor(.white, for: .normal)
+		button.backgroundColor = .systemBlue
+		button.layer.cornerRadius = 20
+		button.translatesAutoresizingMaskIntoConstraints = false
+		view.addSubview(button)
+		NSLayoutConstraint.activate([
+			button.heightAnchor.constraint(equalToConstant: 70),
+			button.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+			button.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+			button.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor)
+		])
+		
+		button.addTarget(self, action: #selector(tap), for: .touchUpInside)
+	}
+	
+	@objc
+	func tap() {
+		let transition = UIViewTransition.move(from: .trailing, to: .leading, .relative(0.3))
+		transition.willAppear(moving, UIViewState()).apply(to: moving)
+		UIView.animate(withDuration: 0.5, delay: 0) { [self] in
+			transition.idle(moving, UIViewState()).apply(to: moving)
+		} completion: { [self] _ in
+			UIView.animate(withDuration: 0.5, delay: 0) { [self] in
+				transition.didDisappear(moving, UIViewState()).apply(to: moving)
+			}
+		}
+	}
+}
+
+@available(iOS 17.0, *)
+#Preview {
+	PreviewController()
 }
