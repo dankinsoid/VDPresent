@@ -15,13 +15,14 @@ public extension UIPresentation {
 	) -> UIPresentation {
 		UIPresentation(
 			transition: .base(transitionID: "sheet")
+				.environment(\.identityState) { _, identity in
+					identity
+						.with(\.clipsToBounds, true)
+						.with(\.layer.cornerRadius, cornerRadius)
+						.with(\.layer.maskedCorners, .edge(edge.opposite))
+				}
 				.environment(\.contentTransition) { _ in
-					.combined(
-						.move(from: edge),
-						.constant(\.clipsToBounds, true),
-						.constant(\.layer.cornerRadius, cornerRadius),
-						.constant(\.layer.maskedCorners, .edge(edge.opposite)),
-					)
+						.move(from: edge)
 				}
 				.environment(\.contentLayout, .constraints { view, superview in
 					var result = view.pinEdges(

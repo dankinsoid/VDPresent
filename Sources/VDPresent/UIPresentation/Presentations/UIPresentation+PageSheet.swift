@@ -25,14 +25,15 @@ public extension UIPresentation {
 					),
 					insideSafeArea: NSDirectionalRectEdge(edge.opposite)
 				))
+				.environment(\.identityState) { _, identity in
+					identity
+						.with(\.clipsToBounds, true)
+						.with(\.layer.cornerRadius, cornerRadius)
+						.with(\.layer.cornerCurve, .continuous)
+						.with(\.layer.maskedCorners, .edge(edge.opposite))
+				}
 				.environment(\.contentTransition) { _ in
-					.combined(
-						.move(from: edge),
-						.constant(\.clipsToBounds, true),
-						.constant(\.layer.cornerRadius, cornerRadius),
-						.constant(\.layer.cornerCurve, .continuous),
-						.constant(\.layer.maskedCorners, .edge(edge.opposite)),
-					)
+						.move(from: edge)
 				}
 				.environment(\.recessTransition) { i, context in
 					.recessTransform(
