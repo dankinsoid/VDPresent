@@ -163,8 +163,6 @@ struct ViewTransitions {
 	var state = UIViewState()
 	/// Pre-animation snapshot for rollback on cancel.
 	var oldState = UIViewState()
-	/// Clean end state: computed without barrier/departing workarounds.
-	var cleanTo: UIViewTransition.Tween?
 	var progress: Progress = .insertion(0)
 
 	/// Clears the combined transition.
@@ -220,7 +218,7 @@ private extension UIPresentation.Transition {
 	
 	// Предполагаю два сценария:
   // все контроллеры под isBehindFrozen анимируются как единое целое - к ним применяется только recess анимация frozen контроллера, при появлении они должны занять финальную позицию еще до начала анимации (за исключением recces анимации frozen) при скрытии - сохранять текущий стейт  (за исключением recces анимации frozen). Если же frozen контроллер не является top то контроллеры за ним вообще не участвуют в анимации - но это регулириуется на стороне UIStackController - он их не добавляет в иерархию. isBehindFrozen анимации в целом никак не отображают изменение стека под top контроллером - просто вставка и удаление top контроллера - вся перестройка стека происходит незаметно от пользователя либо на completion (при insertion) либо в prepare (removal).
-	// В целом анимацией контроллеров управляет top - все контроллеры выстраиваются в стопку под его recces анимацию, однако top контроллеров обычно двое - уходящий и приходящий. контроллеры которые уходят анимируются в соответствии с recces анимацией уходящего top контроллера если он уходит (или лучше кэшировать анимацию с которой они появились и при скрытии использовать ее?), если он не уходит - с recces анимацией нового top; остальные контроллеры анимириуются в соответсвии с recces анимацией нового топ контроллера. Если топ контроллер не менялся - используем его recces для всех.
+	// В целом анимацией контроллеров управляет top - все контроллеры выстраиваются в стопку под его recces анимацию, однако top контроллеров может быть двое - уходящий и приходящий. контроллеры которые уходят анимируются в соответствии с recces анимацией прошлого top контроллера (или лучше кэшировать анимацию с которой они появились и при скрытии использовать ее?); остальные контроллеры анимириуются в соответсвии с recces анимацией нового топ контроллера. Если топ контроллер не менялся - используем его recces для всех.
 	// Если один из top контроллеров не уходит/приходит а меняет свою позицию в стеке:
   // - При isBehindFrozen анимируем его как уходящий/приходящий
   // - В других ситуациях вероятно не избежать мелькания и это касается не только топ контроллера - все видимые контроллеры меняют z позицию без анимации - альтернативный вариант делать keyframe анимацию удаления/вставки - нужна поддержка на уровне UIStackController, пока в TODO.
@@ -236,152 +234,196 @@ private extension UIPresentation.Transition {
 	) {
 		var from: [UIViewTransition.TransitionClosure] = []
 		var to: [UIViewTransition.TransitionClosure] = []
-		// Clean end state: own content + recess from final (to) stack.
-		var cleanTo: [UIViewTransition.TransitionClosure] = []
 
 		// Background transition — built alongside the view using the same conditions.
-		let backgroundView = context.backgroundView
-		let bgTransition = context.environment.backgroundTransition
-		let hasBg = backgroundView != nil && !bgTransition.isIdentity
-		var bgFrom: [UIViewTransition.TransitionClosure] = []
-		var bgTo: [UIViewTransition.TransitionClosure] = []
+//		let backgroundView = context.backgroundView
+//		let bgTransition = context.environment.backgroundTransition
+//		let hasBg = backgroundView != nil && !bgTransition.isIdentity
+//		var bgFrom: [UIViewTransition.TransitionClosure] = []
+//		var bgTo: [UIViewTransition.TransitionClosure] = []
 
-		let allControllers = context.visibleViewControllers.all(context.direction)
-		let myIndex = allControllers.firstIndex(of: context.viewController)
-
-		#if VDPRESENT_LOG
-		let vcName = context.view.accessibilityIdentifier ?? String(describing: type(of: context.viewController))
-		let allNames = allControllers.map { $0.view.accessibilityIdentifier ?? String(describing: type(of: $0)) }
-		print("[buildTransitions] vc=\(vcName) direction=\(context.direction) ownDirection=\(context.ownDirection) myIndex=\(myIndex.map(String.init) ?? "nil") allControllers=\(allNames) transitionID=\(context.presentation.transition.transitionID)")
-		#endif
-
-		// 1. Own contentTransition.
+		// Own contentTransition.
 		let contentTransition = context.environment.contentTransition(context)
-		let transition = contentTransition.tween(for: context.ownDirection)
-		let bgTween = hasBg ? bgTransition.tween(for: context.ownDirection) : nil
 
-		if context.isNewView {
-			if context.isChangingController, !context.isBehindFrozen {
-				from.append(transition.from)
-				if let bgTween { bgFrom.append(bgTween.from) }
-			} else {
-				from.append(transition.to)
-				if let bgTween { bgFrom.append(bgTween.to) }
-			}
-		}
+		var currentState = context.viewTransitions.state
+		currentState.snapshot(context.view)
 
-		if !context.isBehindFrozen || context.isNewView {
-			to.append(transition.to)
-			if let bgTween { bgTo.append(bgTween.to) }
-		}
-		cleanTo.append(transition.to)
-
-		// 2. Recess effects from controllers above this one.
-		// Background has no recess — only the view accumulates recess effects.
-		if let myIndex {
-			let frontControllers = allControllers[(myIndex + 1)...]
-			var toDepth = 0
-			let myName = context.view.accessibilityIdentifier ?? String(describing: type(of: context.viewController))
-			#if VDPRESENT_LOG
-			print("[recess] \(myName): myIndex=\(myIndex), frontControllers=\(frontControllers.count), isBehindFrozen=\(context.isBehindFrozen), isNewView=\(context.isNewView)")
-			#endif
-			for frontVC in frontControllers {
-				let frontContext = context.for(frontVC)
-				let isDepartingVC = frontContext.ownDirection == .removal
-				if !isDepartingVC { toDepth += 1 }
-				let depthIndex = isDepartingVC ? toDepth + 1 : toDepth
-				let frontName = frontVC.view.accessibilityIdentifier ?? String(describing: type(of: frontVC))
-				let backTransition = frontContext.environment.recessTransition(depthIndex, frontContext).tween(for: frontContext.ownDirection)
+		if context.isBehindFrozen, let top = context.topViewControllers.last {
+			// 1 - isBehindFrozen controller
+			
+			let topContext = context.for(top)
+			switch context.direction {
+			case .insertion:
+				let depth = (context.visibleViewControllers.from.reversed().firstIndex(of: context.viewController) ?? 0) + 1
+				let topReccesTransition = topContext.environment.recessTransition(depth, topContext)
 				
-				var applyTo = !context.isBehindFrozen || frontContext.isTopController || (context.isNewView && !isDepartingVC)
-				
-				if context.ownDirection == .removal, frontContext.isNewView, !context.isBehindFrozen {
-					applyTo = false
-				}
-				
-				#if VDPRESENT_LOG
-				print("[recess]   front=\(frontName) departing=\(isDepartingVC) depth=\(depthIndex) barrier=\(frontContext.environment.backEffectBarrier) applyTo=\(applyTo) transitionID=\(frontContext.presentation.transition.transitionID)")
-				#endif
-				if applyTo {
-					to.append(backTransition.to)
-				}
-
-				if !isDepartingVC {
-					cleanTo.append(backTransition.to)
-				}
-
-				if frontContext.isChangingController, !frontContext.isBehindFrozen {
-					if context.isNewView || !isDepartingVC, !context.isDepartingController {
-						from.append(backTransition.from)
+				if context.isNewView {
+					// isBehindFrozen cannot be a new one on insertion - only top controller should be inserted visually
+				} else {
+					// `from` = current state, identity transform
+					// `to` must be computed relativily to `from`
+					to.append { [currentState] _, identity in
+						identity.merged(with: currentState)
 					}
-				} else if context.isNewView {
-					from.append(backTransition.to)
+					to.append(topReccesTransition.idle)
 				}
+			case .removal:
+				if !context.isNewView {
+					// should never happen but if happen let's reset the view state
+					from.append { _, identity in
+						identity.identity
+					}
+				}
+
+				// should start animation from inserted state
+				from.append(contentTransition.idle)
+				
+				if let depth: Int = context.visibleViewControllers.to.reversed().firstIndex(of: context.viewController) {
+					
+					// should apply recces transition of the new top controller before animation
+					if let toTopVC = context.visibleViewControllers.to.last, toTopVC !== context.viewController {
+						let toTopContext = context.for(toTopVC)
+						let toTopReccesTransition = toTopContext.environment.recessTransition(depth, toTopContext)
+						from.append(toTopReccesTransition.idle)
+					}
+					
+					// `to` state is the same as `from` but without departing top reccess transition
+					// when top controller is removed it's recces transition doesn't affect any more so no `to` recces state here
+					to = from
+					
+					// should apply recces transition of the departing top controller before animation
+					let topReccesTransition = topContext.environment.recessTransition(depth, topContext)
+					from.append(topReccesTransition.idle)
+				} else {
+					// never should happen - a departing frozen controller is not a part of the context
+				}
+			}
+		} else {
+			let fromDepth: Int? = context.visibleViewControllers.from.reversed().firstIndex(of: context.viewController)
+			let toDepth: Int? = context.visibleViewControllers.to.reversed().firstIndex(of: context.viewController)
+			
+			
+			let fromTopVC = context.visibleViewControllers.from.last
+			
+			switch (fromDepth, toDepth) {
+			case (let .some(fromDepth), .none):
+				// 2 departing transition
+				let fromTopVC = fromTopVC! // from is not empty when fromDepth is not nil
+				
+				// TODO: если прошлый top не уходит как должен анимироваться departing контроллера?
+				// 1. с recces анимацией прошлого top - как сейчас
+				// 2. с recces анимацией нового top
+				// 3. с recces анимацией и прошлого и нового top
+				
+				let fromTopVCContext = context.for(fromTopVC)
+				
+				let isItTopDeparting = fromTopVC === context.viewController
+				let transition = isItTopDeparting
+				? contentTransition
+				: fromTopVCContext.environment.recessTransition(fromDepth, fromTopVCContext)
+				
+				if context.isNewView {
+					// should never happen for departing non behind frozen
+					if !isItTopDeparting {
+						from.append(contentTransition.idle) // always apply own transition for idle state
+					}
+					from.append(transition.idle)
+				}
+				to.append(transition.didDisappear)
+				
+			case (_, let .some(toDepth)):
+				// 3 remaining or insertion transition
+				let toTopVC = context.visibleViewControllers.to.last! // context.visibleViewControllers.to is not empty when toDepth is not nil
+				let isItToTop = toTopVC === context.viewController
+				
+				let toTopVCContext = context.for(toTopVC)
+				
+				let transition = isItToTop
+				? contentTransition
+				: toTopVCContext.environment.recessTransition(toDepth, toTopVCContext)
+				
+				if context.isNewView {
+					// insertion
+					from.append(transition.willAppear)
+				}
+				if !isItToTop {
+					to.append(contentTransition.idle) // always apply own transition for idle state
+				}
+				to.append(transition.idle)
+				
+			case (.none, .none):
+				// impossible
+				break
 			}
 		}
 
-		var oldState = context.viewTransitions.state
-		oldState.snapshot(context.view)
-
-		if context.isBehindFrozen {
-			to.insert(
-				{ [oldState] _, identity in
-					identity.merged(with: oldState)
-				},
-				at: 0
-			)
-			// Freeze existing background — keep it at its current visual state.
-			// New backgrounds have no meaningful state to freeze (just .clear),
-			// so they get bgTween.to instead.
-			if hasBg, let backgroundView {
-				let bgID = ObjectIdentifier(backgroundView)
-				let isExistingBg = context.backgroundTransitions[bgID]?.viewID == bgID
-				if isExistingBg {
-					var bgOld = context.backgroundTransitions[bgID]!.state
-					bgOld.snapshot(backgroundView)
-					bgTo.insert(
-						{ [bgOld] _, identity in
-							identity.merged(with: bgOld)
-						},
-						at: 0
-					)
-				} else if let bgTween {
-					bgTo.append(bgTween.to)
-				}
-			}
-		}
+		// TODO: return background transition
+//		let bgTween = hasBg ? bgTransition.tween(for: context.ownDirection) : nil
+//
+//		if context.isNewView {
+//			if context.isChangingController, !context.isBehindFrozen {
+//				if let bgTween { bgFrom.append(bgTween.from) }
+//			} else {
+//				if let bgTween { bgFrom.append(bgTween.to) }
+//			}
+//		}
+//
+//		if !context.isBehindFrozen || context.isNewView {
+//			if let bgTween { bgTo.append(bgTween.to) }
+//		}
+//
+//		if context.isBehindFrozen {
+//			// Freeze existing background — keep it at its current visual state.
+//			// New backgrounds have no meaningful state to freeze (just .clear),
+//			// so they get bgTween.to instead.
+//			if hasBg, let backgroundView {
+//				let bgID = ObjectIdentifier(backgroundView)
+//				let isExistingBg = context.backgroundTransitions[bgID]?.viewID == bgID
+//				if isExistingBg {
+//					var bgOld = context.backgroundTransitions[bgID]!.state
+//					bgOld.snapshot(backgroundView)
+//					bgTo.insert(
+//						{ [bgOld] _, identity in
+//							identity.merged(with: bgOld)
+//						},
+//						at: 0
+//					)
+//				} else if let bgTween {
+//					bgTo.append(bgTween.to)
+//				}
+//			}
+//		}
 
 		let newTransition = UIViewTransition.Tween.combined(from: from, to: to)
-		let newState = newTransition.from(context.view, oldState)
+		let newState = newTransition.from(context.view, currentState)
 
 		newState.apply(to: context.view)
 
 		context.viewTransitions.tween = newTransition
-		context.viewTransitions.cleanTo = UIViewTransition.Tween.combined(from: [], to: cleanTo)
-		context.viewTransitions.oldState = oldState
+		context.viewTransitions.oldState = currentState
 		context.viewTransitions.state = newState
 		context.viewTransitions.progress = progress
 		context.viewTransitions.viewID = ObjectIdentifier(context.view)
 
-		// Apply background transition.
-		if hasBg, let backgroundView {
-			let bgID = ObjectIdentifier(backgroundView)
-			var bgTransitions = context.backgroundTransitions[bgID] ?? ViewTransitions()
-
-			var bgOldState = bgTransitions.state
-			bgOldState.snapshot(backgroundView)
-
-			let bgCombined = UIViewTransition.Tween.combined(from: bgFrom, to: bgTo)
-			let bgNewState = bgCombined.from(backgroundView, bgOldState)
-			bgNewState.apply(to: backgroundView)
-
-			bgTransitions.tween = bgCombined
-			bgTransitions.oldState = bgOldState
-			bgTransitions.state = bgNewState
-			bgTransitions.progress = progress
-			bgTransitions.viewID = ObjectIdentifier(backgroundView)
-			context.backgroundTransitions[bgID] = bgTransitions
-		}
+//		// Apply background transition.
+//		if hasBg, let backgroundView {
+//			let bgID = ObjectIdentifier(backgroundView)
+//			var bgTransitions = context.backgroundTransitions[bgID] ?? ViewTransitions()
+//
+//			var bgOldState = bgTransitions.state
+//			bgOldState.snapshot(backgroundView)
+//
+//			let bgCombined = UIViewTransition.Tween.combined(from: bgFrom, to: bgTo)
+//			let bgNewState = bgCombined.from(backgroundView, bgOldState)
+//			bgNewState.apply(to: backgroundView)
+//
+//			bgTransitions.tween = bgCombined
+//			bgTransitions.oldState = bgOldState
+//			bgTransitions.state = bgNewState
+//			bgTransitions.progress = progress
+//			bgTransitions.viewID = ObjectIdentifier(backgroundView)
+//			context.backgroundTransitions[bgID] = bgTransitions
+//		}
 
 		animation?(context, progress)
 	}
@@ -395,13 +437,7 @@ private extension UIPresentation.Transition {
 	/// @ai-generated(solo)
 	@MainActor
 	static func settleViewState(context: UIPresentation.Context, completed: Bool) {
-		if completed {
-			let identityState = context.viewTransitions.state.identity
-			if let cleanState = context.viewTransitions.cleanTo?.to(context.view, identityState) {
-				cleanState.apply(to: context.view)
-				context.viewTransitions.state = cleanState
-			}
-		} else {
+		if !completed {
 			let oldState = context.viewTransitions.oldState
 			oldState.apply(to: context.view)
 			context.viewTransitions.state = oldState
