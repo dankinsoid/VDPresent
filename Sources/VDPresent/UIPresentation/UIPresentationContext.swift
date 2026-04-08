@@ -286,17 +286,17 @@ extension UIPresentation.Context {
 	var isChangingController: Bool {
 		!viewControllers.to.contains(viewController) || !viewControllers.from.contains(viewController)
 	}
+	
+	var isDepartingController: Bool {
+		viewControllers.from.contains(viewController) && !viewControllers.to.contains(viewController)
+	}
+	
+	var isInsertingController: Bool {
+		!viewControllers.from.contains(viewController) && viewControllers.to.contains(viewController)
+	}
 
 	var isRemainingController: Bool {
 		!isChangingController
-	}
-
-	/// Whether there is a barrier controller above this one in the visible stack.
-	/// @ai-generated(solo)
-	var hasFrontBarrier: Bool {
-		let allControllers = visibleViewControllers.all(direction)
-		guard let myIndex = allControllers.firstIndex(of: viewController) else { return false }
-		return allControllers[(myIndex + 1)...].contains { self.for($0).environment.backEffectBarrier }
 	}
 
 	var isTopController: Bool {
@@ -338,8 +338,7 @@ extension UIPresentation.Context {
 	var isBehindFrozen: Bool {
 		guard !isTopController else { return false }
 		// The top controller drives the decision.
-		let top = direction == .insertion ? viewControllers.to.last : viewControllers.from.last
-		guard let top else { return true }
+		guard let top = topViewControllers.last else { return true }
 		let topContext = self.for(top)
 		// overCurrentContext top means behind controllers are visible — they must animate, not freeze.
 		if topContext.environment.overCurrentContext { return false }

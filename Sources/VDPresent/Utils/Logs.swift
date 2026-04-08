@@ -1,3 +1,4 @@
+import SwiftUI
 
 // MARK: - Debug logging
 
@@ -9,7 +10,7 @@
 /// [phase] Menu: center (layers=5, remaining)
 /// [phase] Screen 1: ty=-23 sx=0.940 (layers=4, departing)
 /// ```
-private func logTransitionState(
+func logTransitionState(
 	_ phase: String,
 	allVisible: [UIViewController],
 	controllers: UIPresentation.Context.Controllers,
@@ -37,7 +38,7 @@ private func logTransitionState(
 	print("[\(phase)]\n\(lines.joined(separator: "\n"))")
 }
 
-private func fmtTransform(_ view: UIView) -> String {
+func fmtTransform(_ view: UIView) -> String {
 	let t = view.affineTransform
 	let sx = sqrt(t.a * t.a + t.c * t.c)
 	let sy = sqrt(t.b * t.b + t.d * t.d)
@@ -51,7 +52,7 @@ private func fmtTransform(_ view: UIView) -> String {
 }
 
 /// Window-relative insets: only non-zero edges, e.g. "{t=59 b=34}" or "{l=10 r=10 b=802}".
-private func fmtFrame(_ view: UIView) -> String {
+func fmtFrame(_ view: UIView) -> String {
 	guard let window = view.window else { return "{detached}" }
 	let r = view.convert(view.bounds, to: nil)
 	let wb = window.bounds
@@ -68,7 +69,7 @@ private func fmtFrame(_ view: UIView) -> String {
 }
 
 /// Window-relative insets from presentation layer frame, same format as fmtFrame.
-private func fmtPresentationFrame(_ pLayer: CALayer, in view: UIView) -> String {
+func fmtPresentationFrame(_ pLayer: CALayer, in view: UIView) -> String {
 	guard let window = view.window else { return "{detached}" }
 	// presentation() frame is in superlayer coords — convert to window.
 	let r: CGRect
@@ -90,7 +91,7 @@ private func fmtPresentationFrame(_ pLayer: CALayer, in view: UIView) -> String 
 	return "{\(parts.isEmpty ? "full" : parts.joined(separator: " "))}"
 }
 
-private func fmtCATransform(_ t: CGAffineTransform) -> String {
+func fmtCATransform(_ t: CGAffineTransform) -> String {
 	let sx = sqrt(t.a * t.a + t.c * t.c)
 	let sy = sqrt(t.b * t.b + t.d * t.d)
 	var parts: [String] = []

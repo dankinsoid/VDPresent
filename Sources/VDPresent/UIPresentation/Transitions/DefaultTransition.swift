@@ -217,6 +217,10 @@ private extension UIPresentation.Transition {
 	static func animateProgress(context: UIPresentation.Context) -> Progress {
 		context.direction == .insertion ? .insertion(1) : .insertion(0)
 	}
+	
+	// Предполагаю два сценария:
+  // все контроллеры под isBehindFrozen анимируются как единое целое - к ним применяется только recess анимация frozen контроллера, при появлении они должны занять финальную позицию еще до начала анимации (за исключением recces анимации frozen) при скрытии - сохранять текущий стейт  (за исключением recces анимации frozen). Если же frozen контроллер не является top то контроллеры за ним вообще не участвуют в анимации - но это регулириуется на стороне UIStackController - он их не добавляет в иерархию.
+	// В целом анимацией контроллеров управляет top - все контроллеры выстраиваются в стопку под его recces анимацию, однако top контроллеров обычно двое - уходящий и приходящий. контроллеры которые уходят анимируются в соответствии с recces анимацией уходящего top контроллера (или лучше кэшировать анимацию с которой они появились и при скрытии использовать ее?) - остальные контроллеры анимириуются в соответсвии с recces анимацией нового топ контроллера. Если топ контроллер не менялся - используем его recces для всех.
 
 	/// Collects own contentTransition + recess effects from all controllers above
 	/// this one, combines them into a single transition, captures identity state,
@@ -270,7 +274,7 @@ private extension UIPresentation.Transition {
 			}
 		}
 
-		if !context.isBehindFrozen {
+		if !context.isBehindFrozen || context.isNewView {
 			to.append(transition.to)
 			if let bgTween { bgTo.append(bgTween.to) }
 		}
@@ -292,8 +296,13 @@ private extension UIPresentation.Transition {
 				let depthIndex = isDepartingVC ? toDepth + 1 : toDepth
 				let frontName = frontVC.view.accessibilityIdentifier ?? String(describing: type(of: frontVC))
 				let backTransition = frontContext.environment.recessTransition(depthIndex, frontContext).tween(for: frontContext.ownDirection)
-
-				let applyTo = !context.isBehindFrozen || frontContext.environment.backEffectBarrier || (context.isNewView && !isDepartingVC)
+				
+				var applyTo = !context.isBehindFrozen || frontContext.isTopController || (context.isNewView && !isDepartingVC)
+				
+				if context.ownDirection == .removal, frontContext.isNewView, !context.isBehindFrozen {
+					applyTo = false
+				}
+				
 				#if VDPRESENT_LOG
 				print("[recess]   front=\(frontName) departing=\(isDepartingVC) depth=\(depthIndex) barrier=\(frontContext.environment.backEffectBarrier) applyTo=\(applyTo) transitionID=\(frontContext.presentation.transition.transitionID)")
 				#endif
@@ -306,18 +315,11 @@ private extension UIPresentation.Transition {
 				}
 
 				if frontContext.isChangingController, !frontContext.isBehindFrozen {
-					if context.isNewView || !isDepartingVC {
+					if context.isNewView || !isDepartingVC, !context.isDepartingController {
 						from.append(backTransition.from)
 					}
 				} else if context.isNewView {
 					from.append(backTransition.to)
-				}
-
-				if frontContext.environment.backEffectBarrier {
-					#if VDPRESENT_LOG
-					print("[recess]   ⛔ barrier hit at \(frontName) — stopping recess iteration for \(myName)")
-					#endif
-					break
 				}
 			}
 		}
