@@ -48,7 +48,7 @@ public extension UIPresentation.Transition {
 
 				// No reset — update the combined transition built during prepare.
 				// UIKit animates from prepare state to this animate state.
-				let identityState = context.environment.identityState(context, context.viewTransitions.state.identity)
+				let identityState = context.viewTransitions.state.identity
 				let newState = context.viewTransitions.tween?.to(context.view, identityState)
 				newState?.apply(to: context.view)
 				context.viewTransitions.state = newState ?? identityState
@@ -80,16 +80,6 @@ public extension UIPresentation.Environment {
 	var recessTransition: (Int, UIPresentation.Context) -> UIViewTransition {
 		get { self[\.recessTransition] ?? { _, _ in .identity } }
 		set { self[\.recessTransition] = newValue }
-	}
-
-	var recessIdentityState: (Int, UIPresentation.Context, UIViewState) -> UIViewState {
-		get { self[\.recessIdentityState] ?? { _, _, identity in identity } }
-		set { self[\.recessIdentityState] = newValue }
-	}
-
-	var identityState: (UIPresentation.Context, UIViewState) -> UIViewState {
-		get { self[\.identityState] ?? { _, identity in identity } }
-		set { self[\.identityState] = newValue }
 	}
 
 	/// Layout constraints applied to the presented view's container. Default: `.fill`.
@@ -253,10 +243,6 @@ private extension UIPresentation.Transition {
 		// Own contentTransition.
 		let contentTransition = context.environment.contentTransition(context)
 
-		if context.isNewView {
-			// setup identity state for new view
-			context.viewTransitions.state = context.environment.identityState(context, UIViewState())
-		}
 		var currentState = context.viewTransitions.state
 		currentState.snapshot(context.view)
 
@@ -283,7 +269,7 @@ private extension UIPresentation.Transition {
 				if !context.isNewView {
 					// should never happen but if happen let's reset the view state
 					from.append { _, identity in
-						context.environment.identityState(context, identity)
+						identity.identity
 					}
 				}
 
@@ -347,6 +333,10 @@ private extension UIPresentation.Transition {
 
 				if context.isNewView {
 					// should never happen for departing non behind frozen
+					let isItTopDeparting = fromTopVC === context.viewController
+					if !isItTopDeparting {
+						from.append(contentTransition.idle) // always apply own transition for idle state
+					}
 					from.append(transition.idle)
 				}
 				to.append(transition.didDisappear)
@@ -362,9 +352,14 @@ private extension UIPresentation.Transition {
 					topVC: toTopVC
 				)
 
+				let isItToTop = toTopVC === context.viewController
+
 				if context.isNewView {
 					// insertion
 					from.append(transition.willAppear)
+				}
+				if !isItToTop {
+					to.append(contentTransition.idle) // always apply own transition for idle state
 				}
 				to.append(transition.idle)
 
