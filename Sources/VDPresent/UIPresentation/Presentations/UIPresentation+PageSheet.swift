@@ -43,6 +43,7 @@ public extension UIPresentation {
 						up: i == 1
 					)
 				}
+				.screenCornerRadiusRecess(.edge(edge.opposite))
 				.environment(\.overCurrentContext, true)
 				.withBackground(containerColor)
 				.environment(\.backgroundPlacement, .behindController),
@@ -76,8 +77,8 @@ private extension UIViewTransition {
 		.combined(
 			recessScale(to: targetView, edge: edge, cornerRadius: cornerRadius, up: up),
 			.constant(\.clipsToBounds, true),
-//			.constant(\.layer.maskedCorners, .edge(edge)),
-			recessCornerRadius(edge: edge, cornerRadius: cornerRadius)
+			.constant(\.layer.maskedCorners, .edge(edge)),
+			.constant(\.layer.cornerRadius, cornerRadius)
 		)
 	}
 
@@ -106,31 +107,6 @@ private extension UIViewTransition {
 			return identity.with(\.transform, transform)
 		} removed: { _, identity in
 			identity
-		}
-	}
-
-	/// Animates corner radius from the view's current value to the sheet's
-	/// smaller corner radius. Uses screen display radius instead of current
-	/// value when the view is flush against the matching screen edge.
-	/// @ai-generated(guided)
-	private static func recessCornerRadius(
-		edge: Edge,
-		cornerRadius: CGFloat
-	) -> UIViewTransition {
-		UIViewTransition { _, identity in
-			identity.with(\.layer.cornerRadius, cornerRadius)
-		} removed: { view, identity in
-			let baseRect = view.untransformedFrameInWindow
-			let sourceRect = baseRect.applying(identity.transform)
-			let isLtr = UIView.userInterfaceLayoutDirection(for: view.semanticContentAttribute) == .leftToRight
-			let radius = initialCornerRadius(
-				view: view,
-				sourceRect: sourceRect,
-				edge: edge,
-				cornerRadius: cornerRadius,
-				isLtr: isLtr
-			)
-			return identity.with(\.layer.cornerRadius, radius)
 		}
 	}
 
@@ -201,50 +177,5 @@ private extension UIViewTransition {
 		return sourceTransform
 			.translatedBy(x: offsetX, y: offsetY)
 			.scaledBy(x: scale, y: scale)
-	}
-
-	/// Returns the view's starting corner radius: screen display radius when
-	/// the view is flush against the matching edge, otherwise the view's current value.
-	/// @ai-generated(guided)
-	static func initialCornerRadius(
-		view: UIView,
-		sourceRect: CGRect,
-		edge: Edge,
-		cornerRadius: CGFloat,
-		isLtr: Bool
-	) -> CGFloat {
-		let displayRadius = UIScreen.main.displayCornerRadius
-		let isFlush: Bool
-		switch edge {
-		case .top:
-			isFlush = sourceRect.minY == 0
-		case .leading, .trailing:
-			if isLtr == (edge == .leading) {
-				isFlush = UIScreen.main.bounds.width == sourceRect.maxX
-			} else {
-				isFlush = sourceRect.minX == 0
-			}
-		case .bottom:
-			isFlush = UIScreen.main.bounds.height == sourceRect.maxY
-		}
-		return isFlush ? displayRadius : view.layer.cornerRadius
-	}
-}
-
-private extension UIView {
-
-	/// Frame in window coordinates ignoring the view's own transform.
-	/// Uses `bounds.size` (unaffected by transform) and `center` (= layer.position,
-	/// stored in superview coordinates independently of transform).
-	/// @ai-generated(solo)
-	var untransformedFrameInWindow: CGRect {
-		let size = bounds.size
-		let globalCenter = superview?.convert(center, to: nil) ?? center
-		return CGRect(
-			x: globalCenter.x - size.width / 2,
-			y: globalCenter.y - size.height / 2,
-			width: size.width,
-			height: size.height
-		)
 	}
 }

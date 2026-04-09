@@ -12,4 +12,19 @@ extension UIView {
 		let right = max(0, frameInParent.maxX - (parent.bounds.width - parent.safeAreaInsets.right))
 		return UIEdgeInsets(top: top, left: left, bottom: bottom, right: right)
 	}
+
+	/// Frame in window coordinates ignoring the view's own transform.
+	/// Uses `bounds.size` (unaffected by transform) and `center` (= layer.position,
+	/// stored in superview coordinates independently of transform).
+	/// @ai-generated(solo)
+	var untransformedFrameInWindow: CGRect {
+		let size = bounds.size
+		let globalCenter = superview?.convert(center, to: nil) ?? center
+		return CGRect(
+			x: globalCenter.x - size.width / 2,
+			y: globalCenter.y - size.height / 2,
+			width: size.width,
+			height: size.height
+		)
+	}
 }

@@ -1,7 +1,7 @@
 import UIKit
 import VDTransition
 
-extension UIPresentation.Transition {
+public extension UIPresentation.Transition {
 	
 	func withBackground(
 		_ color: UIColor,
