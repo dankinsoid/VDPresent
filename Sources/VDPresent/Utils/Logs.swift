@@ -33,7 +33,10 @@ func logTransitionState(
 			role = "remaining"
 		}
 		let frame = fmtFrame(ctx.view)
-		lines.append("  \(name): \(transform) \(frame) \(role)")
+		let cr = String(format: "%.1f", ctx.view.layer.cornerRadius)
+		let mc = fmtMaskedCorners(ctx.view.layer.maskedCorners)
+		let clip = ctx.view.clipsToBounds ? "clip" : "noClip"
+		lines.append("  \(name): \(transform) \(frame) \(role) cr=\(cr) mc=\(mc) \(clip)")
 	}
 	print("[\(phase)]\n\(lines.joined(separator: "\n"))")
 }
@@ -89,6 +92,15 @@ func fmtPresentationFrame(_ pLayer: CALayer, in view: UIView) -> String {
 	if ri != 0 { parts.append("r=\(ri)") }
 	if b != 0 { parts.append("b=\(b)") }
 	return "{\(parts.isEmpty ? "full" : parts.joined(separator: " "))}"
+}
+
+func fmtMaskedCorners(_ mc: CACornerMask) -> String {
+	var parts: [String] = []
+	if mc.contains(.layerMinXMinYCorner) { parts.append("TL") }
+	if mc.contains(.layerMaxXMinYCorner) { parts.append("TR") }
+	if mc.contains(.layerMinXMaxYCorner) { parts.append("BL") }
+	if mc.contains(.layerMaxXMaxYCorner) { parts.append("BR") }
+	return parts.isEmpty ? "none" : parts.joined(separator: "|")
 }
 
 func fmtCATransform(_ t: CGAffineTransform) -> String {
