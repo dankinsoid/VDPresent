@@ -26,7 +26,7 @@ public extension UIPresentation.Transition {
 			Self.animateBackground(context: ctx)
 			animation(ctx)
 		} completion: { ctx, completed in
-			Self.completeBackground(context: ctx)
+			Self.completeBackground(context: ctx, completed: completed)
 			completion(ctx, completed)
 		}
 	}
@@ -144,17 +144,34 @@ private extension UIPresentation.Transition {
 		}
 	}
 
-	/// Removes the background view from the hierarchy and clears its cached transition
-	/// when this VC is being dismissed. Safe to call when no background view exists.
+	/// Settles the background view after animation ends.
+	/// - completed: removes background for departing controllers.
+	/// - cancelled: restores background to its pre-animation state (e.g. idle opacity),
+	///   mirroring how `settleViewState` restores the main view on cancel.
 	static func completeBackground(
-		context: UIPresentation.Context
+		context: UIPresentation.Context,
+		completed: Bool
 	) {
-		let array = context.viewControllers.toRemove
+		guard let backgroundView = context.backgroundView else { return }
+		let id = ObjectIdentifier(backgroundView)
 
-		if array.contains(context.viewController), let view = context.backgroundView {
-			view.removeFromSuperview()
-			context.backgroundStates[ObjectIdentifier(view)] = nil
-			context.backgroundView = nil
+		if completed {
+			let array = context.viewControllers.toRemove
+			if array.contains(context.viewController) {
+				backgroundView.removeFromSuperview()
+				context.backgroundStates[id] = nil
+				context.backgroundView = nil
+			}
+		} else {
+			// Cancel: restore background to idle state (visible).
+			// animateBackground moved it to the removal end-state (transparent),
+			// but the dismiss was cancelled so it needs to come back.
+			let transition = context.environment.backgroundTransition
+			guard !transition.isIdentity else { return }
+			let currentState = context.backgroundStates[id] ?? UIViewState()
+			let idleState = transition.idle(backgroundView, currentState.identity)
+			idleState.apply(to: backgroundView)
+			context.backgroundStates[id] = idleState
 		}
 	}
 }
