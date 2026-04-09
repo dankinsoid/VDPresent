@@ -33,7 +33,7 @@ public extension UIPresentation {
 						.with(\.layer.maskedCorners, .edge(edge.opposite))
 				}
 				.environment(\.contentTransition) { _ in
-						.move(from: edge)
+					.move(from: edge)
 				}
 				.environment(\.recessTransition) { i, context in
 					.recessTransform(
@@ -43,7 +43,7 @@ public extension UIPresentation {
 						up: i == 1
 					)
 				}
-				.screenCornerRadiusRecess(.edge(edge.opposite))
+				// .screenCornerRadiusRecess(.edge(edge.opposite))
 				.environment(\.overCurrentContext, true)
 				.withBackground(containerColor)
 				.environment(\.backgroundPlacement, .behindController),
@@ -162,7 +162,7 @@ private extension UIViewTransition {
 				midX = targetRect.minX + scaledW / 2
 				if up { midX += edgePadding }
 			}
-			
+
 			// TODO: displayCornerRadius should be added for fullscreen stack controller only?
 			if edge == .leading {
 				midX += UIScreen.main.displayCornerRadius
