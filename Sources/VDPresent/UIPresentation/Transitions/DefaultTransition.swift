@@ -50,7 +50,14 @@ public extension UIPresentation.Transition {
 				// UIKit animates from prepare state to this animate state.
 				let identityState = context.viewTransitions.state.identity
 				let newState = context.viewTransitions.tween?.to(context.view, identityState)
+				#if VDPRESENT_LOG
+				let vcName = context.view.accessibilityIdentifier ?? String(describing: type(of: context.viewController))
+				print("⚡️ [animate-apply] \(vcName) BEFORE cr=\(context.view.layer.cornerRadius) mc=\(fmtMaskedCorners(context.view.layer.maskedCorners))")
+				#endif
 				newState?.apply(to: context.view)
+				#if VDPRESENT_LOG
+				print("⚡️ [animate-apply] \(vcName) AFTER cr=\(context.view.layer.cornerRadius) mc=\(fmtMaskedCorners(context.view.layer.maskedCorners))")
+				#endif
 				context.viewTransitions.state = newState ?? identityState
 				context.viewTransitions.progress = progress
 				additionalAnimation?(context, progress)
