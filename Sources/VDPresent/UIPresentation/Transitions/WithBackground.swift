@@ -148,6 +148,7 @@ private extension UIPresentation.Transition {
 	/// - completed: removes background for departing controllers.
 	/// - cancelled: restores background to its pre-animation state (e.g. idle opacity),
 	///   mirroring how `settleViewState` restores the main view on cancel.
+	@MainActor
 	static func completeBackground(
 		context: UIPresentation.Context,
 		completed: Bool
