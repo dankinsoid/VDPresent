@@ -326,19 +326,28 @@ private extension UIPresentation.Transition {
 				// 2. с recess анимацией нового top
 				// 3. с recess анимацией и прошлого и нового top
 
-				// departingAnimation определяется новым top контроллером - он решает
-				// как уходящие контроллеры должны анимироваться при его появлении.
+				// Departing top всегда уходит через свой contentTransition - это его анимация ухода.
+				// departingAnimation влияет только на departing контроллеры за top-ом:
+				// он определяется новым top контроллером - тот решает как уходящие задние
+				// контроллеры должны анимироваться при его появлении.
 				// .own - каждый уходящий уходит через свою анимацию (navigation уедет вправо)
 				// .recess - уходящие анимируются через recess нового top (navigation уедет вниз как шит)
-				let toTopVC = context.visibleViewControllers.to.last
-				let departingAnim: DepartingAnimation = toTopVC.map { context.for($0).environment.departingAnimation } ?? .own
+				let isItTopDeparting = fromTopVC === context.viewController
 
-				let transition = resolveTransition(
-					context: context,
-					contentTransition: contentTransition,
-					depth: fromDepth,
-					topVC: departingAnim == .own ? fromTopVC : toTopVC ?? fromTopVC
-				)
+				let transition: UIViewTransition
+				if isItTopDeparting {
+					transition = contentTransition
+				} else {
+					let toTopVC = context.visibleViewControllers.to.last
+					let departingAnim: DepartingAnimation = toTopVC.map { context.for($0).environment.departingAnimation } ?? .own
+
+					transition = resolveTransition(
+						context: context,
+						contentTransition: contentTransition,
+						depth: fromDepth,
+						topVC: departingAnim == .own ? fromTopVC : toTopVC ?? fromTopVC
+					)
+				}
 
 				if context.isNewView {
 					// should never happen for departing non behind frozen
