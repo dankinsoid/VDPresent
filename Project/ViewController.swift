@@ -374,6 +374,20 @@ private func stackSectionItems() -> [DemoItem] {
 		replaceDemo(from: (.pageSheet, "pageSheet"), to: (.navigation, "navigation")),
 		replaceDemo(from: (.navigation, "navigation"), to: (.pageSheet, "pageSheet")),
 		replaceDemo(from: (.pageSheet, "pageSheet"), to: (.pageSheet(from: .top), "pageSheet(from: .top)")),
+
+		// replace navigation → pageSheet with different departingAnimation modes
+		// .recess (default) — navigation departs via pageSheet's recess (slides down with the sheet)
+		// .own — navigation departs via its own contentTransition (slides right as it came)
+		replaceDemo(
+			from: (.navigation, "navigation"),
+			to: (.pageSheet.environment(\.departingAnimation, .recess), "pageSheet (.recess)"),
+			suffix: "departing: .recess"
+		),
+		replaceDemo(
+			from: (.navigation, "navigation"),
+			to: (.pageSheet.environment(\.departingAnimation, .own), "pageSheet (.own)"),
+			suffix: "departing: .own"
+		),
 		
 		// Demo: random stack mutation
 		.init(
@@ -442,12 +456,14 @@ private func stackSectionItems() -> [DemoItem] {
 /// @ai-generated(solo)
 private func replaceDemo(
 	from initial: (UIPresentation, String),
-	to replacement: (UIPresentation, String)
+	to replacement: (UIPresentation, String),
+	suffix: String? = nil
 ) -> DemoItem {
 	let (initialPres, initialName) = initial
 	let (replacementPres, replacementName) = replacement
+	let titleSuffix = suffix.map { " (\($0))" } ?? ""
 	return .init(
-		title: ".\(initialName) → .\(replacementName)",
+		title: ".\(initialName) → .\(replacementName)\(titleSuffix)",
 		description: "Show .\(initialName), then replace with .\(replacementName) via set(viewControllers:).",
 		code: "stack.set(viewControllers: [menu, new], as: .\(replacementName))",
 		presentation: initialPres,
