@@ -1,4 +1,4 @@
-import UIKit
+тimport UIKit
 import VDTransition
 
 public extension UIPresentation.Transition {
@@ -127,6 +127,15 @@ public extension UIPresentation.Environment {
 		get { self[\.behindBehavior] ?? .freeze }
 		set { self[\.behindBehavior] = newValue }
 	}
+
+	/// Controls how the departing controller animates when this controller becomes the new top.
+	///
+	/// - `recess`: Departing controller animates via this (new top) controller's recess transition. **(default)**
+	/// - `own`: Departing controller leaves via its own contentTransition (e.g. navigation slides right).
+	var departingAnimation: DepartingAnimation {
+		get { self[\.departingAnimation] ?? .recess }
+		set { self[\.departingAnimation] = newValue }
+	}
 }
 
 /// Controls how controllers behind the top animate during a transition.
@@ -141,6 +150,16 @@ public enum BehindBehavior {
 	/// Behind-controllers with the same `transitionID` as the top are frozen;
 	/// controllers with a different `transitionID` play their own animation.
 	case freezeMatching
+}
+
+/// Controls how the departing controller animates when replaced by a new top.
+public enum DepartingAnimation {
+
+	/// Departing controller animates via the new top's recess transition.
+	case recess
+
+	/// Departing controller leaves via its own contentTransition.
+	case own
 }
 
 /// Combined transition for a single view — own contentTransition merged with
@@ -211,13 +230,13 @@ private extension UIPresentation.Transition {
 	static func animateProgress(context: UIPresentation.Context) -> Progress {
 		context.direction == .insertion ? .insertion(1) : .insertion(0)
 	}
-	
+
 	// Предполагаю два сценария:
-  // все контроллеры под isBehindFrozen анимируются как единое целое - к ним применяется только recess анимация frozen контроллера, при появлении они должны занять финальную позицию еще до начала анимации (за исключением recess анимации frozen) при скрытии - сохранять текущий стейт  (за исключением recess анимации frozen). Если же frozen контроллер не является top то контроллеры за ним вообще не участвуют в анимации - но это регулириуется на стороне UIStackController - он их не добавляет в иерархию. isBehindFrozen анимации в целом никак не отображают изменение стека под top контроллером - просто вставка и удаление top контроллера - вся перестройка стека происходит незаметно от пользователя либо на completion (при insertion) либо в prepare (removal).
+	// все контроллеры под isBehindFrozen анимируются как единое целое - к ним применяется только recess анимация frozen контроллера, при появлении они должны занять финальную позицию еще до начала анимации (за исключением recess анимации frozen) при скрытии - сохранять текущий стейт  (за исключением recess анимации frozen). Если же frozen контроллер не является top то контроллеры за ним вообще не участвуют в анимации - но это регулириуется на стороне UIStackController - он их не добавляет в иерархию. isBehindFrozen анимации в целом никак не отображают изменение стека под top контроллером - просто вставка и удаление top контроллера - вся перестройка стека происходит незаметно от пользователя либо на completion (при insertion) либо в prepare (removal).
 	// В целом анимацией контроллеров управляет top - все контроллеры выстраиваются в стопку под его recess анимацию, однако top контроллеров может быть двое - уходящий и приходящий. контроллеры которые уходят анимируются в соответствии с recess анимацией прошлого top контроллера (или лучше кэшировать анимацию с которой они появились и при скрытии использовать ее?); остальные контроллеры анимириуются в соответсвии с recess анимацией нового топ контроллера. Если топ контроллер не менялся - используем его recess для всех.
 	// Если один из top контроллеров не уходит/приходит а меняет свою позицию в стеке:
-  // - При isBehindFrozen анимируем его как уходящий/приходящий
-  // - В других ситуациях вероятно не избежать мелькания и это касается не только топ контроллера - все видимые контроллеры меняют z позицию без анимации - альтернативный вариант делать keyframe анимацию удаления/вставки - нужна поддержка на уровне UIStackController, пока в TODO.
+	// - При isBehindFrozen анимируем его как уходящий/приходящий
+	// - В других ситуациях вероятно не избежать мелькания и это касается не только топ контроллера - все видимые контроллеры меняют z позицию без анимации - альтернативный вариант делать keyframe анимацию удаления/вставки - нужна поддержка на уровне UIStackController, пока в TODO.
 
 	/// Collects own contentTransition + recess effects from all controllers above
 	/// this one, combines them into a single transition, captures identity state,
@@ -230,7 +249,7 @@ private extension UIPresentation.Transition {
 	) {
 		var from: [UIViewTransition.TransitionClosure] = []
 		var to: [UIViewTransition.TransitionClosure] = []
-		
+
 		// Own contentTransition.
 		let contentTransition = context.environment.contentTransition(context)
 
@@ -243,13 +262,13 @@ private extension UIPresentation.Transition {
 
 		if context.isBehindFrozen, let top = context.topViewControllers.last {
 			// 1 - isBehindFrozen controller
-			
+
 			let topContext = context.for(top)
 			switch context.direction {
 			case .insertion:
 				let depth = (context.visibleViewControllers.from.reversed().firstIndex(of: context.viewController) ?? 0) + 1
 				let topRecessTransition = topContext.environment.recessTransition(depth, topContext)
-				
+
 				if context.isNewView {
 					// isBehindFrozen cannot be a new one on insertion - only top controller should be inserted visually
 				} else {
@@ -270,20 +289,20 @@ private extension UIPresentation.Transition {
 
 				// should start animation from inserted state
 				from.append(contentTransition.idle)
-				
+
 				if let depth: Int = context.visibleViewControllers.to.reversed().firstIndex(of: context.viewController) {
-					
+
 					// should apply recess transition of the new top controller before animation
 					if let toTopVC = context.visibleViewControllers.to.last, toTopVC !== context.viewController {
 						let toTopContext = context.for(toTopVC)
 						let toTopRecessTransition = toTopContext.environment.recessTransition(depth, toTopContext)
 						from.append(toTopRecessTransition.idle)
 					}
-					
+
 					// `to` state is the same as `from` but without departing top recess transition
 					// when top controller is removed it's recess transition doesn't affect any more so no `to` recess state here
 					to = from
-					
+
 					// should apply recess transition of the departing top controller before animation
 					let topRecessTransition = topContext.environment.recessTransition(depth, topContext)
 					from.append(topRecessTransition.idle)
@@ -294,50 +313,56 @@ private extension UIPresentation.Transition {
 		} else {
 			let fromDepth: Int? = context.visibleViewControllers.from.reversed().firstIndex(of: context.viewController)
 			let toDepth: Int? = context.visibleViewControllers.to.reversed().firstIndex(of: context.viewController)
-			
-			
+
 			let fromTopVC = context.visibleViewControllers.from.last
-			
+
 			switch (fromDepth, toDepth) {
-			case (let .some(fromDepth), .none):
+			case let (.some(fromDepth), .none):
 				// 2 departing transition
 				let fromTopVC = fromTopVC! // from is not empty when fromDepth is not nil
-				
+
 				// TODO: если прошлый top не уходит как должен анимироваться departing контроллера?
 				// 1. с recess анимацией прошлого top - как сейчас
 				// 2. с recess анимацией нового top
 				// 3. с recess анимацией и прошлого и нового top
-				
-				let fromTopVCContext = context.for(fromTopVC)
-				
-				let isItTopDeparting = fromTopVC === context.viewController
-				let transition = isItTopDeparting
-				? contentTransition
-				: fromTopVCContext.environment.recessTransition(fromDepth, fromTopVCContext)
-				
+
+				// departingAnimation определяется новым top контроллером - он решает
+				// как уходящие контроллеры должны анимироваться при его появлении.
+				// .own - каждый уходящий уходит через свою анимацию (navigation уедет вправо)
+				// .recess - уходящие анимируются через recess нового top (navigation уедет вниз как шит)
+				let toTopVC = context.visibleViewControllers.to.last
+				let departingAnim: DepartingAnimation = toTopVC.map { context.for($0).environment.departingAnimation } ?? .own
+
+				let transition = resolveTransition(
+					context: context,
+					contentTransition: contentTransition,
+					depth: fromDepth,
+					topVC: departingAnim == .own ? fromTopVC : toTopVC ?? fromTopVC
+				)
+
 				if context.isNewView {
 					// should never happen for departing non behind frozen
 					from.append(transition.idle)
 				}
 				to.append(transition.didDisappear)
-				
-			case (_, let .some(toDepth)):
+
+			case let (_, .some(toDepth)):
 				// 3 remaining or insertion transition
 				let toTopVC = context.visibleViewControllers.to.last! // context.visibleViewControllers.to is not empty when toDepth is not nil
-				let isItToTop = toTopVC === context.viewController
-				
-				let toTopVCContext = context.for(toTopVC)
-				
-				let transition = isItToTop
-					? contentTransition
-					: toTopVCContext.environment.recessTransition(toDepth, toTopVCContext)
-				
+
+				let transition = resolveTransition(
+					context: context,
+					contentTransition: contentTransition,
+					depth: toDepth,
+					topVC: toTopVC
+				)
+
 				if context.isNewView {
 					// insertion
 					from.append(transition.willAppear)
 				}
 				to.append(transition.idle)
-				
+
 			case (.none, .none):
 				// impossible
 				break
@@ -356,6 +381,23 @@ private extension UIPresentation.Transition {
 		context.viewTransitions.viewID = ObjectIdentifier(context.view)
 
 		animation?(context, progress)
+	}
+
+	/// Resolves which transition to use for a controller given its relationship to the top.
+	/// If the controller IS the top — uses its own contentTransition.
+	/// Otherwise — uses the top controller's recessTransition at the given depth.
+	/// Shared between departing and remaining/insertion paths to avoid duplication.
+	static func resolveTransition(
+		context: UIPresentation.Context,
+		contentTransition: UIViewTransition,
+		depth: Int,
+		topVC: UIViewController
+	) -> UIViewTransition {
+		if topVC === context.viewController {
+			return contentTransition
+		}
+		let topContext = context.for(topVC)
+		return topContext.environment.recessTransition(depth, topContext)
 	}
 
 	/// Settles the view into its correct post-animation state.
