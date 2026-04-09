@@ -321,32 +321,28 @@ private extension UIPresentation.Transition {
 				// 2 departing transition
 				let fromTopVC = fromTopVC! // from is not empty when fromDepth is not nil
 
-				// TODO: если прошлый top не уходит как должен анимироваться departing контроллера?
-				// 1. с recess анимацией прошлого top - как сейчас
-				// 2. с recess анимацией нового top
-				// 3. с recess анимацией и прошлого и нового top
-
-				// Departing top всегда уходит через свой contentTransition - это его анимация ухода.
-				// departingAnimation влияет только на departing контроллеры за top-ом:
-				// он определяется новым top контроллером - тот решает как уходящие задние
-				// контроллеры должны анимироваться при его появлении.
-				// .own - каждый уходящий уходит через свою анимацию (navigation уедет вправо)
-				// .recess - уходящие анимируются через recess нового top (navigation уедет вниз как шит)
-				let isItTopDeparting = fromTopVC === context.viewController
+				// departingAnimation определяется новым top контроллером - он решает
+				// через чью анимацию уходят departing контроллеры.
+				// .recess (default) - topVC = fromTopVC: departing top уходит через свой contentTransition,
+				//   departing не-top уходят через recess прошлого top - как и было до departingAnimation.
+				// .own - topVC = departing контроллер сам: каждый departing уходит через свой contentTransition
+				//   (например navigation уедет вправо а не вниз при появлении шита)
+				let toTopVC = context.visibleViewControllers.to.last
+				let departingAnim: DepartingAnimation = toTopVC.map { context.for($0).environment.departingAnimation } ?? .recess
 
 				let transition: UIViewTransition
-				if isItTopDeparting {
-					transition = contentTransition
-				} else {
-					let toTopVC = context.visibleViewControllers.to.last
-					let departingAnim: DepartingAnimation = toTopVC.map { context.for($0).environment.departingAnimation } ?? .own
-
+				switch departingAnim {
+				case .recess:
+					// старая логика: departing top -> свой contentTransition, departing не-top -> recess прошлого top
 					transition = resolveTransition(
 						context: context,
 						contentTransition: contentTransition,
 						depth: fromDepth,
-						topVC: departingAnim == .own ? fromTopVC : toTopVC ?? fromTopVC
+						topVC: fromTopVC
 					)
+				case .own:
+					// каждый departing уходит через свой contentTransition
+					transition = contentTransition
 				}
 
 				if context.isNewView {
