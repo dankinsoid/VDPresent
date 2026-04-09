@@ -235,7 +235,7 @@ private func stackNavigationDemo(title: String, presentation: UIPresentation) ->
 		tapAction: { _ in
 			let total = 4
 
-			let screens = (1...total).map { i in
+			let screens = (1 ... total).map { i in
 				StackStepViewController(
 					stepTitle: "Screen \(i) / \(total)",
 					description: i < total
@@ -293,14 +293,14 @@ private func stackNavigationDemo(title: String, presentation: UIPresentation) ->
 /// @ai-generated(solo)
 private func stackSectionItems() -> [DemoItem] {
 	[
-		/// @ai-generated(solo)
+		// @ai-generated(solo)
 		stackNavigationDemo(title: "Stack — .navigation", presentation: .navigation),
 		stackNavigationDemo(title: "Stack — .pageSheet", presentation: .pageSheet),
 		stackNavigationDemo(title: "Stack — .sheet", presentation: .sheet),
 		stackNavigationDemo(title: "Stack — .pageSheet top", presentation: .pageSheet(from: .top)),
 
 		// Demo: pageSheet with different edges in one stack
-		/// @ai-generated(solo)
+		// @ai-generated(solo)
 		.init(
 			title: ".pageSheet — mixed edges",
 			description: "Four pageSheets shown one after another, each from a different edge (bottom, top, leading, trailing) in the same stack.",
@@ -374,21 +374,8 @@ private func stackSectionItems() -> [DemoItem] {
 		replaceDemo(from: (.pageSheet, "pageSheet"), to: (.navigation, "navigation")),
 		replaceDemo(from: (.navigation, "navigation"), to: (.pageSheet, "pageSheet")),
 		replaceDemo(from: (.pageSheet, "pageSheet"), to: (.pageSheet(from: .top), "pageSheet(from: .top)")),
+		replaceDemo(from: (.navigation, "navigation"), to: (.pageSheet, "pageSheet")),
 
-		// replace navigation → pageSheet with different departingAnimation modes
-		// .recess (default) — navigation departs via pageSheet's recess (slides down with the sheet)
-		// .own — navigation departs via its own contentTransition (slides right as it came)
-		replaceDemo(
-			from: (.navigation, "navigation"),
-			to: (.pageSheet.environment(\.departingAnimation, .recess), "pageSheet (.recess)"),
-			suffix: "departing: .recess"
-		),
-		replaceDemo(
-			from: (.navigation, "navigation"),
-			to: (.pageSheet.environment(\.departingAnimation, .own), "pageSheet (.own)"),
-			suffix: "departing: .own"
-		),
-		
 		// Demo: random stack mutation
 		.init(
 			title: "Random stack mutation",
@@ -396,7 +383,7 @@ private func stackSectionItems() -> [DemoItem] {
 			code: "stack.set(viewControllers: random, as: .navigation)",
 			presentation: .navigation,
 			tapAction: { _ in
-				/// @ai-generated(solo)
+				// @ai-generated(solo)
 				func makeRandomStep(index: Int, total: Int) -> StackStepViewController {
 					let presentations: [(String, UIPresentation)] = [
 						(".navigation", .navigation),
@@ -420,17 +407,17 @@ private func stackSectionItems() -> [DemoItem] {
 					return vc
 				}
 
-				/// @ai-generated(guided)
+				// @ai-generated(guided)
 				func randomize(from vc: UIViewController) {
 					guard let stack = vc.stackController else { return }
 					let menu = stack.viewControllers.first.map { [$0] } ?? []
 					// Existing non-menu controllers that can be kept
 					let existing = Array(stack.viewControllers.dropFirst())
-					let keepCount = Int.random(in: 0...existing.count)
+					let keepCount = Int.random(in: 0 ... existing.count)
 					let kept = Array(existing.prefix(keepCount))
-					let newCount = Int.random(in: (kept.isEmpty ? 1 : 0)...7)
+					let newCount = Int.random(in: (kept.isEmpty ? 1 : 0) ... 7)
 					let total = kept.count + newCount
-					let newControllers = (0..<newCount).map { i in
+					let newControllers = (0 ..< newCount).map { i in
 						makeRandomStep(index: kept.count + i, total: total)
 					}
 					stack.set(viewControllers: menu + (kept + newControllers).shuffled())
