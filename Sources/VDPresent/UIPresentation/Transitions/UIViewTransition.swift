@@ -32,6 +32,17 @@ public struct UIViewTransition {
 	}
 
 	public init(
+		willAppear: UIViewTransition,
+		idle: UIViewTransition,
+		didDisappear: UIViewTransition
+	) {
+		self.isIdentity = willAppear.isIdentity && idle.isIdentity && didDisappear.isIdentity
+		self.willAppear = willAppear.willAppear
+		self.idle = idle.idle
+		self.didDisappear = didDisappear.didDisappear
+	}
+
+	public init(
 		idle: @escaping TransitionClosure = { _, identity in identity },
 		removed: @escaping TransitionClosure
 	) {
@@ -124,30 +135,45 @@ public extension UIViewTransition {
 	/// A transition that moves the view in from the specified edge on appearance.
 	/// - Parameters:
 	///   - edge: The edge from which the view enters.
-	///   - offset: The distance to move, relative to the view's size. Defaults to `.relative(1)` (full width/height).
-	static func move(from edge: Edge, _ offset: RelationValue<CGFloat> = .relative(1)) -> UIViewTransition {
+	///   - offset: The distance to move, relative to `referenceView`'s size. Defaults to `.relative(1)` (full width/height).
+	///   - referenceView: A closure that, given the moving view, returns the view whose bounds define the move distance.
+	///     Defaults to the moving view itself. Pass `{ $0.superview }` to move relative to the parent, or return any
+	///     arbitrary view. If the closure returns `nil`, the moving view's own bounds are used as a fallback.
+	static func move(
+		from edge: Edge,
+		_ offset: RelationValue<CGFloat> = .relative(1),
+		relativeTo referenceView: @escaping @MainActor (UIView) -> UIView? = \.superview
+	) -> UIViewTransition {
 		UIViewTransition(removed: { view, identity in
 			identity.transformed(\.transform) { transform in
-				let (dx, dy) = Self.moveOffset(for: edge, view: view, offset: offset)
+				let (dx, dy) = Self.moveOffset(for: edge, view: view, reference: referenceView(view) ?? view, offset: offset)
 				return transform.translatedBy(x: dx, y: dy)
 			}
 		})
 	}
 
+	/// A transition that moves the view between two edges.
+	/// - Parameters:
+	///   - fromEdge: The edge from which the view enters on appearance.
+	///   - fromOffset: Distance from `fromEdge`, relative to `referenceView`'s size.
+	///   - toEdge: The edge towards which the view exits on disappearance.
+	///   - toOffset: Distance towards `toEdge`, relative to `referenceView`'s size.
+	///   - referenceView: See ``move(from:_:relativeTo:)``.
 	static func move(
 		from fromEdge: Edge,
 		_ fromOffset: RelationValue<CGFloat> = .relative(1),
 		to toEdge: Edge,
-		_ toOffset: RelationValue<CGFloat> = .relative(1)
+		_ toOffset: RelationValue<CGFloat> = .relative(1),
+		relativeTo referenceView: @escaping @MainActor (UIView) -> UIView? = \.superview
 	) -> UIViewTransition {
 		UIViewTransition { view, identity in
 			identity.transformed(\.transform) { transform in
-				let (dx, dy) = Self.moveOffset(for: toEdge, view: view, offset: toOffset)
+				let (dx, dy) = Self.moveOffset(for: toEdge, view: view, reference: referenceView(view) ?? view, offset: toOffset)
 				return transform.translatedBy(x: dx, y: dy)
 			}
 		} removed: { view, identity in
 			identity.transformed(\.transform) { transform in
-				let (dx, dy) = Self.moveOffset(for: fromEdge, view: view, offset: fromOffset)
+				let (dx, dy) = Self.moveOffset(for: fromEdge, view: view, reference: referenceView(view) ?? view, offset: fromOffset)
 				return transform.translatedBy(x: dx, y: dy)
 			}
 		}
@@ -156,9 +182,14 @@ public extension UIViewTransition {
 	/// A transition that moves the view out towards the specified edge on disappearance.
 	/// - Parameters:
 	///   - edge: The edge towards which the view exits.
-	///   - offset: The distance to move, relative to the view's size. Defaults to `.relative(1)` (full width/height).
-	static func move(to edge: Edge, _ offset: RelationValue<CGFloat> = .relative(1)) -> UIViewTransition {
-		let original = move(from: edge, offset)
+	///   - offset: The distance to move, relative to `referenceView`'s size. Defaults to `.relative(1)` (full width/height).
+	///   - referenceView: See ``move(from:_:relativeTo:)``.
+	static func move(
+		to edge: Edge,
+		_ offset: RelationValue<CGFloat> = .relative(1),
+		relativeTo referenceView: @escaping @MainActor (UIView) -> UIView? = \.superview
+	) -> UIViewTransition {
+		let original = move(from: edge, offset, relativeTo: referenceView)
 		return UIViewTransition(
 			willAppear: original.idle,
 			idle: original.willAppear,
@@ -167,23 +198,99 @@ public extension UIViewTransition {
 	}
 
 	/// Computes the (dx, dy) translation for a move transition, accounting for LTR/RTL layout direction.
+	/// The distance is derived from `reference`'s bounds, while layout direction follows the moving `view`.
 	private static func moveOffset(
 		for edge: Edge,
 		view: UIView,
+		reference: UIView,
 		offset: RelationValue<CGFloat>
 	) -> (CGFloat, CGFloat) {
 		let isLtr = UIView.userInterfaceLayoutDirection(for: view.semanticContentAttribute) == .leftToRight
 		switch edge {
 		case .leading:
-			let value = offset.value(for: view.bounds.width)
+			let value = offset.value(for: reference.bounds.width)
 			return (isLtr ? -value : value, 0)
 		case .trailing:
-			let value = offset.value(for: view.bounds.width)
+			let value = offset.value(for: reference.bounds.width)
 			return (isLtr ? value : -value, 0)
 		case .top:
-			return (0, -offset.value(for: view.bounds.height))
+			return (0, -offset.value(for: reference.bounds.height))
 		case .bottom:
-			return (0, offset.value(for: view.bounds.height))
+			return (0, offset.value(for: reference.bounds.height))
+		}
+	}
+
+	/// A transition that offsets the view by the given amount on appearance, returning to identity in the idle state.
+	///
+	/// Both `x` and `y` are `RelationValue`s: `.absolute(pt)` is measured in points, `.relative(k)` is measured
+	/// against it's bounds (width for `x`, height for `y`).
+	///
+	/// `offset` does not flip for RTL layouts — positive `x` is always right.
+	/// - Parameters:
+	///   - x: Horizontal offset, relative to `referenceView`'s width (when `.relative`).
+	///   - y: Vertical offset, relative to `referenceView`'s height (when `.relative`).
+	static func offset(
+		x: RelationValue<CGFloat> = .absolute(0),
+		y: RelationValue<CGFloat> = .absolute(0)
+	) -> UIViewTransition {
+		UIViewTransition(removed: { ref, identity in
+			let dx = x.value(for: ref.bounds.width)
+			let dy = y.value(for: ref.bounds.height)
+			return identity.transformed(\.transform) { $0.translatedBy(x: dx, y: dy) }
+		})
+	}
+
+	/// A transition that rotates the view by the given angle around `anchor` on appearance,
+	/// returning to identity in the idle state.
+	///
+	/// The rotation is applied via `CGAffineTransform` and does not modify `layer.anchorPoint`,
+	/// so it composes cleanly with other transform-based transitions (move, scale, offset).
+	/// A non-center anchor is emulated by translating before and after the rotation.
+	///
+	/// - Parameters:
+	///   - angle: Rotation angle in radians. Positive values rotate clockwise.
+	///   - anchor: The anchor point for rotation, in the view's unit coordinate space. Defaults to `.center`.
+	static func rotate(
+		from angle: CGFloat,
+		anchor: UnitPoint = .center
+	) -> UIViewTransition {
+		UIViewTransition(removed: { view, identity in
+			Self.rotatedState(identity: identity, angle: angle, anchor: anchor, bounds: view.bounds)
+		})
+	}
+
+	/// A transition that rotates the view to the given angle around `anchor` on disappearance.
+	///
+	/// See ``rotate(from:anchor:)`` for details on anchor handling.
+	static func rotate(
+		to angle: CGFloat,
+		anchor: UnitPoint = .center
+	) -> UIViewTransition {
+		let original = Self.rotate(from: angle, anchor: anchor)
+		return UIViewTransition(
+			willAppear: original.idle,
+			idle: original.willAppear,
+			didDisappear: original.idle
+		)
+	}
+
+	/// Computes the rotated UIViewState, emulating a non-center anchor via translation.
+	///
+	/// The composed transform is `T(ax, ay) · R(angle) · T(-ax, -ay)`, where `(ax, ay)` is the offset
+	/// from the default center anchor (0.5, 0.5) to the desired `anchor` in the view's bounds.
+	private static func rotatedState(
+		identity: UIViewState,
+		angle: CGFloat,
+		anchor: UnitPoint,
+		bounds: CGRect
+	) -> UIViewState {
+		let ax = (anchor.x - 0.5) * bounds.width
+		let ay = (anchor.y - 0.5) * bounds.height
+		return identity.transformed(\.transform) { transform in
+			transform
+				.translatedBy(x: ax, y: ay)
+				.rotated(by: angle)
+				.translatedBy(x: -ax, y: -ay)
 		}
 	}
 
@@ -479,7 +586,12 @@ private final class PreviewController: UIViewController {
 	
 	@objc
 	func tap() {
-		let transition = UIViewTransition.move(from: .trailing, to: .leading, .relative(0.3))
+		let transition = UIViewTransition.move(
+			from: .trailing,
+			to: .leading,
+			.relative(0.3),
+			relativeTo: { _ in self.view }
+		)
 		transition.willAppear(moving, UIViewState()).apply(to: moving)
 		UIView.animate(withDuration: 0.5, delay: 0) { [self] in
 			transition.idle(moving, UIViewState()).apply(to: moving)
