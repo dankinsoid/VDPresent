@@ -158,6 +158,15 @@ final class MainMenuViewController: UITableViewController {
 					ScrollableSheetViewController().show(as: .sheet)
 				}
 			),
+			.init(
+				title: ".sheet(from: .top) + scrollView",
+				description: "Top sheet containing a scroll view. Scroll the list; once you reach the bottom of the content, continuing to drag up hands off to the sheet's interactive dismiss.",
+				code: "let vc = ScrollableTopSheetViewController()\nvc.show(as: .sheet(from: .top))",
+				presentation: .sheet(from: .top),
+				tapAction: { _ in
+					ScrollableTopSheetViewController().show(as: .sheet(from: .top))
+				}
+			),
 		]),
 		.init(title: "Stack", items: stackSectionItems()),
 	]
@@ -974,6 +983,92 @@ private final class ScrollableSheetViewController: UIViewController, UITableView
 
 	/// Hand the inner table view to the presentation machinery so that
 	/// its pan gesture cooperates with the sheet's interactive dismiss.
+	@available(iOS 15.0, *)
+	override func contentScrollView(for edge: NSDirectionalRectEdge) -> UIScrollView? {
+		tableView
+	}
+
+	// MARK: UITableViewDataSource
+
+	func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { 50 }
+
+	func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+		let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
+		var config = cell.defaultContentConfiguration()
+		config.text = "Row \(indexPath.row + 1)"
+		cell.contentConfiguration = config
+		return cell
+	}
+}
+
+// MARK: - ScrollableTopSheetViewController
+
+/// Mirror of `ScrollableSheetViewController` for the top edge.
+///
+/// Tests the dismiss hand-off in the other direction: the sheet comes
+/// down from the top and dismisses by dragging **up**. The inner scroll
+/// view scrolls normally until its content is fully scrolled (reached
+/// the bottom). Continuing to drag up then hands control to the sheet
+/// and drives the dismiss transition.
+///
+/// Reports the table via `contentScrollView(for: .top)` — the framework
+/// queries the edge matching the configured dismiss direction.
+///
+/// @ai-generated(solo)
+private final class ScrollableTopSheetViewController: UIViewController, UITableViewDataSource {
+
+	private let tableView = UITableView(frame: .zero, style: .plain)
+
+	override func viewDidLoad() {
+		super.viewDidLoad()
+		view.accessibilityIdentifier = "ScrollableTopSheet"
+		view.backgroundColor = .systemBackground
+
+		view.heightAnchor.constraint(
+			equalToConstant: UIScreen.main.bounds.height * 0.6
+		).isActive = true
+
+		let titleLabel = UILabel()
+		titleLabel.font = .monospacedSystemFont(ofSize: 20, weight: .bold)
+		titleLabel.text = "Top scrollable sheet"
+		titleLabel.textAlignment = .center
+
+		// Grabber at the BOTTOM — the dismiss edge for a top sheet.
+		let grabber = UIView()
+		grabber.backgroundColor = .tertiaryLabel
+		grabber.layer.cornerRadius = 2.5
+		grabber.translatesAutoresizingMaskIntoConstraints = false
+
+		tableView.dataSource = self
+		tableView.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
+		tableView.alwaysBounceVertical = true
+		tableView.translatesAutoresizingMaskIntoConstraints = false
+
+		view.addSubview(titleLabel)
+		view.addSubview(tableView)
+		view.addSubview(grabber)
+		titleLabel.translatesAutoresizingMaskIntoConstraints = false
+
+		NSLayoutConstraint.activate([
+			titleLabel.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 12),
+			titleLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+			titleLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+
+			tableView.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 12),
+			tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+			tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+			tableView.bottomAnchor.constraint(equalTo: grabber.topAnchor, constant: -8),
+
+			grabber.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -8),
+			grabber.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+			grabber.widthAnchor.constraint(equalToConstant: 40),
+			grabber.heightAnchor.constraint(equalToConstant: 5),
+		])
+	}
+
+	/// Hand the inner table view to the presentation machinery. The
+	/// framework queries `.top` for a top-edge sheet, so we return the
+	/// table view for that edge.
 	@available(iOS 15.0, *)
 	override func contentScrollView(for edge: NSDirectionalRectEdge) -> UIScrollView? {
 		tableView

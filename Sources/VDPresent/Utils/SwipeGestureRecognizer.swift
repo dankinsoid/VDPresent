@@ -166,11 +166,13 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
 				// could still be negative — velocity captures the fact that
 				// motion is now going the other way.
 				let v = velocity(in: view)
-				let isDismissingDirection = edges.contains(.bottom) && v.y > 0
-					|| edges.contains(.top) && v.y < 0
-					|| edges.contains(.trailing) && v.x > 0
-					|| edges.contains(.leading) && v.x < 0
-				if isScrollViewAtTop(scrollView), isDismissingDirection {
+				let dismissEdge: Edge?
+				if edges.contains(.bottom), v.y > 0 { dismissEdge = .bottom }
+				else if edges.contains(.top), v.y < 0 { dismissEdge = .top }
+				else if edges.contains(.trailing), v.x > 0 { dismissEdge = .trailing }
+				else if edges.contains(.leading), v.x < 0 { dismissEdge = .leading }
+				else { dismissEdge = nil }
+				if let dismissEdge, isScrollViewAtDismissBoundary(scrollView, for: dismissEdge) {
 					// Baseline reset for OUR recognizer: the translation
 					// accumulated during the observing phase belongs to
 					// the scroll view, not to the sheet. Zeroing it means
@@ -519,18 +521,40 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
 		edge = computeEdge()
 	}
 
-	/// True when the scroll view is at (or past) the natural top of its
-	/// content — the point at which further downward drag should no longer
-	/// scroll and should instead drive the sheet's dismiss transition.
+	/// True when the scroll view has bottomed out on the side that the
+	/// sheet dismisses toward — the moment at which further drag should
+	/// stop scrolling and start driving the sheet's dismiss transition.
 	///
-	/// The "top" is defined as `-adjustedContentInset.top`, not `0`, so
-	/// scroll views with a non-zero top inset (e.g. under a large title or
-	/// a grabber) still yield control at the right moment. We treat any
-	/// offset within half a point of that value as "at top" to absorb the
-	/// sub-pixel rounding that `UIScrollView` introduces during bouncing.
-	private func isScrollViewAtTop(_ scrollView: UIScrollView) -> Bool {
-		let topOffset = -scrollView.adjustedContentInset.top
-		return scrollView.contentOffset.y <= topOffset + 0.5
+	/// The "boundary" depends on the dismiss edge:
+	///   - `.bottom` sheet dismisses by dragging **down**, so the scroll
+	///     view hands off at its **top** (`-adjustedContentInset.top`),
+	///   - `.top` sheet dismisses by dragging **up**, so the scroll view
+	///     hands off at its **bottom** (content fully scrolled),
+	///   - `.leading` / `.trailing` — analogously along the x axis.
+	///
+	/// Offsets are measured against `adjustedContentInset` rather than
+	/// `0`, so scroll views with non-zero insets (large titles, grabbers,
+	/// safe-area bars) hand off at the right moment. A half-point cushion
+	/// absorbs sub-pixel rounding that `UIScrollView` introduces during
+	/// bouncing.
+	private func isScrollViewAtDismissBoundary(_ scrollView: UIScrollView, for edge: Edge) -> Bool {
+		let inset = scrollView.adjustedContentInset
+		let offset = scrollView.contentOffset
+		let size = scrollView.bounds.size
+		let content = scrollView.contentSize
+		let cushion: CGFloat = 0.5
+		switch edge {
+		case .bottom:
+			return offset.y <= -inset.top + cushion
+		case .top:
+			let maxY = max(-inset.top, content.height + inset.bottom - size.height)
+			return offset.y >= maxY - cushion
+		case .trailing:
+			return offset.x <= -inset.left + cushion
+		case .leading:
+			let maxX = max(-inset.left, content.width + inset.right - size.width)
+			return offset.x >= maxX - cushion
+		}
 	}
 
 	private func computeEdge() -> Edge {
