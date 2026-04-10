@@ -33,10 +33,7 @@ func logTransitionState(
 			role = "remaining"
 		}
 		let frame = fmtFrame(ctx.view)
-		let cr = String(format: "%.1f", ctx.view.layer.cornerRadius)
-		let mc = fmtMaskedCorners(ctx.view.layer.maskedCorners)
-		let clip = ctx.view.clipsToBounds ? "clip" : "noClip"
-		lines.append("  \(name): \(transform) \(frame) \(role) cr=\(cr) mc=\(mc) \(clip)")
+		lines.append("  \(name): \(transform) \(frame) \(role)")
 	}
 	print("[\(phase)]\n\(lines.joined(separator: "\n"))")
 }

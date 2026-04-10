@@ -75,7 +75,6 @@ private extension UIViewTransition {
 	) -> UIViewTransition {
 		.combined(
 			recessScale(to: targetView, edge: edge, cornerRadius: cornerRadius, up: up),
-			.constant(\.clipsToBounds, true),
 			.constant(\.layer.maskedCorners, .edge(edge)),
 			.constant(\.layer.cornerRadius, cornerRadius)
 		)
