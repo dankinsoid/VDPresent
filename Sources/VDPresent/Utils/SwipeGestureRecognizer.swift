@@ -19,14 +19,25 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
 	var fullDuration: Double = UIKitAnimation.defaultDuration
 	weak var target: UIView?
 
-	/// Lazy lookup for an inner scroll view whose pan gesture should
-	/// cooperate with this recognizer. Invoked on gesture begin; if it
-	/// returns a scroll view, the recognizer switches from the "exclusive
-	/// sheet gesture" mode into "scroll-aware" mode — see `ScrollState`.
+	/// Lazy lookup for the inner scroll view that is *eligible* to
+	/// cooperate with this recognizer — usually the top controller's
+	/// `contentScrollView(for:)`. The closure is consulted from
+	/// `gestureRecognizer(_:shouldRecognizeSimultaneouslyWith:)`: if the
+	/// conflicting gesture happens to be that scroll view's pan, we know
+	/// the touch landed inside the scroll view and remember it as the
+	/// "active" scroll view for this gesture sequence.
 	///
 	/// Stored as a closure so the recognizer never retains the scroll view
-	/// and always sees the currently-visible top controller's scroll view.
+	/// and always sees the currently-visible controller's scroll view.
 	var trackedScrollView: (() -> UIScrollView?)?
+
+	/// The scroll view whose pan gesture is currently conflicting with ours
+	/// *for this touch sequence*. Populated in `shouldRecognizeSimultaneouslyWith`
+	/// and cleared when the gesture ends. `nil` means the touch did not
+	/// land inside the tracked scroll view (e.g. started on a grabber or
+	/// title label) — in that case the recognizer uses its normal flow,
+	/// including the overscroll-on-began shortcut.
+	private weak var activeScrollView: UIScrollView?
 
 	/// Three-state machine for scroll-aware gesture coordination. Only used
 	/// when `trackedScrollView` returned a non-nil scroll view at `.began`.
@@ -98,8 +109,21 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
 		_ gestureRecognizer: UIGestureRecognizer,
 		shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer
 	) -> Bool {
-		guard let tracked = trackedScrollView?() else { return false }
-		return other === tracked.panGestureRecognizer
+		guard
+			let tracked = trackedScrollView?(),
+			other === tracked.panGestureRecognizer
+		else {
+			return false
+		}
+		// UIKit only calls this delegate method when both gestures want
+		// the same touch — i.e. the touch physically hit this scroll
+		// view. Remember it so `.began` can switch into scroll-aware
+		// mode. For touches that start outside the scroll view (on a
+		// grabber, title, etc.) this method is never called, so
+		// `activeScrollView` stays `nil` and the normal / overscroll
+		// flow is used.
+		activeScrollView = tracked
+		return true
 	}
 
 	@objc
@@ -116,17 +140,20 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
 			// this one (e.g. previous gesture ended in overscroll without a
 			// full `stop()`).
 			edge = nil
-			// Scroll-aware mode: always defer the transition decision to
-			// the first `.changed` tick. By staying in `.observing` for
-			// one frame we get a real translation vector (the initial
-			// velocity-based `computeEdge()` is noisy near zero) and we
-			// never start the transition — or the overscroll-on-began
-			// shortcut — from the wrong edge.
+			// Scroll-aware mode: only when the touch actually landed
+			// inside the tracked scroll view (detected via
+			// `shouldRecognizeSimultaneouslyWith`, which UIKit only
+			// calls for geometrically-conflicting gestures). In that
+			// case we defer the transition decision to the first
+			// `.changed` tick so the scroll view can consume the drag
+			// until it bottoms out.
 			//
-			// Crucially, this also means an upward drag inside the scroll
-			// view never enters the pure-overscroll branch below: the
-			// scroll view owns "drag past the top" gestures, not the sheet.
-			if let scrollView = trackedScrollView?() {
+			// When the touch started outside the scroll view — e.g. on
+			// a grabber or a header label — `activeScrollView` is nil
+			// and we fall through to the normal flow, including the
+			// overscroll-on-began shortcut for drags that go away from
+			// the dismiss edge.
+			if let scrollView = activeScrollView {
 				scrollState = .observing(scrollView)
 				return
 			}
@@ -283,6 +310,7 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
 			// end, just reset state so the next gesture starts fresh.
 			if case .observing = scrollState {
 				scrollState = .none
+				activeScrollView = nil
 				return
 			}
 			guard wasBegun else {
@@ -301,6 +329,7 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
 			}
 			if case .observing = scrollState {
 				scrollState = .none
+				activeScrollView = nil
 				return
 			}
 			guard wasBegun else { return }
@@ -340,6 +369,7 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
 		lastPercent = nil
 		edge = nil
 		overscrollLimit = 0
+		activeScrollView = nil
 	}
 
 	/// Applies one tick of the overscroll handler for the given raw percent
@@ -583,12 +613,24 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
 		// still start the gesture so overscroll can take over immediately.
 		let isOverscrollDirection = overscroll != nil
 			&& edges.contains(NSDirectionalRectEdge(edge.opposite))
-		// Scroll-aware case: a tracked scroll view will consume the drag
-		// until it bottoms out, and only then the sheet takes over. We
-		// must begin the gesture regardless of the initial drag direction
-		// so we can observe it and hand off later.
-		let hasTrackedScrollView = trackedScrollView?() != nil
-		guard isDismissDirection || isOverscrollDirection || hasTrackedScrollView else {
+		// Scroll-aware case: the touch started inside a tracked scroll
+		// view. The scroll view will consume the drag until it bottoms
+		// out, after which the sheet takes over. We must begin the
+		// gesture regardless of the initial drag direction (including
+		// the direction AWAY from the dismiss edge, which would
+		// normally fail here) so we can observe it and hand off later.
+		// Testing hit-containment directly — rather than relying on
+		// `shouldRecognizeSimultaneouslyWith` — also lets us cache the
+		// scroll view in `activeScrollView` before `.began` fires.
+		var touchIsInTrackedScrollView = false
+		if let tracked = trackedScrollView?() {
+			let loc = gestureRecognizer.location(in: tracked)
+			if tracked.bounds.contains(loc) {
+				activeScrollView = tracked
+				touchIsInTrackedScrollView = true
+			}
+		}
+		guard isDismissDirection || isOverscrollDirection || touchIsInTrackedScrollView else {
 			return false
 		}
 		let threshold: CGFloat = 36
