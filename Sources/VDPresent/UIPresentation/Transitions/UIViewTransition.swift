@@ -589,8 +589,7 @@ private final class PreviewController: UIViewController {
 		let transition = UIViewTransition.move(
 			from: .trailing,
 			to: .leading,
-			.relative(0.3),
-			relativeTo: { _ in self.view }
+			.relative(0.3)
 		)
 		transition.willAppear(moving, UIViewState()).apply(to: moving)
 		UIView.animate(withDuration: 0.5, delay: 0) { [self] in

@@ -15,9 +15,9 @@ public extension UIPresentation {
 	) -> UIPresentation {
 		UIPresentation(
 			transition: .base(transitionID: "sheet")
-				.environment(\.contentTransition) { _ in
+				.environment(\.contentTransition) { ctx in
 					.combined(
-						.move(from: edge),
+						.move(from: edge, relativeTo: { [weak cnt = ctx.container] _ in cnt }),
 						.constant(\.clipsToBounds, true),
 						.constant(\.layer.cornerRadius, cornerRadius),
 						.constant(\.layer.maskedCorners, .edge(edge.opposite))
