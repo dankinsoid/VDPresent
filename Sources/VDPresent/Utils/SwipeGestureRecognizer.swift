@@ -21,20 +21,20 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
 
 	/// Lazy lookup for the inner scroll view that is *eligible* to
 	/// cooperate with this recognizer — usually the top controller's
-	/// `contentScrollView(for:)`. The closure is consulted from
-	/// `gestureRecognizer(_:shouldRecognizeSimultaneouslyWith:)`: if the
-	/// conflicting gesture happens to be that scroll view's pan, we know
-	/// the touch landed inside the scroll view and remember it as the
-	/// "active" scroll view for this gesture sequence.
+	/// `contentScrollView(for:)`. Used by `gestureRecognizerShouldBegin`
+	/// (hit-testing the current touch against this scroll view) and by
+	/// `shouldRecognizeSimultaneouslyWith` (allowing concurrent recognition
+	/// with its pan gesture).
 	///
 	/// Stored as a closure so the recognizer never retains the scroll view
 	/// and always sees the currently-visible controller's scroll view.
 	var trackedScrollView: (() -> UIScrollView?)?
 
-	/// The scroll view whose pan gesture is currently conflicting with ours
-	/// *for this touch sequence*. Populated in `shouldRecognizeSimultaneouslyWith`
-	/// and cleared when the gesture ends. `nil` means the touch did not
-	/// land inside the tracked scroll view (e.g. started on a grabber or
+	/// The scroll view that the current touch sequence is interacting
+	/// with. Set authoritatively in `gestureRecognizerShouldBegin` via a
+	/// hit-test against `trackedScrollView`, and cleared in `stop()` /
+	/// the observing-end branches. `nil` means the touch did not land
+	/// inside the tracked scroll view (e.g. started on a grabber or
 	/// title label) — in that case the recognizer uses its normal flow,
 	/// including the overscroll-on-began shortcut.
 	private weak var activeScrollView: UIScrollView?
@@ -109,21 +109,15 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
 		_ gestureRecognizer: UIGestureRecognizer,
 		shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer
 	) -> Bool {
-		guard
-			let tracked = trackedScrollView?(),
-			other === tracked.panGestureRecognizer
-		else {
-			return false
-		}
-		// UIKit only calls this delegate method when both gestures want
-		// the same touch — i.e. the touch physically hit this scroll
-		// view. Remember it so `.began` can switch into scroll-aware
-		// mode. For touches that start outside the scroll view (on a
-		// grabber, title, etc.) this method is never called, so
-		// `activeScrollView` stays `nil` and the normal / overscroll
-		// flow is used.
-		activeScrollView = tracked
-		return true
+		// Allow concurrent recognition only with the tracked scroll
+		// view's pan — that's the gesture we hand off to/from. We do
+		// NOT cache the scroll view here: `activeScrollView` is set
+		// authoritatively in `gestureRecognizerShouldBegin` via a
+		// hit-test, and this delegate method may be called multiple
+		// times for unrelated gestures, so writing to it here would
+		// either be redundant or clobber the correct value.
+		guard let tracked = trackedScrollView?() else { return false }
+		return other === tracked.panGestureRecognizer
 	}
 
 	@objc
