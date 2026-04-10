@@ -42,7 +42,7 @@ public extension UIPresentation {
 				})
 				.environment(\.overCurrentContext, true)
 				.withBackground(containerColor),
-			interactivity: .swipe(to: edge),
+			interactivity: .swipe(to: edge, overscroll: .stretch()),
 			animation: .default
 		)
 	}

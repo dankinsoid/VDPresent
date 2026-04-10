@@ -46,7 +46,7 @@ public extension UIPresentation {
 				.environment(\.overCurrentContext, true)
 				.withBackground(containerColor)
 				.environment(\.backgroundPlacement, .behindController),
-			interactivity: .swipe(to: edge),
+			interactivity: .swipe(to: edge, overscroll: .stretch()),
 			animation: .default
 		)
 	}

@@ -820,3 +820,4 @@ private final class FirstResponderOnAppearViewController: UIViewController {
 		hide(animated: true)
 	}
 }
+
