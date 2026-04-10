@@ -131,6 +131,15 @@ final class MainMenuViewController: UITableViewController {
 				code: "controller.show(as: .fullScreen(from: .bottom, interactive: true))",
 				presentation: .fullScreen(from: .bottom, interactive: true)
 			),
+			.init(
+				title: ".navigation + firstResponder",
+				description: "Push a screen whose text field becomes first responder in viewWillAppear and resigns in viewWillDisappear. Stress-tests keyboard interaction during navigation transitions.",
+				code: "pushed.show(as: .navigation)\n// in pushed:\n// viewWillAppear  → textField.becomeFirstResponder()\n// viewWillDisappear → textField.resignFirstResponder()",
+				presentation: .navigation,
+				tapAction: { _ in
+					FirstResponderOnAppearViewController().show(as: .navigation)
+				}
+			),
 		]),
 		.init(title: "Stack", items: stackSectionItems()),
 	]
@@ -717,5 +726,97 @@ final class StackStepViewController: UIViewController {
 			label.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -14),
 		])
 		return container
+	}
+}
+
+// MARK: - FirstResponderOnAppearViewController
+
+/// Demo screen that becomes first responder during the navigation transition.
+///
+/// Exercises the interaction between `UIPresentation` transitions and the keyboard:
+/// the text field calls `becomeFirstResponder()` in `viewWillAppear` — *before* the
+/// push animation finishes — and `resignFirstResponder()` in `viewWillDisappear` —
+/// *before* the pop animation finishes. Both the keyboard animation and the
+/// transition animation run concurrently, so any layout/safe-area coupling between
+/// them surfaces here.
+/// @ai-generated(solo)
+private final class FirstResponderOnAppearViewController: UIViewController {
+
+	private let textField: UITextField = {
+		let tf = UITextField()
+		tf.borderStyle = .roundedRect
+		tf.placeholder = "Focused on viewWillAppear"
+		tf.font = .systemFont(ofSize: 17)
+		tf.returnKeyType = .done
+		return tf
+	}()
+
+	override func viewDidLoad() {
+		super.viewDidLoad()
+		view.accessibilityIdentifier = "FirstResponderOnAppear"
+		view.backgroundColor = .systemBackground
+		setupLayout()
+	}
+
+	override func viewWillAppear(_ animated: Bool) {
+		super.viewWillAppear(animated)
+		print("🟢 [FirstResponderOnAppear] viewWillAppear → becomeFirstResponder")
+		textField.becomeFirstResponder()
+	}
+
+	override func viewWillDisappear(_ animated: Bool) {
+		super.viewWillDisappear(animated)
+		print("🟢 [FirstResponderOnAppear] viewWillDisappear → resignFirstResponder")
+		textField.resignFirstResponder()
+	}
+
+	// MARK: - Private
+
+	private func setupLayout() {
+		let titleLabel = UILabel()
+		titleLabel.font = .monospacedSystemFont(ofSize: 22, weight: .bold)
+		titleLabel.text = "First responder on appear"
+		titleLabel.numberOfLines = 0
+
+		let descLabel = UILabel()
+		descLabel.font = .systemFont(ofSize: 16)
+		descLabel.textColor = .secondaryLabel
+		descLabel.text = "The text field grabs focus in viewWillAppear and releases it in viewWillDisappear, so the keyboard animates in/out alongside the navigation transition."
+		descLabel.numberOfLines = 0
+
+		let dismissButton = UIButton(type: .system)
+		dismissButton.setTitle("← Go Back", for: .normal)
+		dismissButton.titleLabel?.font = .systemFont(ofSize: 17, weight: .semibold)
+		dismissButton.backgroundColor = .secondarySystemBackground
+		dismissButton.setTitleColor(.label, for: .normal)
+		dismissButton.layer.cornerRadius = 14
+		dismissButton.layer.cornerCurve = .continuous
+		dismissButton.heightAnchor.constraint(equalToConstant: 50).isActive = true
+		dismissButton.addTarget(self, action: #selector(didTapDismiss), for: .touchUpInside)
+
+		let stack = UIStackView(arrangedSubviews: [titleLabel, descLabel, textField])
+		stack.axis = .vertical
+		stack.spacing = 16
+		stack.setCustomSpacing(8, after: titleLabel)
+
+		view.addSubview(stack)
+		view.addSubview(dismissButton)
+		stack.translatesAutoresizingMaskIntoConstraints = false
+		dismissButton.translatesAutoresizingMaskIntoConstraints = false
+
+		NSLayoutConstraint.activate([
+			stack.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 24),
+			stack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+			stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+
+			dismissButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+			dismissButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+			dismissButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -16),
+		])
+	}
+
+	@objc private func didTapDismiss() {
+		print("🟢 [Dismiss] tapped on \(view.accessibilityIdentifier ?? "?")")
+		hide(animated: true)
 	}
 }
