@@ -140,6 +140,15 @@ final class MainMenuViewController: UITableViewController {
 					FirstResponderOnAppearViewController().show(as: .navigation)
 				}
 			),
+			.init(
+				title: ".sheet — half screen",
+				description: "Sheet with a fixed content height of ≈50% of the screen. Drag up to test rubber-band overscroll: the view stretches with resistance but never reaches the safe area.",
+				code: "let vc = HalfHeightSheetViewController()\nvc.show(as: .sheet)",
+				presentation: .sheet,
+				tapAction: { _ in
+					HalfHeightSheetViewController().show(as: .sheet)
+				}
+			),
 		]),
 		.init(title: "Stack", items: stackSectionItems()),
 	]
@@ -817,6 +826,76 @@ private final class FirstResponderOnAppearViewController: UIViewController {
 
 	@objc private func didTapDismiss() {
 		print("🟢 [Dismiss] tapped on \(view.accessibilityIdentifier ?? "?")")
+		hide(animated: true)
+	}
+}
+
+// MARK: - HalfHeightSheetViewController
+
+/// Demo sheet whose content height is fixed at roughly half the screen.
+///
+/// `.sheet` pins three edges (leading/trailing/dismiss-edge) to the
+/// superview and attaches a `greaterThanOrEqual` + low-priority `equal`
+/// constraint between the opposite edge and the superview's safe area.
+/// Adding a required `heightAnchor` on the sheet's view wins over the
+/// low-priority pull, so the sheet settles at the requested height —
+/// leaving plenty of room above to test rubber-band overscroll.
+///
+/// @ai-generated(guided)
+private final class HalfHeightSheetViewController: UIViewController {
+
+	override func viewDidLoad() {
+		super.viewDidLoad()
+		view.accessibilityIdentifier = "HalfHeightSheet"
+		view.backgroundColor = .systemBackground
+
+		view.heightAnchor.constraint(
+			equalToConstant: UIScreen.main.bounds.height / 2
+		).isActive = true
+
+		let titleLabel = UILabel()
+		titleLabel.font = .monospacedSystemFont(ofSize: 22, weight: .bold)
+		titleLabel.text = "Half-screen sheet"
+		titleLabel.numberOfLines = 0
+
+		let descLabel = UILabel()
+		descLabel.font = .systemFont(ofSize: 16)
+		descLabel.textColor = .secondaryLabel
+		descLabel.text = "Drag the sheet upward past its resting position to feel the rubber-band overscroll. The stretch tops out before the safe area, with the tangent capped at 45° so the view never outruns your finger."
+		descLabel.numberOfLines = 0
+
+		let dismissButton = UIButton(type: .system)
+		dismissButton.setTitle("Dismiss", for: .normal)
+		dismissButton.titleLabel?.font = .systemFont(ofSize: 17, weight: .semibold)
+		dismissButton.backgroundColor = .secondarySystemBackground
+		dismissButton.setTitleColor(.label, for: .normal)
+		dismissButton.layer.cornerRadius = 14
+		dismissButton.layer.cornerCurve = .continuous
+		dismissButton.heightAnchor.constraint(equalToConstant: 50).isActive = true
+		dismissButton.addTarget(self, action: #selector(dismissHalfSheet), for: .touchUpInside)
+
+		let stack = UIStackView(arrangedSubviews: [titleLabel, descLabel])
+		stack.axis = .vertical
+		stack.spacing = 16
+		stack.setCustomSpacing(8, after: titleLabel)
+
+		view.addSubview(stack)
+		view.addSubview(dismissButton)
+		stack.translatesAutoresizingMaskIntoConstraints = false
+		dismissButton.translatesAutoresizingMaskIntoConstraints = false
+
+		NSLayoutConstraint.activate([
+			stack.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 24),
+			stack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+			stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+
+			dismissButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+			dismissButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+			dismissButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -16),
+		])
+	}
+
+	@objc private func dismissHalfSheet() {
 		hide(animated: true)
 	}
 }

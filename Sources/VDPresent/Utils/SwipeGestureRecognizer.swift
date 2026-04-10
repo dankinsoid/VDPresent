@@ -254,7 +254,11 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
 	/// into the inset region.
 	private func computeOverscrollLimit(for edge: Edge) -> CGFloat {
 		guard let target, let window = target.window else { return 0 }
-		let margin: CGFloat = 8
+		// Small cushion: crossing the safe area "a tiny bit" is acceptable
+		// (some users expect the stretch to kiss the notch), fully crossing
+		// is not — it triggers `safeAreaInsets` recalc on the sheet's
+		// subviews and causes visible jitter.
+		let margin: CGFloat = 4
 		let frameInWindow = target.convert(target.bounds, to: window)
 		let safeTop    = window.safeAreaInsets.top
 		let safeBottom = window.bounds.height - window.safeAreaInsets.bottom
@@ -283,19 +287,36 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
 		overscrollLimit = 0
 	}
 
-	/// Animates the target view's transform back to identity with a short
+	/// Animates the target view's transform back to identity with an
 	/// ease-out curve. Called when the gesture ends while still in overscroll.
+	///
+	/// Duration scales with how far the view was actually stretched: a
+	/// tiny nudge returns almost instantly, a near-max stretch takes
+	/// (close to) the full transition duration. Measured from the
+	/// current transform's translation component — works for both
+	/// `.stretch` (tx/ty ≈ stretch/2) and `.offset` (tx/ty = shift),
+	/// because we only care about *relative* progress.
 	///
 	/// TODO edge cases:
 	///   - If the view is removed (programmatic dismiss) while this animation
 	///     runs, the transform is simply discarded along with the view.
 	///   - If a new gesture begins before this animation finishes, the new
 	///     gesture's baseline will be the in-flight transform rather than
-	///     identity. Rare in practice (animation is ~0.25s).
+	///     identity.
 	private func animateOverscrollReturn() {
 		guard let target else { return }
+		let t = target.transform
+		let translation = max(abs(t.tx), abs(t.ty))
+		let progress = overscrollLimit > 0
+			? min(1, translation / overscrollLimit)
+			: 0
+		// Minimum so micro-returns don't snap instantly (looks abrupt);
+		// scale by `fullDuration` so the feel matches the rest of the
+		// presentation's motion without copying its full length.
+		let minDuration: TimeInterval = 0.08
+		let duration = max(minDuration, fullDuration * TimeInterval(progress))
 		UIView.animate(
-			withDuration: 0.25,
+			withDuration: duration,
 			delay: 0,
 			options: [.curveEaseOut, .allowUserInteraction, .beginFromCurrentState]
 		) {

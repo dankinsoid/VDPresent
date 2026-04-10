@@ -198,7 +198,25 @@ public extension UIViewTransition {
 	}
 
 	/// Computes the (dx, dy) translation for a move transition, accounting for LTR/RTL layout direction.
-	/// The distance is derived from `reference`'s bounds, while layout direction follows the moving `view`.
+	///
+	/// The distance `.relative(1)` represents is *not* the reference view's
+	/// full dimension — it is the distance the moving view needs to travel
+	/// for its *leading* edge (w.r.t. the move direction) to line up with
+	/// the *opposite* edge of `reference`. That is: how far the view must
+	/// move to fully clear `reference` on the given side.
+	///
+	/// Examples (vertical, `edge = .bottom`, reference height = 800):
+	///   - moving view fills the reference (frame.minY = 0, height = 800)
+	///     → distance = 800 - 0 = 800 (same as before).
+	///   - half-sheet resting at the bottom (minY = 400, height = 400)
+	///     → distance = 800 - 400 = 400. A `.relative(1)` move slides it
+	///     down by 400pt — just enough for its top edge to reach the
+	///     reference's bottom edge.
+	///
+	/// When `view == reference` the moving view's frame in self-coordinates
+	/// equals its bounds, so the computation collapses back to
+	/// `reference.bounds.<dimension>` — matching legacy `relativeTo: nil`
+	/// behavior.
 	private static func moveOffset(
 		for edge: Edge,
 		view: UIView,
@@ -206,17 +224,58 @@ public extension UIViewTransition {
 		offset: RelationValue<CGFloat>
 	) -> (CGFloat, CGFloat) {
 		let isLtr = UIView.userInterfaceLayoutDirection(for: view.semanticContentAttribute) == .leftToRight
+		// View's visual frame in `reference` coordinates. `convert` walks
+		// the layer tree and respects any currently-applied transform —
+		// which is what we want: move transforms stack additively on top
+		// of whatever transform the view already has, and distances must
+		// be measured in the same space where the resulting translate is
+		// applied. When `view === reference`, fall back to `bounds`
+		// directly (convert-to-self is a no-op).
+		let frameInReference: CGRect = {
+			if view === reference {
+				return view.bounds
+			}
+			return view.convert(view.bounds, to: reference)
+		}()
+		let refBounds = reference.bounds
+		// Distance from the view's edge *opposite* the move direction to
+		// the reference's edge *in* the move direction. This is how far
+		// the view must translate for its trailing edge (along the motion
+		// axis) to fully exit the reference on the target side.
+		let verticalDistance: CGFloat
+		switch edge {
+		case .top:    verticalDistance = frameInReference.maxY - refBounds.minY
+		case .bottom: verticalDistance = refBounds.maxY - frameInReference.minY
+		default:      verticalDistance = 0
+		}
+		let horizontalDistance: CGFloat
 		switch edge {
 		case .leading:
-			let value = offset.value(for: reference.bounds.width)
+			// `.leading` in visual terms = left in LTR, right in RTL. In
+			// both cases the view moves toward the reference's leading
+			// visual edge, so the distance is from the view's trailing
+			// edge to that target.
+			horizontalDistance = isLtr
+				? frameInReference.maxX - refBounds.minX
+				: refBounds.maxX - frameInReference.minX
+		case .trailing:
+			horizontalDistance = isLtr
+				? refBounds.maxX - frameInReference.minX
+				: frameInReference.maxX - refBounds.minX
+		default:
+			horizontalDistance = 0
+		}
+		switch edge {
+		case .leading:
+			let value = offset.value(for: horizontalDistance)
 			return (isLtr ? -value : value, 0)
 		case .trailing:
-			let value = offset.value(for: reference.bounds.width)
+			let value = offset.value(for: horizontalDistance)
 			return (isLtr ? value : -value, 0)
 		case .top:
-			return (0, -offset.value(for: reference.bounds.height))
+			return (0, -offset.value(for: verticalDistance))
 		case .bottom:
-			return (0, offset.value(for: reference.bounds.height))
+			return (0, offset.value(for: verticalDistance))
 		}
 	}
 

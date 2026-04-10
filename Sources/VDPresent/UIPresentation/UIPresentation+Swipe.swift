@@ -200,24 +200,58 @@ public extension UIPresentation.Interactivity {
 		/// Use this for sheets/pageSheets that are flush with the screen edge:
 		/// dragging a bottom sheet further up grows it upward, bottom stays put.
 		///
-		/// The rubber-band asymptote is the `limit` passed in by the gesture
-		/// recognizer (space up to the safe area), not the view's full
-		/// dimension — so the stretch visibly tops out before hitting the
-		/// status bar / notch, matching native pageSheet behavior.
+		/// ## Two ceilings, whichever is lower
+		///
+		/// The stretch is bounded by `min(visualCap, safeAreaCap)` where
+		/// - `safeAreaCap` is the free space up to the window's safe area
+		///   (computed by the gesture recognizer, passed in as `limit`),
+		/// - `visualCap = dimension * maxStretchRatio` is the point past
+		///   which scaling starts to visibly distort content (default 15%
+		///   of the view's dimension along the drag axis).
+		///
+		/// Small sheets (far from the safe area) are bounded by `visualCap`;
+		/// large sheets that are flush with the screen edge are bounded by
+		/// `safeAreaCap`. The cushion in `safeAreaCap` is intentionally
+		/// small — crossing the safe area "a tiny bit" is acceptable, fully
+		/// crossing it (which triggers a `safeAreaInsets` recalc) is not.
+		///
+		/// ## Curve: 45° cap
+		///
+		/// The rubber-band uses `constant = 1`, which gives `b'(0) = 1`
+		/// (exactly 45°) and `b'(x) < 1` everywhere else — so the stretch
+		/// never outruns the finger. This is the steepest curve allowed by
+		/// the "tangent ≤ 45°" rule while still respecting the asymptote.
+		/// A softer constant just makes the start feel dead without any
+		/// benefit at the top.
+		///
+		/// - Parameter maxStretchRatio: Visual cap as a fraction of the
+		///   view's dimension along the drag axis. Default `0.08` —
+		///   smaller than `.offset` because scaling distorts content
+		///   more aggressively than plain translation at the same
+		///   magnitude.
 		///
 		/// @ai-generated(guided)
-		public static func stretch(constant: CGFloat = 0.3) -> Overscroll {
-			Overscroll { view, edge, distance, limit in
+		public static func stretch(maxStretchRatio: CGFloat = 0.08) -> Overscroll {
+			Overscroll { view, edge, distance, safeAreaCap in
 				let isVertical = edge == .top || edge == .bottom
 				let dimension = isVertical ? view.bounds.height : view.bounds.width
 				guard dimension > 0 else { return }
-				guard limit > 0 else {
-					// No room to grow — view is already at/past safe area.
+
+				let visualCap = dimension * maxStretchRatio
+				// `safeAreaCap` is authoritative: 0 means "no room" (view
+				// is already flush with the safe area, or we couldn't
+				// measure — recognizer has no window). In either case the
+				// correct behavior is to not stretch.
+				let cap = min(visualCap, safeAreaCap)
+				guard cap > 0 else {
 					view.transform = .identity
 					return
 				}
 
-				let stretch = rubberBand(distance, dimension: limit, constant: constant)
+				// `constant = 1` → tangent at 0 is exactly 1 (45°), and
+				// `b(x) → cap` as `x → ∞`. This is the steepest curve that
+				// never outruns the finger.
+				let stretch = rubberBand(distance, dimension: cap, constant: 1)
 				let scale = (dimension + stretch) / dimension
 
 				// Pin the edge opposite the drag. For `.bottom` (sheet dragged
@@ -250,18 +284,30 @@ public extension UIPresentation.Interactivity {
 		/// a floating card) — stretching would look wrong, but following the
 		/// finger with resistance preserves the tactile feel.
 		///
-		/// The rubber-band asymptote is `limit` (free space to safe area),
-		/// so the shift visibly tops out before the view crosses into the
-		/// status-bar / notch region.
+		/// Uses the same two-ceiling rule as `.stretch`:
+		/// `min(visualCap, safeAreaCap)`, where `visualCap = dimension *
+		/// maxOffsetRatio`. Curve uses `constant = 1` — tangent ≤ 45°, so
+		/// the view never outruns the finger.
+		///
+		/// - Parameter maxOffsetRatio: Visual cap as a fraction of the
+		///   view's dimension along the drag axis. Default `0.15`.
 		///
 		/// @ai-generated(guided)
-		public static func offset(constant: CGFloat = 0.3) -> Overscroll {
-			Overscroll { view, edge, distance, limit in
-				guard limit > 0 else {
+		public static func offset(maxOffsetRatio: CGFloat = 0.15) -> Overscroll {
+			Overscroll { view, edge, distance, safeAreaCap in
+				let isVertical = edge == .top || edge == .bottom
+				let dimension = isVertical ? view.bounds.height : view.bounds.width
+				guard dimension > 0 else { return }
+
+				let visualCap = dimension * maxOffsetRatio
+				// See `.stretch`: `safeAreaCap == 0` means "no room",
+				// not "unknown — use visual cap".
+				let cap = min(visualCap, safeAreaCap)
+				guard cap > 0 else {
 					view.transform = .identity
 					return
 				}
-				let shift = rubberBand(distance, dimension: limit, constant: constant)
+				let shift = rubberBand(distance, dimension: cap, constant: 1)
 
 				// Move *away* from the dismiss edge: `.bottom` → drag up → -y.
 				let translate: CGAffineTransform
