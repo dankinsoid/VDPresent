@@ -112,19 +112,17 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
 	/// it owns: we pick up whatever UIKit reports as geometrically
 	/// relevant.
 	///
-	/// Acceptance criteria for coordination:
-	///   1. `other` must be a `UIPanGestureRecognizer` attached to a
-	///      `UIScrollView` that lives inside `target` (our transition
-	///      view). Random unrelated pans are rejected.
-	///   2. The scroll view must still have room to scroll **away from**
-	///      the dismiss edge. If it's already pinned at the boundary
-	///      (e.g. table already at the top in a bottom sheet), there is
-	///      nothing to hand off from and the normal swipe-dismiss flow
-	///      is the correct behavior — we return `false` and let the
-	///      scroll view lose.
+	/// Coordination is accepted for any `UIPanGestureRecognizer` attached
+	/// to a `UIScrollView` that lives inside `target`. We deliberately do
+	/// NOT filter by "can still scroll away from dismiss edge" here: even
+	/// when the scroll view is already at the boundary, the two pans must
+	/// still run simultaneously so the `.changed` handler can instantly
+	/// flip from `.observing` to `.driving` on the very first tick. The
+	/// boundary check lives in `.changed` (per-tick, using live velocity),
+	/// which is the only place where it's both cheap and correct.
 	///
-	/// When both hold, we cache `activeScrollView` so `.began` can enter
-	/// scroll-aware `.observing` mode without re-doing the lookup.
+	/// We cache `activeScrollView` so `.began` can enter scroll-aware
+	/// `.observing` mode without re-doing the lookup.
 	func gestureRecognizer(
 		_ gestureRecognizer: UIGestureRecognizer,
 		shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer
@@ -133,43 +131,12 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
 			let target,
 			let pan = other as? UIPanGestureRecognizer,
 			let scrollView = pan.view as? UIScrollView,
-			scrollView.isDescendant(of: target),
-			let dismissEdge = preferredScrollDismissEdge(),
-			scrollViewCanScrollAway(scrollView, from: dismissEdge)
+			scrollView.isDescendant(of: target)
 		else {
 			return false
 		}
 		activeScrollView = scrollView
 		return true
-	}
-
-	/// Picks the dismiss edge that makes sense to coordinate with a scroll
-	/// view. We prefer vertical edges because the built-in sheets scroll
-	/// vertically; horizontal edges are used only when no vertical one is
-	/// configured. Returning `nil` means coordination is disabled for this
-	/// recognizer (no edges at all).
-	private func preferredScrollDismissEdge() -> Edge? {
-		if edges.contains(.bottom) { return .bottom }
-		if edges.contains(.top) { return .top }
-		if edges.contains(.trailing) { return .trailing }
-		if edges.contains(.leading) { return .leading }
-		return nil
-	}
-
-	/// True when `scrollView` still has content to scroll in the direction
-	/// *opposite* to `dismissEdge` — i.e. a drag toward `dismissEdge` will
-	/// first reveal more content and only later reach the boundary from
-	/// which the sheet should take over.
-	///
-	/// If the scroll view is already at that boundary (e.g. a table sitting
-	/// at its top inside a bottom sheet when the touch lands), there is no
-	/// content to scroll: coordination would immediately fall through to
-	/// "hand off", which is indistinguishable from the normal swipe flow.
-	/// In that case we return `false` and let UIKit arbitrate the two
-	/// gestures as usual — our recognizer wins the drag and dismisses the
-	/// sheet without the extra observing phase.
-	private func scrollViewCanScrollAway(_ scrollView: UIScrollView, from dismissEdge: Edge) -> Bool {
-		!isScrollViewAtDismissBoundary(scrollView, for: dismissEdge)
 	}
 
 	@objc

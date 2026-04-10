@@ -927,9 +927,6 @@ private final class HalfHeightSheetViewController: UIViewController {
 /// consumes the drag; once it's pinned at the top, continued downward
 /// drags should transfer to the sheet and drive dismissal.
 ///
-/// The hand-off relies on `contentScrollView(for:)` on `UIStackController`,
-/// which the framework queries to coordinate the two gesture recognizers.
-///
 /// @ai-generated(solo)
 private final class ScrollableSheetViewController: UIViewController, UITableViewDataSource {
 
@@ -981,13 +978,6 @@ private final class ScrollableSheetViewController: UIViewController, UITableView
 		])
 	}
 
-	/// Hand the inner table view to the presentation machinery so that
-	/// its pan gesture cooperates with the sheet's interactive dismiss.
-	@available(iOS 15.0, *)
-	override func contentScrollView(for edge: NSDirectionalRectEdge) -> UIScrollView? {
-		tableView
-	}
-
 	// MARK: UITableViewDataSource
 
 	func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { 50 }
@@ -1010,9 +1000,6 @@ private final class ScrollableSheetViewController: UIViewController, UITableView
 /// view scrolls normally until its content is fully scrolled (reached
 /// the bottom). Continuing to drag up then hands control to the sheet
 /// and drives the dismiss transition.
-///
-/// Reports the table via `contentScrollView(for: .top)` — the framework
-/// queries the edge matching the configured dismiss direction.
 ///
 /// @ai-generated(solo)
 private final class ScrollableTopSheetViewController: UIViewController, UITableViewDataSource {
@@ -1064,14 +1051,6 @@ private final class ScrollableTopSheetViewController: UIViewController, UITableV
 			grabber.widthAnchor.constraint(equalToConstant: 40),
 			grabber.heightAnchor.constraint(equalToConstant: 5),
 		])
-	}
-
-	/// Hand the inner table view to the presentation machinery. The
-	/// framework queries `.top` for a top-edge sheet, so we return the
-	/// table view for that edge.
-	@available(iOS 15.0, *)
-	override func contentScrollView(for edge: NSDirectionalRectEdge) -> UIScrollView? {
-		tableView
 	}
 
 	// MARK: UITableViewDataSource
