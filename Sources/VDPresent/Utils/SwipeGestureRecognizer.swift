@@ -19,28 +19,26 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
 	var fullDuration: Double = UIKitAnimation.defaultDuration
 	weak var target: UIView?
 
-	/// Lazy lookup for the inner scroll view that is *eligible* to
-	/// cooperate with this recognizer — usually the top controller's
-	/// `contentScrollView(for:)`. Used by `gestureRecognizerShouldBegin`
-	/// (hit-testing the current touch against this scroll view) and by
-	/// `shouldRecognizeSimultaneouslyWith` (allowing concurrent recognition
-	/// with its pan gesture).
-	///
-	/// Stored as a closure so the recognizer never retains the scroll view
-	/// and always sees the currently-visible controller's scroll view.
-	var trackedScrollView: (() -> UIScrollView?)?
-
 	/// The scroll view that the current touch sequence is interacting
-	/// with. Set authoritatively in `gestureRecognizerShouldBegin` via a
-	/// hit-test against `trackedScrollView`, and cleared in `stop()` /
-	/// the observing-end branches. `nil` means the touch did not land
-	/// inside the tracked scroll view (e.g. started on a grabber or
-	/// title label) — in that case the recognizer uses its normal flow,
+	/// with. Discovered automatically via `shouldRecognizeSimultaneouslyWith`:
+	/// UIKit only invokes that delegate method for gestures whose hit-test
+	/// regions overlap, so any `UIPanGestureRecognizer` attached to a
+	/// `UIScrollView` inside our target view that UIKit offers there is,
+	/// by definition, the scroll view under the user's finger. We accept
+	/// it (and cache it) only if the scroll view still has room to scroll
+	/// *away from* the dismiss edge — otherwise there is nothing to hand
+	/// off from, and the normal swipe-dismiss flow is the right behavior.
+	///
+	/// Cleared in `stop()` and in the observing-end branches. `nil` means
+	/// the touch did not land inside a cooperating scroll view (e.g. on a
+	/// grabber, a header, or a scroll view already pinned at its dismiss
+	/// boundary) — in that case the recognizer uses its normal flow,
 	/// including the overscroll-on-began shortcut.
 	private weak var activeScrollView: UIScrollView?
 
 	/// Three-state machine for scroll-aware gesture coordination. Only used
-	/// when `trackedScrollView` returned a non-nil scroll view at `.began`.
+	/// when `shouldRecognizeSimultaneouslyWith` cached a cooperating scroll
+	/// view into `activeScrollView` before `.began` fires.
 	///
 	/// - `.none`: no scroll view — recognizer behaves as before.
 	/// - `.observing`: scroll view is active and consuming the drag; we are
@@ -100,24 +98,78 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
 		return view.isDescendant(of: target) && target.bounds.contains(touch.location(in: target))
 	}
 
-	/// Allow this recognizer to run alongside the tracked scroll view's pan
-	/// gesture so the two can coordinate in `handle`. Without this, UIKit
-	/// would make the scroll view's pan and our pan mutually exclusive —
-	/// whichever recognized first would cancel the other, and the
-	/// scroll-to-dismiss hand-off would be impossible.
+	/// Allow this recognizer to run alongside an inner scroll view's pan
+	/// gesture so the two can coordinate in `handle` — the list scrolls
+	/// normally until it bottoms out, at which point further drag hands
+	/// off to the sheet dismiss transition. Without this, UIKit would
+	/// make the scroll view's pan and our pan mutually exclusive.
+	///
+	/// This is also how we *discover* the scroll view in the first place:
+	/// UIKit only calls this delegate for gestures whose hit regions
+	/// overlap — a scroll view whose pan UIKit offers here is, by
+	/// definition, the one sitting under the user's finger right now.
+	/// So there is no need to ask the view controller which scroll view
+	/// it owns: we pick up whatever UIKit reports as geometrically
+	/// relevant.
+	///
+	/// Acceptance criteria for coordination:
+	///   1. `other` must be a `UIPanGestureRecognizer` attached to a
+	///      `UIScrollView` that lives inside `target` (our transition
+	///      view). Random unrelated pans are rejected.
+	///   2. The scroll view must still have room to scroll **away from**
+	///      the dismiss edge. If it's already pinned at the boundary
+	///      (e.g. table already at the top in a bottom sheet), there is
+	///      nothing to hand off from and the normal swipe-dismiss flow
+	///      is the correct behavior — we return `false` and let the
+	///      scroll view lose.
+	///
+	/// When both hold, we cache `activeScrollView` so `.began` can enter
+	/// scroll-aware `.observing` mode without re-doing the lookup.
 	func gestureRecognizer(
 		_ gestureRecognizer: UIGestureRecognizer,
 		shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer
 	) -> Bool {
-		// Allow concurrent recognition only with the tracked scroll
-		// view's pan — that's the gesture we hand off to/from. We do
-		// NOT cache the scroll view here: `activeScrollView` is set
-		// authoritatively in `gestureRecognizerShouldBegin` via a
-		// hit-test, and this delegate method may be called multiple
-		// times for unrelated gestures, so writing to it here would
-		// either be redundant or clobber the correct value.
-		guard let tracked = trackedScrollView?() else { return false }
-		return other === tracked.panGestureRecognizer
+		guard
+			let target,
+			let pan = other as? UIPanGestureRecognizer,
+			let scrollView = pan.view as? UIScrollView,
+			scrollView.isDescendant(of: target),
+			let dismissEdge = preferredScrollDismissEdge(),
+			scrollViewCanScrollAway(scrollView, from: dismissEdge)
+		else {
+			return false
+		}
+		activeScrollView = scrollView
+		return true
+	}
+
+	/// Picks the dismiss edge that makes sense to coordinate with a scroll
+	/// view. We prefer vertical edges because the built-in sheets scroll
+	/// vertically; horizontal edges are used only when no vertical one is
+	/// configured. Returning `nil` means coordination is disabled for this
+	/// recognizer (no edges at all).
+	private func preferredScrollDismissEdge() -> Edge? {
+		if edges.contains(.bottom) { return .bottom }
+		if edges.contains(.top) { return .top }
+		if edges.contains(.trailing) { return .trailing }
+		if edges.contains(.leading) { return .leading }
+		return nil
+	}
+
+	/// True when `scrollView` still has content to scroll in the direction
+	/// *opposite* to `dismissEdge` — i.e. a drag toward `dismissEdge` will
+	/// first reveal more content and only later reach the boundary from
+	/// which the sheet should take over.
+	///
+	/// If the scroll view is already at that boundary (e.g. a table sitting
+	/// at its top inside a bottom sheet when the touch lands), there is no
+	/// content to scroll: coordination would immediately fall through to
+	/// "hand off", which is indistinguishable from the normal swipe flow.
+	/// In that case we return `false` and let UIKit arbitrate the two
+	/// gestures as usual — our recognizer wins the drag and dismisses the
+	/// sheet without the extra observing phase.
+	private func scrollViewCanScrollAway(_ scrollView: UIScrollView, from dismissEdge: Edge) -> Bool {
+		!isScrollViewAtDismissBoundary(scrollView, for: dismissEdge)
 	}
 
 	@objc
@@ -607,23 +659,18 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
 		// still start the gesture so overscroll can take over immediately.
 		let isOverscrollDirection = overscroll != nil
 			&& edges.contains(NSDirectionalRectEdge(edge.opposite))
-		// Scroll-aware case: the touch started inside a tracked scroll
-		// view. The scroll view will consume the drag until it bottoms
-		// out, after which the sheet takes over. We must begin the
-		// gesture regardless of the initial drag direction (including
-		// the direction AWAY from the dismiss edge, which would
-		// normally fail here) so we can observe it and hand off later.
-		// Testing hit-containment directly — rather than relying on
-		// `shouldRecognizeSimultaneouslyWith` — also lets us cache the
-		// scroll view in `activeScrollView` before `.began` fires.
-		var touchIsInTrackedScrollView = false
-		if let tracked = trackedScrollView?() {
-			let loc = gestureRecognizer.location(in: tracked)
-			if tracked.bounds.contains(loc) {
-				activeScrollView = tracked
-				touchIsInTrackedScrollView = true
-			}
-		}
+		// Scroll-aware case: a cooperating scroll view has already been
+		// discovered and cached by `shouldRecognizeSimultaneouslyWith`
+		// (UIKit invokes that delegate for geometrically-conflicting
+		// gestures before either transitions out of `.possible`, so by
+		// the time we get here `activeScrollView` is already set if the
+		// touch landed inside an inner scroll view). In that case the
+		// scroll view will consume the drag until it bottoms out, after
+		// which the sheet takes over — so we must begin the gesture
+		// regardless of the initial drag direction (including the
+		// direction AWAY from the dismiss edge, which would normally
+		// fail here) so we can observe it and hand off later.
+		let touchIsInTrackedScrollView = activeScrollView != nil
 		guard isDismissDirection || isOverscrollDirection || touchIsInTrackedScrollView else {
 			return false
 		}
