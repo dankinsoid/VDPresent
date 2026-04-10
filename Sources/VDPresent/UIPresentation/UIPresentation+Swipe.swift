@@ -57,6 +57,33 @@ public extension UIPresentation.Interactivity {
 				guard let view else { return }
 				configuration.overscroll?.apply(view, edge, distance, limit)
 			}
+			// Let the presented controller expose an inner scroll view
+			// (e.g. a `UITableView` inside a bottom sheet). The swipe
+			// recognizer then coordinates with the scroll view's pan:
+			// the list scrolls normally until it reaches its top, at
+			// which point further downward drag hands off to the sheet
+			// dismiss transition — matching the native sheet feel.
+			swipeRecognizer.trackedScrollView = { [weak controller] in
+				guard let controller else { return nil }
+				if #available(iOS 15.0, *) {
+					// Query the controller for the scroll view that
+					// governs the configured dismiss edge. For a bottom
+					// sheet that's `.bottom`; for a side sheet it would
+					// be `.leading`/`.trailing`. Prefer vertical edges
+					// because a scroll view consuming the drag only
+					// makes sense along its own scroll axis, and the
+					// built-in sheets scroll vertically.
+					let edges = configuration.edges
+					let preferred: NSDirectionalRectEdge
+					if edges.contains(.bottom) { preferred = .bottom }
+					else if edges.contains(.top) { preferred = .top }
+					else if edges.contains(.trailing) { preferred = .trailing }
+					else if edges.contains(.leading) { preferred = .leading }
+					else { return nil }
+					return controller.contentScrollView(for: preferred)
+				}
+				return nil
+			}
 			swipeRecognizer.target = context.view
 			if swipeRec == nil {
 				view.addGestureRecognizer(swipeRecognizer)

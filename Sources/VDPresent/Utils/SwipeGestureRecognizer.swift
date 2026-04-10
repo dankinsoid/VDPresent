@@ -19,6 +19,34 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
 	var fullDuration: Double = UIKitAnimation.defaultDuration
 	weak var target: UIView?
 
+	/// Lazy lookup for an inner scroll view whose pan gesture should
+	/// cooperate with this recognizer. Invoked on gesture begin; if it
+	/// returns a scroll view, the recognizer switches from the "exclusive
+	/// sheet gesture" mode into "scroll-aware" mode — see `ScrollState`.
+	///
+	/// Stored as a closure so the recognizer never retains the scroll view
+	/// and always sees the currently-visible top controller's scroll view.
+	var trackedScrollView: (() -> UIScrollView?)?
+
+	/// Three-state machine for scroll-aware gesture coordination. Only used
+	/// when `trackedScrollView` returned a non-nil scroll view at `.began`.
+	///
+	/// - `.none`: no scroll view — recognizer behaves as before.
+	/// - `.observing`: scroll view is active and consuming the drag; we are
+	///   watching for it to bottom out at the top of its content. The sheet
+	///   transition has NOT been started.
+	/// - `.driving(scrollView, lockedOffset)`: the scroll view has hit its
+	///   top and the sheet transition is in progress. Each `.changed` tick
+	///   pins the scroll view's `contentOffset` to `lockedOffset` so the two
+	///   gestures don't fight.
+	private enum ScrollState {
+		case none
+		case observing(UIScrollView)
+		case driving(UIScrollView)
+	}
+
+	private var scrollState: ScrollState = .none
+
 	private var edge: Edge?
 	private var axis: NSLayoutConstraint.Axis {
 		switch edge {
@@ -61,6 +89,19 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
 		return view.isDescendant(of: target) && target.bounds.contains(touch.location(in: target))
 	}
 
+	/// Allow this recognizer to run alongside the tracked scroll view's pan
+	/// gesture so the two can coordinate in `handle`. Without this, UIKit
+	/// would make the scroll view's pan and our pan mutually exclusive —
+	/// whichever recognized first would cancel the other, and the
+	/// scroll-to-dismiss hand-off would be impossible.
+	func gestureRecognizer(
+		_ gestureRecognizer: UIGestureRecognizer,
+		shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer
+	) -> Bool {
+		guard let tracked = trackedScrollView?() else { return false }
+		return other === tracked.panGestureRecognizer
+	}
+
 	@objc
 	private func handle(_ gestureRecognizer: UIPanGestureRecognizer) {
 		switch gestureRecognizer.state {
@@ -75,6 +116,21 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
 			// this one (e.g. previous gesture ended in overscroll without a
 			// full `stop()`).
 			edge = nil
+			// Scroll-aware mode: always defer the transition decision to
+			// the first `.changed` tick. By staying in `.observing` for
+			// one frame we get a real translation vector (the initial
+			// velocity-based `computeEdge()` is noisy near zero) and we
+			// never start the transition — or the overscroll-on-began
+			// shortcut — from the wrong edge.
+			//
+			// Crucially, this also means an upward drag inside the scroll
+			// view never enters the pure-overscroll branch below: the
+			// scroll view owns "drag past the top" gestures, not the sheet.
+			if let scrollView = trackedScrollView?() {
+				scrollState = .observing(scrollView)
+				return
+			}
+			scrollState = .none
 			let initialEdge = computeEdge()
 			// If the drag starts away from any configured dismiss edge and
 			// overscroll is configured for that opposite edge, enter overscroll
@@ -97,6 +153,67 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
 			}
 
 		case .changed:
+			// Scroll-aware hand-off: while the scroll view is consuming the
+			// drag, watch for the moment it hits its top *and* the user is
+			// still dragging toward the dismiss edge. At that moment reset
+			// the gesture's translation baseline so the sheet doesn't jump,
+			// flip to `.driving`, and start the interactive transition.
+			if case .observing(let scrollView) = scrollState {
+				// Direction is taken from instantaneous velocity, not
+				// accumulated translation: the scroll view may have been
+				// scrolled far before the user reverses and starts dragging
+				// toward the dismiss edge. Total translation at that point
+				// could still be negative — velocity captures the fact that
+				// motion is now going the other way.
+				let v = velocity(in: view)
+				let isDismissingDirection = edges.contains(.bottom) && v.y > 0
+					|| edges.contains(.top) && v.y < 0
+					|| edges.contains(.trailing) && v.x > 0
+					|| edges.contains(.leading) && v.x < 0
+				if isScrollViewAtTop(scrollView), isDismissingDirection {
+					// Baseline reset for OUR recognizer: the translation
+					// accumulated during the observing phase belongs to
+					// the scroll view, not to the sheet. Zeroing it means
+					// the sheet transition starts from the current finger
+					// position — no visual jump.
+					setTranslation(.zero, in: view)
+					// Baseline reset for the SCROLL VIEW's pan as well:
+					// the scroll view computes its `contentOffset` from
+					// its pan's accumulated translation, so zeroing that
+					// translation here, and on every subsequent tick
+					// while we drive, freezes the content in place
+					// without ever touching `contentOffset` directly.
+					scrollView.panGestureRecognizer.setTranslation(.zero, in: scrollView)
+					scrollState = .driving(scrollView)
+					edge = nil
+					begin()
+				}
+				return
+			}
+			// `.driving` — sheet transition is live. Each tick we zero
+			// the scroll view's pan translation so its own handler sees
+			// "no movement since last frame" and leaves `contentOffset`
+			// untouched. `contentOffset` is never written by us.
+			//
+			// If the user reverses past the origin, tear down the sheet
+			// transition and hand control back to the scroll view: we
+			// stop zeroing its translation, reset our own, and fall back
+			// to `.observing`. Overscroll is intentionally NOT entered
+			// here — a scroll view above the dismiss gesture owns the
+			// "drag past the top" gesture semantically.
+			if case .driving(let scrollView) = scrollState {
+				scrollView.panGestureRecognizer.setTranslation(.zero, in: scrollView)
+				let rawPercent = percent
+				if rawPercent < 0 {
+					finish(completed: false, immediately: true)
+					setTranslation(.zero, in: view)
+					scrollState = .observing(scrollView)
+					return
+				}
+				let clamped = min(1, max(0, rawPercent))
+				update(percent: clamped)
+				return
+			}
 			// Already in overscroll: either keep stretching, or (if the user
 			// pulled back into the positive range) snap back and start a
 			// fresh transition.
@@ -160,11 +277,18 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
 				stop()
 				return
 			}
+			// In `.observing` we never started a transition — nothing to
+			// end, just reset state so the next gesture starts fresh.
+			if case .observing = scrollState {
+				scrollState = .none
+				return
+			}
 			guard wasBegun else {
 				return
 			}
 			let completed = p > 0.35 || v > 800
 			finish(completed: completed)
+			scrollState = .none
 
 		case .failed, .cancelled:
 			if overscrollEdge != nil {
@@ -173,8 +297,13 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
 				stop()
 				return
 			}
+			if case .observing = scrollState {
+				scrollState = .none
+				return
+			}
 			guard wasBegun else { return }
 			finish(completed: false)
+			scrollState = .none
 
 		@unknown default:
 			break
@@ -390,6 +519,20 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
 		edge = computeEdge()
 	}
 
+	/// True when the scroll view is at (or past) the natural top of its
+	/// content — the point at which further downward drag should no longer
+	/// scroll and should instead drive the sheet's dismiss transition.
+	///
+	/// The "top" is defined as `-adjustedContentInset.top`, not `0`, so
+	/// scroll views with a non-zero top inset (e.g. under a large title or
+	/// a grabber) still yield control at the right moment. We treat any
+	/// offset within half a point of that value as "at top" to absorb the
+	/// sub-pixel rounding that `UIScrollView` introduces during bouncing.
+	private func isScrollViewAtTop(_ scrollView: UIScrollView) -> Bool {
+		let topOffset = -scrollView.adjustedContentInset.top
+		return scrollView.contentOffset.y <= topOffset + 0.5
+	}
+
 	private func computeEdge() -> Edge {
 		let offset = velocity(in: view)
 		let isLtr = view?.effectiveUserInterfaceLayoutDirection != .rightToLeft
@@ -416,7 +559,12 @@ final class SwipeGestureRecognizer: UIPanGestureRecognizer, UIGestureRecognizerD
 		// still start the gesture so overscroll can take over immediately.
 		let isOverscrollDirection = overscroll != nil
 			&& edges.contains(NSDirectionalRectEdge(edge.opposite))
-		guard isDismissDirection || isOverscrollDirection else {
+		// Scroll-aware case: a tracked scroll view will consume the drag
+		// until it bottoms out, and only then the sheet takes over. We
+		// must begin the gesture regardless of the initial drag direction
+		// so we can observe it and hand off later.
+		let hasTrackedScrollView = trackedScrollView?() != nil
+		guard isDismissDirection || isOverscrollDirection || hasTrackedScrollView else {
 			return false
 		}
 		let threshold: CGFloat = 36

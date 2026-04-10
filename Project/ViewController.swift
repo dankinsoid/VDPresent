@@ -149,6 +149,15 @@ final class MainMenuViewController: UITableViewController {
 					HalfHeightSheetViewController().show(as: .sheet)
 				}
 			),
+			.init(
+				title: ".sheet + scrollView",
+				description: "Bottom sheet containing a scroll view. Scroll the list up/down; once scrolled to the top, dragging further should hand off to the sheet's interactive dismiss.",
+				code: "let vc = ScrollableSheetViewController()\nvc.show(as: .sheet)",
+				presentation: .sheet,
+				tapAction: { _ in
+					ScrollableSheetViewController().show(as: .sheet)
+				}
+			),
 		]),
 		.init(title: "Stack", items: stackSectionItems()),
 	]
@@ -897,6 +906,89 @@ private final class HalfHeightSheetViewController: UIViewController {
 
 	@objc private func dismissHalfSheet() {
 		hide(animated: true)
+	}
+}
+
+// MARK: - ScrollableSheetViewController
+
+/// Demo sheet containing a vertically scrollable list.
+///
+/// Exercises the gesture hand-off between an inner `UIScrollView` and the
+/// sheet's interactive dismiss gesture: while the table can scroll, it
+/// consumes the drag; once it's pinned at the top, continued downward
+/// drags should transfer to the sheet and drive dismissal.
+///
+/// The hand-off relies on `contentScrollView(for:)` on `UIStackController`,
+/// which the framework queries to coordinate the two gesture recognizers.
+///
+/// @ai-generated(solo)
+private final class ScrollableSheetViewController: UIViewController, UITableViewDataSource {
+
+	private let tableView = UITableView(frame: .zero, style: .plain)
+
+	override func viewDidLoad() {
+		super.viewDidLoad()
+		view.accessibilityIdentifier = "ScrollableSheet"
+		view.backgroundColor = .systemBackground
+
+		view.heightAnchor.constraint(
+			equalToConstant: UIScreen.main.bounds.height * 0.6
+		).isActive = true
+
+		let grabber = UIView()
+		grabber.backgroundColor = .tertiaryLabel
+		grabber.layer.cornerRadius = 2.5
+		grabber.translatesAutoresizingMaskIntoConstraints = false
+
+		let titleLabel = UILabel()
+		titleLabel.font = .monospacedSystemFont(ofSize: 20, weight: .bold)
+		titleLabel.text = "Scrollable sheet"
+		titleLabel.textAlignment = .center
+
+		tableView.dataSource = self
+		tableView.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
+		tableView.alwaysBounceVertical = true
+		tableView.translatesAutoresizingMaskIntoConstraints = false
+
+		view.addSubview(grabber)
+		view.addSubview(titleLabel)
+		view.addSubview(tableView)
+		titleLabel.translatesAutoresizingMaskIntoConstraints = false
+
+		NSLayoutConstraint.activate([
+			grabber.topAnchor.constraint(equalTo: view.topAnchor, constant: 8),
+			grabber.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+			grabber.widthAnchor.constraint(equalToConstant: 40),
+			grabber.heightAnchor.constraint(equalToConstant: 5),
+
+			titleLabel.topAnchor.constraint(equalTo: grabber.bottomAnchor, constant: 12),
+			titleLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+			titleLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+
+			tableView.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 12),
+			tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+			tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+			tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+		])
+	}
+
+	/// Hand the inner table view to the presentation machinery so that
+	/// its pan gesture cooperates with the sheet's interactive dismiss.
+	@available(iOS 15.0, *)
+	override func contentScrollView(for edge: NSDirectionalRectEdge) -> UIScrollView? {
+		tableView
+	}
+
+	// MARK: UITableViewDataSource
+
+	func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { 50 }
+
+	func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+		let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
+		var config = cell.defaultContentConfiguration()
+		config.text = "Row \(indexPath.row + 1)"
+		cell.contentConfiguration = config
+		return cell
 	}
 }
 
