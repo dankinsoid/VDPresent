@@ -197,21 +197,21 @@ public extension UIPresentation.Context.Controllers {
 		var result = Array(to[..<prefixEnd])
 
 		// --- Index maps: controller → position. O(n + m) ---
-		var fromIndex: [ObjectIdentifier: Int] = Dictionary(minimumCapacity: from.count)
+		var fromIndex: [UUID: Int] = Dictionary(minimumCapacity: from.count)
 		for (i, vc) in from.enumerated() {
-			fromIndex[ObjectIdentifier(vc)] = i
+			fromIndex[vc.vdStableID] = i
 		}
-		let toSet = Set(to.map { ObjectIdentifier($0) })
+		let toSet = Set(to.map(\.vdStableID))
 
 		// --- Merge the tails ---
 		// `to` tail is the base; departing controllers are inserted near
 		// their original right neighbour from `from`.
 		let toTail = Array(to[prefixEnd...])
-		let removed = from[prefixEnd...].filter { !toSet.contains(ObjectIdentifier($0)) }
+		let removed = from[prefixEnd...].filter { !toSet.contains($0.vdStableID) }
 
 		var merged = toTail
 		for vc in removed {
-			let fi = fromIndex[ObjectIdentifier(vc)]!
+			let fi = fromIndex[vc.vdStableID]!
 			// Find nearest right neighbour in `from` that exists in `merged`.
 			var insertAt = merged.count
 			for j in (fi + 1) ..< from.count {
@@ -230,8 +230,8 @@ public extension UIPresentation.Context.Controllers {
 		let oldTop = from.last
 		let newTop = to.last
 		if let old = oldTop, old !== newTop, let new = newTop {
-			let oldIsChanging = !toSet.contains(ObjectIdentifier(old))
-			let newIsChanging = fromIndex[ObjectIdentifier(new)] == nil
+			let oldIsChanging = !toSet.contains(old.vdStableID)
+			let newIsChanging = fromIndex[new.vdStableID] == nil
 			// Collect which changing tops need to be pulled to the end.
 			var tops: [UIViewController] = []
 			if direction == .insertion {
@@ -244,8 +244,8 @@ public extension UIPresentation.Context.Controllers {
 				if oldIsChanging { tops.append(old) }
 			}
 			if !tops.isEmpty {
-				let topSet = Set(tops.map { ObjectIdentifier($0) })
-				result.removeAll { topSet.contains(ObjectIdentifier($0)) }
+				let topSet = Set(tops.map { $0.vdStableID })
+				result.removeAll { topSet.contains($0.vdStableID) }
 				result.append(contentsOf: tops)
 			}
 		}
@@ -286,11 +286,11 @@ extension UIPresentation.Context {
 	var isChangingController: Bool {
 		!viewControllers.to.contains(viewController) || !viewControllers.from.contains(viewController)
 	}
-	
+
 	var isDepartingController: Bool {
 		viewControllers.from.contains(viewController) && !viewControllers.to.contains(viewController)
 	}
-	
+
 	var isInsertingController: Bool {
 		!viewControllers.from.contains(viewController) && viewControllers.to.contains(viewController)
 	}

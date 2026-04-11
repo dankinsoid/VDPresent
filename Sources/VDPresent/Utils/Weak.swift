@@ -1,14 +1,14 @@
 import Foundation
 
-final class Weak<T: AnyObject & Hashable>: Hashable {
+final class Weak<T: NSObject>: Hashable {
 
-	let id: ObjectIdentifier
+	let id: UUID
 	private(set) weak var value: T?
 	var hashValue: Int { id.hashValue }
 
 	init(_ value: T) {
 		self.value = value
-		id = ObjectIdentifier(value)
+		id = value.vdStableID
 	}
 
 	func hash(into hasher: inout Hasher) {

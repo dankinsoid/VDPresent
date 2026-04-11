@@ -2,7 +2,7 @@ import UIKit
 import VDTransition
 
 public extension UIPresentation.Transition {
-	
+
 	func withBackground(
 		_ color: UIColor,
 		layout: ContentLayout = .fill
@@ -14,7 +14,7 @@ public extension UIPresentation.Transition {
 			layout: layout
 		)
 	}
-	
+
 	func withBackground() -> UIPresentation.Transition {
 		UIPresentation.Transition(
 			transitionID: transitionID,
@@ -46,7 +46,7 @@ public extension UIPresentation.Transition {
 	) -> UIPresentation.Transition {
 		withBackground(color).environment(\.backgroundPlacement, .behindController)
 	}
-	
+
 	func withOverlay(
 		_ transition: UIViewTransition
 	) -> UIPresentation.Transition {
@@ -77,11 +77,10 @@ public enum BackgroundPlacement {
 	case behindController
 }
 
-
 private extension UIPresentation.Transition {
-	
 
 	// MARK: - Debug helpers
+
 	@MainActor
 	static func prepareBackground(
 		context: UIPresentation.Context
@@ -91,9 +90,9 @@ private extension UIPresentation.Transition {
 		installBackground(context: context, transition: transition)
 
 		guard let backgroundView = context.backgroundView else { return }
-		let id = ObjectIdentifier(backgroundView)
+		let id = backgroundView.vdStableID
 		let currentState = context.backgroundStates[id] ?? UIViewState()
-		
+
 		let newState: UIViewState
 		if context.isBehindFrozen || context.isRemainingController {
 			newState = transition.idle(backgroundView, currentState.identity)
@@ -104,7 +103,7 @@ private extension UIPresentation.Transition {
 		newState.apply(to: backgroundView)
 		context.backgroundStates[id] = newState
 	}
-	
+
 	@MainActor
 	static func animateBackground(
 		context: UIPresentation.Context
@@ -113,7 +112,7 @@ private extension UIPresentation.Transition {
 		let transition = context.environment.backgroundTransition
 
 		guard let backgroundView = context.backgroundView else { return }
-		let id = ObjectIdentifier(backgroundView)
+		let id = backgroundView.vdStableID
 		let currentState = context.backgroundStates[id] ?? UIViewState()
 
 		let tween = transition.tween(for: context.ownDirection)
@@ -154,7 +153,7 @@ private extension UIPresentation.Transition {
 		completed: Bool
 	) {
 		guard let backgroundView = context.backgroundView else { return }
-		let id = ObjectIdentifier(backgroundView)
+		let id = backgroundView.vdStableID
 
 		if completed {
 			let array = context.viewControllers.toRemove
@@ -187,7 +186,7 @@ extension UIPresentation.Environment {
 
 extension UIPresentation.Context {
 
-	var backgroundStates: [ObjectIdentifier: UIViewState] {
+	var backgroundStates: [UUID: UIViewState] {
 		get {
 			cache[\.backgroundStates] ?? [:]
 		}
@@ -197,12 +196,12 @@ extension UIPresentation.Context {
 	}
 
 	var backgroundView: UIView? {
-		get { backgroundViews[view]?.value }
+		get { backgroundViews[view.vdStableID]?.value }
 		nonmutating set {
 			if let newValue {
-				backgroundViews[view] = Weak(newValue)
+				backgroundViews[view.vdStableID] = Weak(newValue)
 			} else {
-				backgroundViews[view] = nil
+				backgroundViews[view.vdStableID] = nil
 			}
 		}
 	}
@@ -210,7 +209,7 @@ extension UIPresentation.Context {
 
 private extension UIPresentation.Context {
 
-	var backgroundViews: [Weak<UIView>: Weak<UIView>] {
+	var backgroundViews: [UUID: Weak<UIView>] {
 		get { cache[\.backgroundViews] ?? [:] }
 		nonmutating set { cache[\.backgroundViews] = newValue }
 	}

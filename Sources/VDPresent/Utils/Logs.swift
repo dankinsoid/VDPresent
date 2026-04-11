@@ -16,14 +16,14 @@ func logTransitionState(
 	controllers: UIPresentation.Context.Controllers,
 	context: @escaping (UIViewController) -> UIPresentation.Context
 ) {
-	let toRemove = Set(controllers.toRemove.map(ObjectIdentifier.init))
-	let toSet = Set(controllers.to.map(ObjectIdentifier.init))
+	let toRemove = Set(controllers.toRemove.map(\.vdStableID))
+	let toSet = Set(controllers.to.map(\.vdStableID))
 	var lines: [String] = []
 	for vc in allVisible {
 		let ctx = context(vc)
 		let name = vc.view.accessibilityIdentifier ?? String(describing: type(of: vc))
 		let transform = fmtTransform(ctx.view)
-		let id = ObjectIdentifier(vc)
+		let id = vc.vdStableID
 		let role: String
 		if toRemove.contains(id) {
 			role = "departing"

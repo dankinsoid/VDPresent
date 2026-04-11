@@ -102,9 +102,9 @@ open class UIStackController: UIViewController {
 	override open var preferredStatusBarStyle: UIStatusBarStyle { statusBarStyle }
 
 	private let content = UIStackControllerView()
-	private var containers: [ObjectIdentifier: UIStackControllerCanvas] = [:]
-	private var wrappers: [ObjectIdentifier: UIStackEffectView] = [:]
-	private var presentations: [ObjectIdentifier: UIPresentation] = [:]
+	private var containers: [UUID: UIStackControllerCanvas] = [:]
+	private var wrappers: [UUID: UIStackEffectView] = [:]
+	private var presentations: [UUID: UIPresentation] = [:]
 	/// Single callback for the current interactive transition.
 	/// Replaces per-VC dictionary to avoid stale callbacks from previous transitions.
 	private var activeTransitionUpdate: ((UIPresentation.Interactivity.State) -> Void)?
@@ -204,7 +204,7 @@ private extension UIStackController {
 		for vc: UIViewController,
 		fallback: UIPresentation
 	) -> UIPresentation {
-		presentations[ObjectIdentifier(vc)] ?? vc.defaultPresentation ?? fallback
+		presentations[vc.vdStableID] ?? vc.defaultPresentation ?? fallback
 	}
 
 	func presentation(
@@ -213,7 +213,7 @@ private extension UIStackController {
 		if UIWindow.root?.rootViewController === self, viewControllers.count < 2 {
 			return .fullScreen(from: .bottom, containerColor: .clear)
 		}
-		return viewControllers.last.flatMap { presentations[ObjectIdentifier($0)] ?? $0.defaultPresentation } ?? presentation ?? .default
+		return viewControllers.last.flatMap { presentations[$0.vdStableID] ?? $0.defaultPresentation } ?? presentation ?? .default
 	}
 }
 
@@ -235,7 +235,7 @@ private extension UIStackController {
 		)
 
 		let resolve: (UIViewController) -> UIPresentation = { [presentations] in
-			presentations[ObjectIdentifier($0)] ?? $0.defaultPresentation ?? presentation
+			presentations[$0.vdStableID] ?? $0.defaultPresentation ?? presentation
 		}
 		let visibleControllers = controllers.visible(resolve)
 
@@ -290,7 +290,7 @@ private extension UIStackController {
 		// removed while off-screen) need these recreated, not just toInsert.
 		var reenteredVisible: [UIViewController] = []
 		for toViewController in visibleControllers.to {
-			let vcID = ObjectIdentifier(toViewController)
+			let vcID = toViewController.vdStableID
 			let needsSetup = wrappers[vcID] == nil
 			if needsSetup {
 				wrappers[vcID] = wrap(view: toViewController.view)
@@ -301,13 +301,10 @@ private extension UIStackController {
 			if presentations[vcID] == nil {
 				presentations[vcID] = toViewController.defaultPresentation ?? presentation
 			}
-			if needsSetup && !visibleControllers.toInsert.contains(toViewController) {
+			if needsSetup, !visibleControllers.toInsert.contains(toViewController) {
 				reenteredVisible.append(toViewController)
 			}
 		}
-
-		content.layoutIfNeeded()
-
 		// Add views for new visible controllers (toInsert + re-entered).
 		for toViewController in visibleControllers.toInsert + reenteredVisible {
 			let ctx = context(toViewController)
@@ -317,6 +314,11 @@ private extension UIStackController {
 		// Iterate only visible controllers for z-ordering and animation.
 		let allVisible = visibleControllers.all(direction)
 		allVisible.map(container).forEach(content.bringSubviewToFront)
+
+		// Force layout of the freshly added wrappers/containers so that the
+		// prepare phase below sees valid `bounds` when computing the initial
+		// offscreen state.
+		content.layoutIfNeeded()
 
 		// Structural: addChild for ALL new controllers.
 		for toViewController in controllers.to where toViewController.parent == nil {
@@ -361,11 +363,11 @@ private extension UIStackController {
 			beginAppearance: {
 				if !controllers.isTopTheSame {
 					if let vc = controllers.to.last {
-						 vc.beginAppearanceTransition(true, animated: animated)
-					 }
-					 if let vc = controllers.from.last {
-						 vc.beginAppearanceTransition(false, animated: animated)
-					 }
+						vc.beginAppearanceTransition(true, animated: animated)
+					}
+					if let vc = controllers.from.last {
+						vc.beginAppearanceTransition(false, animated: animated)
+					}
 				}
 			},
 			prepareInteractive: { [weak self] update in
@@ -389,6 +391,26 @@ private extension UIStackController {
 		)
 	}
 
+	/// Runs after the animation pipeline resolves.
+	///
+	/// The transition can either **complete** (the new stack wins) or be
+	/// **cancelled** (roll back to the previous stack). Both branches share
+	/// the same cleanup shape, parameterised by what the "surviving" slice
+	/// is:
+	///
+	/// - Completed → survivors are `controllers.to` / `visibleControllers.to`.
+	/// - Cancelled → survivors are `controllers.from` / `visibleControllers.from`.
+	///
+	/// Cleanup rules applied to every controller touched by this transition:
+	/// 1. Not in the final stack → structurally removed (`removeFromParent`),
+	///    wrapper/container/presentation dropped, and its per-view transition
+	///    cache entry cleared so a later re-presentation is treated as a
+	///    fresh view (`isNewView == true`) and gets its initial offscreen
+	///    state applied before animating.
+	/// 2. In the final stack but not in the final visible slice → wrapper
+	///    and container are evicted so off-screen controllers don't retain
+	///    view hierarchy resources, while the presentation entry is kept.
+	/// 3. In the final visible slice → fully preserved.
 	/// @ai-generated(paired)
 	func completionBlock(
 		presentation: UIPresentation,
@@ -399,54 +421,77 @@ private extension UIStackController {
 		isCompleted: Bool,
 		completion: (() -> Void)?
 	) {
-		// Completion for visible controllers only.
+		// Let each visible transition finalise its own state before we
+		// start dismantling the view hierarchy it may still reference.
 		for controller in visibleControllers.all(direction) {
-			let currentPresentation = resolvePresentation(for: controller, fallback: presentation)
-			currentPresentation.transition.completion(context(controller), isCompleted)
+			resolvePresentation(for: controller, fallback: presentation)
+				.transition.completion(context(controller), isCompleted)
 		}
-		viewControllers = isCompleted ? controllers.to : controllers.from
+
+		let finalControllers = isCompleted ? controllers.to : controllers.from
+		let finalVisible = isCompleted ? visibleControllers.to : visibleControllers.from
+		viewControllers = finalControllers
+
+		// End appearance transitions before the losing top's wrapper is
+		// torn down — UIKit expects the view to still be in the hierarchy
+		// when `endAppearanceTransition` fires.
+		if !controllers.isTopTheSame {
+			controllers.to.last?.endAppearanceTransition()
+			controllers.from.last?.endAppearanceTransition()
+		}
+
+		// Install/uninstall interactive gestures before caches are pruned
+		// so that uninstall can still resolve each controller's presentation
+		// and install sees the current wrappers/containers.
 		if isCompleted {
 			configureInteractivity(
 				presentation: presentation,
 				controllers: controllers,
 				context: context
 			)
+		} else {
+			statusBarStyle = controllers.from.last?.preferredStatusBarStyle ?? statusBarStyle
+		}
 
-			// Controllers leaving visible zone but staying in full stack:
-			// remove wrapper/container so they don't consume resources.
-			// Must run before didSetViewControllers which calls updateContainers
-			// (otherwise container(for:) would recreate a container we just removed).
-			let visibleToSet = Set(visibleControllers.to.map(ObjectIdentifier.init))
-			let fullToSet = Set(controllers.to.map(ObjectIdentifier.init))
-			for vc in visibleControllers.from {
-				let id = ObjectIdentifier(vc)
-				if !visibleToSet.contains(id) && fullToSet.contains(id) {
-					wrappers[id]?.removeFromSuperview()
-					wrappers[id] = nil
-					containers[id]?.removeFromSuperview()
-					containers[id] = nil
+		// Structurally remove controllers the resolved stack discards:
+		// `toRemove` on completion (genuinely removed), `toInsert` on
+		// cancel (insertions that never took effect).
+		let structurallyRemoved = isCompleted ? controllers.toRemove : controllers.toInsert
+		for vc in structurallyRemoved {
+			if !isCompleted {
+				vc.willMove(toParent: nil)
+			}
+			vc.removeFromParent()
+			vc.didMove(toParent: nil)
+		}
+
+		// Per-controller cache eviction, driven by the final visible slice.
+		// Candidates are controllers this transition actually touched —
+		// anything else in the stack is left alone.
+		let finalVisibleIDs = Set(finalVisible.map(\.vdStableID))
+		let finalStackIDs = Set(finalControllers.map(\.vdStableID))
+		var seen: Set<UUID> = []
+		for vc in visibleControllers.to + visibleControllers.from + structurallyRemoved {
+			let id = vc.vdStableID
+			guard seen.insert(id).inserted else { continue }
+			guard !finalVisibleIDs.contains(id) else { continue }
+			wrappers[id]?.removeFromSuperview()
+			wrappers[id] = nil
+			containers[id]?.removeFromSuperview()
+			containers[id] = nil
+			if !finalStackIDs.contains(id) {
+				presentations[id] = nil
+				// Drop the per-view transition state so that a later
+				// re-presentation is treated as a fresh view and receives
+				// its initial offscreen state before animating.
+				if var transitions = cache[\.allViewTransitions] {
+					transitions[id] = nil
+					cache[\.allViewTransitions] = transitions
 				}
 			}
 		}
 
 		didSetViewControllers()
-		if !controllers.isTopTheSame {
-			controllers.to.last?.endAppearanceTransition()
-			controllers.from.last?.endAppearanceTransition()
-		}
-		if isCompleted {
-			for fromViewController in controllers.toRemove {
-				fromViewController.removeFromParent()
-				fromViewController.didMove(toParent: nil)
-			}
-		} else {
-			statusBarStyle = controllers.from.last?.preferredStatusBarStyle ?? statusBarStyle
-			for toViewController in controllers.toInsert {
-				toViewController.willMove(toParent: nil)
-				toViewController.removeFromParent()
-				toViewController.didMove(toParent: nil)
-			}
-		}
 		isSettingControllers = false
 		completion?()
 		if let next = queue.first {
@@ -477,33 +522,33 @@ private extension UIStackController {
 			let ctxt = context(controller)
 			let prsnt = resolvePresentation(for: controller, fallback: presentation)
 			prsnt.interactivity?.install(context: ctxt) { [weak self] context, state in
-					guard let self else { return .prevent }
-					switch state {
-					case .begin:
-						guard !self.isSettingControllers else { return .prevent }
-						let controllers = context.viewControllers
-						let resolve: (UIViewController) -> UIPresentation = {
-							self.resolvePresentation(for: $0, fallback: presentation)
-						}
-						// Compute visible slice same as non-interactive path,
-						// so controllers behind an opaque one are excluded.
-						let visibleControllers = controllers.visible(resolve)
-						self.transition(
-							presentation: presentation,
-							direction: context.direction,
-							animated: context.animated,
-							controllers: controllers,
-							visibleControllers: visibleControllers,
-							context: context.for,
-							completion: nil
-						)
-
-					default:
-						break
+				guard let self else { return .prevent }
+				switch state {
+				case .begin:
+					guard !self.isSettingControllers else { return .prevent }
+					let controllers = context.viewControllers
+					let resolve: (UIViewController) -> UIPresentation = {
+						self.resolvePresentation(for: $0, fallback: presentation)
 					}
-					self.activeTransitionUpdate?(state)
-					return .allow
+					// Compute visible slice same as non-interactive path,
+					// so controllers behind an opaque one are excluded.
+					let visibleControllers = controllers.visible(resolve)
+					self.transition(
+						presentation: presentation,
+						direction: context.direction,
+						animated: context.animated,
+						controllers: controllers,
+						visibleControllers: visibleControllers,
+						context: context.for,
+						completion: nil
+					)
+
+				default:
+					break
 				}
+				self.activeTransitionUpdate?(state)
+				return .allow
+			}
 		}
 	}
 }
@@ -511,7 +556,7 @@ private extension UIStackController {
 private extension UIStackController {
 
 	func didSetViewControllers() {
-		let idSet = Set(viewControllers.map(ObjectIdentifier.init))
+		let idSet = Set(viewControllers.map(\.vdStableID))
 		containers = containers.filter { idSet.contains($0.key) }
 		wrappers = wrappers.filter { idSet.contains($0.key) }
 		presentations = presentations.filter { idSet.contains($0.key) }
@@ -519,12 +564,12 @@ private extension UIStackController {
 	}
 
 	func wrapper(for controller: UIViewController) -> UIStackEffectView {
-		wrappers[ObjectIdentifier(controller)] ?? UIStackEffectView(controller.view)
+		wrappers[controller.vdStableID] ?? UIStackEffectView(controller.view)
 	}
 
 	@discardableResult
 	func container(for controller: UIViewController) -> UIStackControllerCanvas {
-		let id = ObjectIdentifier(controller)
+		let id = controller.vdStableID
 		if let result = containers[id] {
 			return result
 		}
@@ -538,7 +583,7 @@ private extension UIStackController {
 	func updateContainers() {
 		// Only include containers that already exist — non-visible controllers
 		// may have had their containers intentionally removed.
-		content.containers = viewControllers.compactMap { containers[ObjectIdentifier($0)] }
+		content.containers = viewControllers.compactMap { containers[$0.vdStableID] }
 	}
 }
 

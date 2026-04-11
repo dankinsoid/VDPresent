@@ -162,7 +162,7 @@ public enum DepartingAnimation {
 /// After `buildCombined`, a single `update(progress:)` drives all sub-transitions.
 struct ViewTransitions {
 
-	var viewID: ObjectIdentifier?
+	var viewID: UUID?
 	/// The merged transition. Built once per prepare phase.
 	var tween: UIViewTransition.Tween?
 	var state = UIViewState()
@@ -178,22 +178,23 @@ struct ViewTransitions {
 
 extension UIPresentation.Context {
 
-	/// Per-view cache of all transitions. Keyed by view because all contexts
-	/// created via `context.for(vc)` share the same `Cache` instance.
+	/// Per-view cache of all transitions. Keyed by the controller's stable
+	/// identifier; all contexts created via `context.for(vc)` share the
+	/// same `Cache` instance.
 	/// Rebuilt each animate cycle: reset → apply own → apply back effects from above.
-	private var allViewTransitions: [ObjectIdentifier: ViewTransitions] {
+	internal var allViewTransitions: [UUID: ViewTransitions] {
 		get { cache[\.allViewTransitions] ?? [:] }
 		nonmutating set { cache[\.allViewTransitions] = newValue }
 	}
 
 	/// Shortcut to access `ViewTransitions` for this controller's view.
 	var viewTransitions: ViewTransitions {
-		get { allViewTransitions[ObjectIdentifier(viewController)] ?? ViewTransitions() }
-		nonmutating set { allViewTransitions[ObjectIdentifier(viewController)] = newValue }
+		get { allViewTransitions[viewController.vdStableID] ?? ViewTransitions() }
+		nonmutating set { allViewTransitions[viewController.vdStableID] = newValue }
 	}
 
 	var isNewView: Bool {
-		viewTransitions.viewID != ObjectIdentifier(view)
+		viewTransitions.viewID != view.vdStableID
 	}
 }
 
@@ -373,12 +374,11 @@ private extension UIPresentation.Transition {
 		let newState = newTransition.from(context.view, currentState)
 
 		newState.apply(to: context.view)
-
 		context.viewTransitions.tween = newTransition
 		context.viewTransitions.oldState = currentState
 		context.viewTransitions.state = newState
 		context.viewTransitions.progress = progress
-		context.viewTransitions.viewID = ObjectIdentifier(context.view)
+		context.viewTransitions.viewID = context.view.vdStableID
 
 		animation?(context, progress)
 	}
