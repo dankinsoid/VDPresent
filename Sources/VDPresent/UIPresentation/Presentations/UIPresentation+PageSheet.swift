@@ -103,8 +103,8 @@ private extension UIViewTransition {
 				up: up
 			)
 			return identity.with(\.transform, transform)
-		} removed: { _, identity in
-			identity
+		} removed: { view, identity in
+			UIViewTransition.move(from: edge.opposite).willAppear(view, identity)
 		}
 	}
 

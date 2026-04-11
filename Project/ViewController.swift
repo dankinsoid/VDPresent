@@ -439,7 +439,7 @@ private func stackSectionItems() -> [DemoItem] {
 							.init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
 						]
 					)
-					vc.defaultPresentation = presentation.with(animation: .default(1))
+					vc.defaultPresentation = presentation//.with(animation: .default(1))
 					return vc
 				}
 
@@ -507,7 +507,7 @@ private func replaceDemo(
 								.init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
 							]
 						)
-						stack.set(viewControllers: menu + [replaced], as: replacementPres.with(animation: .default(1)))
+						stack.set(viewControllers: menu + [replaced], as: replacementPres)
 					}),
 					.init(title: "← Go Back", style: .secondary, handler: { vc in vc.hide() }),
 				]

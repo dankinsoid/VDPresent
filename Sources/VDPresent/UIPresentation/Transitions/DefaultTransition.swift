@@ -397,7 +397,10 @@ private extension UIPresentation.Transition {
 			return contentTransition
 		}
 		let topContext = context.for(topVC)
-		return topContext.environment.recessTransition(depth, topContext)
+		// TODO: надо брать recessTransition не от topVC, а от последнего контроллера с recessTransition != .identity
+		let recess = topContext.environment.recessTransition(depth, topContext)
+		guard !recess.isIdentity else { return contentTransition }
+		return recess
 	}
 
 	/// Settles the view into its correct post-animation state.
