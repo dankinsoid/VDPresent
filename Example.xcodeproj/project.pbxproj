@@ -14,6 +14,7 @@
 		83F74E5C296AEC4300C5E3D4 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 83F74E53296AEC4300C5E3D4 /* LaunchScreen.storyboard */; };
 		83F74E61296AEDF400C5E3D4 /* VDTransition in Frameworks */ = {isa = PBXBuildFile; productRef = 83F74E60296AEDF400C5E3D4 /* VDTransition */; };
 		83F8071F296CA8E000AA7AB5 /* FadeLayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83F8071E296CA8E000AA7AB5 /* FadeLayer.swift */; };
+		83NV00010000000000000001 /* NativeNavDemo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83NV00020000000000000002 /* NativeNavDemo.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -25,6 +26,7 @@
 		83F74E51296AEC4300C5E3D4 /* SceneDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		83F74E54296AEC4300C5E3D4 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
 		83F8071E296CA8E000AA7AB5 /* FadeLayer.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = FadeLayer.swift; sourceTree = "<group>"; };
+		83NV00020000000000000002 /* NativeNavDemo.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = NativeNavDemo.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -78,6 +80,7 @@
 				83F74E50296AEC4300C5E3D4 /* Info.plist */,
 				83F74E51296AEC4300C5E3D4 /* SceneDelegate.swift */,
 				83F74E4E296AEC4300C5E3D4 /* ViewController.swift */,
+				83NV00020000000000000002 /* NativeNavDemo.swift */,
 			);
 			path = Project;
 			sourceTree = "<group>";
@@ -174,6 +177,7 @@
 				83F74E5B296AEC4300C5E3D4 /* SceneDelegate.swift in Sources */,
 				83F8071F296CA8E000AA7AB5 /* FadeLayer.swift in Sources */,
 				83F74E57296AEC4300C5E3D4 /* AppDelegate.swift in Sources */,
+				83NV00010000000000000001 /* NativeNavDemo.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

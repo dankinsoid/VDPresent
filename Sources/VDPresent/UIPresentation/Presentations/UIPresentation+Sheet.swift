@@ -11,7 +11,7 @@ public extension UIPresentation {
 		from edge: Edge = .bottom,
 		minOffset: CGFloat = 10,
 		cornerRadius: CGFloat = 20,
-		containerColor: UIColor = .pageSheetBackground
+		containerColor: UIColor = .black.withAlphaComponent(0.32)
 	) -> UIPresentation {
 		UIPresentation(
 			transition: .base(transitionID: "sheet")
